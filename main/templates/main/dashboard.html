@@ -1,0 +1,107 @@
+{% extends "index.html" %}
+{% block content %}
+
+<div class="container-fluid py-4">
+  <!-- Portfolio Overview -->
+  <div class="row">
+    <div class="col-lg-6 col-md-6 col-12">
+      <div class="card">
+        <div class="card-body">
+          <h5 class="font-weight-bolder">Portfolio Overview</h5>
+          <div class="d-flex align-items-center mb-3">
+            <i class="ni ni-building text-info text-lg me-3"></i>
+            <span>Total Properties Owned: <strong>{{ total_properties }}</strong></span>
+          </div>
+          <div class="d-flex align-items-center mb-3">
+            <i class="ni ni-chart-bar-32 text-success text-lg me-3"></i>
+            <span>Occupancy Rate: <strong>{{ occupancy_rate }}%</strong></span>
+          </div>
+          <div class="d-flex align-items-center mb-3">
+            <i class="ni ni-money-coins text-warning text-lg me-3"></i>
+            <span>Monthly Rental Income: <strong>${{ collected_income }}</strong> / <strong>${{ pending_income }}</strong> pending</span>
+          </div>
+          <div class="d-flex align-items-center">
+            <i class="ni ni-calendar-grid-58 text-danger text-lg me-3"></i>
+            <span>
+              Upcoming Lease Renewals: 
+              <strong>{{ upcoming_renewals }}</strong>
+              {% if upcoming_renewals > 0 %}
+                <a href="{% url 'properties' %}" class="btn btn-link btn-sm text-info ms-2">View Details</a>
+              {% endif %}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Financial Snapshot -->
+      <div class="col-lg-6 col-md-6 col-12 mt-4 mt-md-0">
+      <div class="card">
+        <div class="card-body">
+          <h5 class="font-weight-bolder">Financial Snapshot</h5>
+          <div class="d-flex align-items-center mb-3">
+            <i class="ni ni-money-coins text-success text-lg me-3"></i>
+            <span>Rent Collected: <strong>${{ rent_collected }}</strong> / <strong>${{ rent_outstanding }}</strong> outstanding</span>
+          </div>
+          <div class="d-flex align-items-center mb-3">
+            <i class="ni ni-credit-card text-info text-lg me-3"></i>
+            <span>Last Payment: <strong>${{ last_payment.amount }}</strong></span>
+          </div>
+          <div class="d-flex align-items-center mb-3">
+            <i class="ni ni-basket text-warning text-lg me-3"></i>
+            <span>Expense Summary: <strong>${{ expense_summary }}</strong></span>
+          </div>
+          <div class="d-flex align-items-center">
+            <i class="ni ni-chart-pie-35 text-danger text-lg me-3"></i>
+            <span>Net Cash Flow: <strong>${{ net_cash_flow }}</strong></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+<div class="row mt-4">
+  <!-- Recent Payments -->
+  <div class="col-lg-6 col-md-6 col-12">
+    <div class="card">
+      <div class="card-body">
+        <h5 class="font-weight-bolder">Recent Payments</h5>
+        <table class="table align-middle mb-0">
+          <th>Amount</th>
+          <th>Date</th>
+          {% for payment in recent_payments %}
+          <tr>
+            <td class="text font-weight-bold">${{ payment.amount }}</td>
+            <td>{{ payment.transaction_date|date:"M d, Y" }}</td>
+          </tr>
+          {% endfor %}
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Alerts / Notifications -->
+  <div class="col-lg-6 col-md-6 col-12 mt-4 mt-md-0">
+    <div class="card">
+      <div class="card-body">
+        <h5 class="font-weight-bolder">Alerts / Notifications</h5>
+        <ul class="list-group">
+          <li class="list-group-item d-flex align-items-center">
+            <i class="ni ni-bell-55 text-danger text-lg me-3"></i>
+            <span>Overdue Rent Alerts: <strong>{{ overdue_rent_alerts }}</strong></span>
+          </li>
+          <li class="list-group-item d-flex align-items-center">
+            <i class="ni ni-calendar-grid-58 text-warning text-lg me-3"></i>
+            <span>Leases Expiring Soon: <strong>{{ leases_expiring_soon }}</strong></span>
+          </li>
+          <li class="list-group-item d-flex align-items-center">
+            <i class="ni ni-settings text-info text-lg me-3"></i>
+            <span>Maintenance Requests Pending Approval: <strong>{{ pending_maintenance_requests }}</strong></span>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+   
+
+{% endblock %}

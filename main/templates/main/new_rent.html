@@ -1,0 +1,178 @@
+{% extends "index.html" %}
+{% block content %}
+
+<div class="container-fluid py-4">
+  <div class="row justify-content-center">
+    <div class="col-lg-8 col-md-10 col-12">
+      <div class="card shadow border-0 mb-4">
+        <div class="card-header bg-gradient-info pb-3 border-radius-lg">
+          <h4 class="text-white mb-0">New Rent</h4>
+          <p class="text-white-50 mb-0">Create a new rent contract</p>
+        </div>
+        <div class="card-body">
+
+          <!-- Property Selection -->
+          <form method="get" class="mb-4">
+            <div class="mb-3">
+              <label for="property" class="form-label font-weight-bold text-dark">Select Property:</label>
+              <select class="form-control" name="property_id" id="property" onchange="this.form.submit()">
+                <option value="">--Select a Property--</option>
+                {% for property in properties %}
+                  <option value="{{ property.id }}" {% if selected_property and property.id == selected_property.id %}selected{% endif %}>
+                    {{ property.alias }} - {{ property.location }}
+                  </option>
+                {% endfor %}
+              </select>
+            </div>
+          </form>
+
+          <!-- Tenant Search -->
+          {% if selected_property %}
+            <form method="get" class="mb-4">
+              <input type="hidden" name="property_id" value="{{ selected_property.id }}">
+              <div class="mb-3">
+                <label for="tenant" class="form-label font-weight-bold text-dark">Search Tenant by Personal ID:</label>
+                <div class="input-group">
+                  <input type="text" name="personal_id" id="tenant" class="form-control" placeholder="Enter Personal ID" value="{{ personal_id }}">
+                  <button type="submit" class="btn btn-primary">Search</button>
+                </div>
+              </div>
+            </form>
+
+            <!-- Display Tenant Information -->
+            {% if tenant %}
+              <div class="alert alert-success mb-3">
+                <strong>Tenant Name:</strong> {{ tenant.first_name }} {{ tenant.last_name }}<br>
+                <strong>Tenant Email:</strong> {{ tenant.email }}
+              </div>
+            {% elif personal_id %}
+              <div class="alert alert-warning mb-3">
+                No tenant found with Personal ID: {{ personal_id }}
+              </div>
+            {% endif %}
+
+            <!-- Rent Form -->
+            <form method="POST" autocomplete="off">
+              {% csrf_token %}
+              <div class="mb-3">
+                <p class="fw-bold mb-2"><strong>Property:</strong> {{ selected_property.alias }}</p>
+              </div>
+            {% for field in form %}
+              {% if field.name not in "unregistered_tenant_name unregistered_tenant_email unregistered_tenant_phone unregistered_tenant_id_type unregistered_tenant_personal_id unregistered_tenant_dob unregistered_tenant_nac unregistered_tenant_sex" %}
+                <div class="mb-3">
+                  <label class="form-label font-weight-bold text-dark">{{ field.label }}</label>
+                  {{ field }}
+                  {% if field.help_text %}
+                    <small class="form-text text-muted">{{ field.help_text }}</small>
+                  {% endif %}
+                  {% for error in field.errors %}
+                    <div class="text-danger small">{{ error }}</div>
+                  {% endfor %}
+                </div>
+              {% endif %}
+            {% endfor %}
+            
+              <!-- Unregistered tenant fields (toggle visibility with JS) -->
+            <div id="unregistered-fields" style="display: {% if not tenant and personal_id %}block{% else %}none{% endif %};">
+              <div class="mb-3">
+                <label class="form-label font-weight-bold text-dark" for="id_unregistered_tenant_name">Tenant Name</label>
+                {{ form.unregistered_tenant_name }}
+              </div>
+              <div class="mb-3">
+                <label class="form-label font-weight-bold text-dark" for="id_unregistered_tenant_email">Tenant Email</label>
+                {{ form.unregistered_tenant_email }}
+              </div>
+              <div class="mb-3">
+                <label class="form-label font-weight-bold text-dark" for="id_unregistered_tenant_phone">Tenant Phone</label>
+                {{ form.unregistered_tenant_phone }}
+              </div>
+              <div class="mb-3">
+                <label class="form-label font-weight-bold text-dark" for="id_unregistered_tenant_id_type">ID Type</label>
+                {{ form.unregistered_tenant_id_type }}
+              </div>
+              <div class="mb-3">
+                <label class="form-label font-weight-bold text-dark" for="id_unregistered_tenant_personal_id">Personal ID</label>
+                {{ form.unregistered_tenant_personal_id }}
+              </div>
+              <div class="mb-3">
+                <label class="form-label font-weight-bold text-dark" for="id_unregistered_tenant_dob">Date of Birth</label>
+                {{ form.unregistered_tenant_dob }}
+              </div>
+              <div class="mb-3">
+                <label class="form-label font-weight-bold text-dark" for="id_unregistered_tenant_nac">Nationality</label>
+                {{ form.unregistered_tenant_nac }}
+              </div>
+              <div class="mb-3">
+                <label class="form-label font-weight-bold text-dark" for="id_unregistered_tenant_sex">Sex</label>
+                {{ form.unregistered_tenant_sex }}
+              </div>
+            </div>
+            <div class="text-center">
+              <button type="submit" class="btn btn-info bg-gradient w-50 mt-3">Save Rent</button>
+            </div>
+            </form>
+          {% endif %}
+          <div class="text-center mt-3">
+            <a href="{% url 'properties' %}" class="btn btn-secondary">Back to Properties</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const startDateField = document.getElementById('id_start_date');
+    const nextInvoiceDateField = document.getElementById('id_next_invoice_date');
+    const endDateField = document.getElementById('id_end_date');
+
+    if (startDateField) {
+        startDateField.addEventListener('change', function () {
+            const startDateValue = startDateField.value;
+            if (startDateValue) {
+                const startDate = new Date(startDateValue);
+
+                // Calculate next_invoice_date (30 days from start_date)
+                const nextInvoiceDate = new Date(startDate);
+                nextInvoiceDate.setDate(startDate.getDate() + 30);
+
+                // Calculate end_date (1 year from start_date)
+                const endDate = new Date(startDate);
+                endDate.setFullYear(startDate.getFullYear() + 1);
+
+                // Format the dates as YYYY-MM-DD
+                const formatDate = (date) => {
+                    const year = date.getFullYear();
+                    const month = String(date.getMonth() + 1).padStart(2, '0');
+                    const day = String(date.getDate()).padStart(2, '0');
+                    return `${year}-${month}-${day}`;
+                };
+
+                if (nextInvoiceDateField) nextInvoiceDateField.value = formatDate(nextInvoiceDate);
+                if (endDateField) nextInvoiceDateField.value = formatDate(endDate);
+            } else {
+                if (nextInvoiceDateField) nextInvoiceDateField.value = '';
+                if (endDateField) endDateField.value = '';
+            }
+        });
+    }
+});
+</script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  // Get context variables safely as JS booleans
+  var tenantFound = {{ tenant|yesno:"true,false" }};
+  var personalIdEntered = "{{ personal_id|default_if_none:'' }}" !== "";
+  var unregisteredFields = document.getElementById('unregistered-fields');
+
+  if (unregisteredFields) {
+    if (!tenantFound && personalIdEntered) {
+      unregisteredFields.style.display = 'block';
+    } else {
+      unregisteredFields.style.display = 'none';
+    }
+  }
+});
+</script>
+{% endblock %}

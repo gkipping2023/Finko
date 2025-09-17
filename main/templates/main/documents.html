@@ -1,0 +1,79 @@
+{% extends "index.html" %}
+{% block content %}
+
+<h1>Documents</h1>
+
+
+<head>
+    <meta charset="UTF-8">
+    
+    <style>
+        /* body {
+            font-family: 'Helvetica', sans-serif;
+            font-size: 12px;
+            line-height: 1.6;
+            margin: 2cm;
+        } */
+        h1, h2 {
+            text-align: center;
+        }
+        .section {
+            margin-top: 20px;
+        }
+        .firma {
+            margin-top: 60px;
+            text-align: center;
+        }
+        .firma div {
+            margin-top: 80px;
+        }
+    </style>
+</head>
+
+
+<h1>CONTRATO DE ARRENDAMIENTO</h1>
+<p>En la ciudad de {{ ciudad }}, a los {{ dia }} días del mes de {{ mes }} de {{ año }}, se celebra el presente Contrato de Arrendamiento entre las siguientes partes:</p>
+
+<p><strong>ARRENDADOR(A):</strong> {{ request.user.first_name }} {{ request.user.last_name }}, mayor de edad, con cédula/pasaporte No. {{ arrendador_id }}, con domicilio en {{ arrendador_direccion }}.</p>
+
+<p><strong>ARRENDATARIO(A):</strong> , mayor de edad, con cédula/pasaporte No. {{ arrendatario_id }}, con domicilio en {{ arrendatario_direccion }}.</p>
+
+<div class="section">
+    <h2>CLÁUSULAS</h2>
+
+    <p><strong>PRIMERA:</strong> El(la) ARRENDADOR(A) da en arrendamiento al(la) ARRENDATARIO(A) el inmueble ubicado en {{ propiedad_direccion }}, destinado exclusivamente para uso {{ uso_destino }}.</p>
+
+    <p><strong>SEGUNDA:</strong> El plazo del presente contrato será de {{ duracion_meses }} meses, iniciando el {{ fecha_inicio }} y terminando el {{ fecha_fin }}. Podrá renovarse previo acuerdo escrito entre ambas partes.</p>
+
+    <p><strong>TERCERA:</strong> El canon mensual de arrendamiento será de B/. {{ monto_mensual }}, pagaderos por adelantado, dentro de los primeros cinco (5) días de cada mes en {{ metodo_pago }}.</p>
+
+    <p><strong>CUARTA:</strong> El(la) ARRENDATARIO(A) entregará al(la) ARRENDADOR(A) en este acto la suma de B/. {{ deposito }} en concepto de depósito de garantía, el cual será devuelto al finalizar el contrato, una vez verificado el buen estado del inmueble.</p>
+
+    <p><strong>QUINTA:</strong> El(la) ARRENDATARIO(A) se compromete a dar un uso adecuado al inmueble, sin realizar modificaciones ni subarrendar sin autorización por escrito del(la) ARRENDADOR(A).</p>
+
+    <p><strong>SEXTA:</strong> El(la) ARRENDATARIO(A) será responsable del pago de los servicios de luz, agua, internet, y cualquier otro consumo durante el tiempo que ocupe el inmueble.</p>
+
+    <p><strong>SÉPTIMA:</strong> Cualquier incumplimiento de las cláusulas por alguna de las partes dará derecho a la otra parte a dar por terminado este contrato, conforme a lo dispuesto en el Código Civil y la Ley 93 de 1973, que regula el arrendamiento en Panamá.</p>
+
+    <p><strong>OCTAVA:</strong> Las partes acuerdan que cualquier diferencia será resuelta de mutuo acuerdo o, en su defecto, por los tribunales de la República de Panamá.</p>
+</div>
+
+<div class="firma">
+    <div>
+        ___________________________<br>
+        {{ arrendador_nombre }}<br>
+        Cédula/Pasaporte: {{ arrendador_id }}<br>
+        ARRENDADOR(A)
+    </div>
+
+    <div>
+        ___________________________<br>
+        {{ arrendatario_nombre }}<br>
+        Cédula/Pasaporte: {{ arrendatario_id }}<br>
+        ARRENDATARIO(A)
+    </div>
+</div>
+
+
+
+{% endblock %}

@@ -1,0 +1,33 @@
+#SuperUser use username
+george
+george.kipping@hotmail.com
+panama2025
+
+optimus
+optimus@optimus.com
+panama2025
+
+normal users:
+castalia@castalia.com
+panama2025
+
+jesus@jesus.com
+panama2025
+VE01010101
+
+source .venv/bin/activate
+
+deactivate
+export DYLD_FALLBACK_LIBRARY_PATH=/opt/homebrew/lib:$DYLD_FALLBACK_LIBRARY_PATH
+
+1 de Agosto 2025:
+REGISTRO DE PAGO:
+Hay que mejorar el report payment form, para que sea mas dinamico
+    - Fields, agregar uno de pago y eliminar algunos que no hacen falta.
+    Opciones de typo de transaccion, no hay una de pago
+
+4 Ago 2025
+se estan usando las fechas de created_at para renderizar ultimo pago, cambiar a confirmed payments
+
+Mailtrap API token:
+3cfad265f14632bd3f405ee1f68c5b22

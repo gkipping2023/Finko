@@ -1,0 +1,68 @@
+{% extends "index.html" %}
+{% block content %}
+
+<div class="container-fluid py-4">
+  <div class="row justify-content-center">
+    <div class="col-lg-8 col-md-10 col-12">
+      <div class="card shadow border-0 mb-4">
+        <div class="card-header bg-gradient-info pb-3 border-radius-lg">
+          <h4 class="text-white mb-0">Create Transaction</h4>
+          <p class="text-white-50 mb-0">Add a new payment or transaction</p>
+        </div>
+        <div class="card-body">
+          {% if messages %}
+            {% for message in messages %}
+              <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+            {% endfor %}
+          {% endif %}
+          <form method="post" id="transaction-form" autocomplete="off">
+            {% csrf_token %}
+            {% for field in form %}
+              <div class="mb-3">
+                <label class="form-label font-weight-bold text-dark">{{ field.label }}</label>
+                {{ field }}
+                {% if field.help_text %}
+                  <small class="form-text text-muted">{{ field.help_text }}</small>
+                {% endif %}
+                {% for error in field.errors %}
+                  <div class="text-danger small">{{ error }}</div>
+                {% endfor %}
+              </div>
+            {% endfor %}
+            <div class="text-center">
+              <button type="submit" class="btn btn-info bg-gradient w-50 mt-3">Save Transaction</button>
+            </div>
+          </form>
+          <div class="text-center mt-3">
+            <a href="{% url 'dashboard' %}" class="btn btn-secondary">Back to Dashboard</a>
+          </div>
+        </div>
+      </div>
+
+      <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const rentField = document.getElementById('id_rent');
+        const tenantField = document.getElementById('id_tenant');
+        const propertyField = document.getElementById('id_property');
+
+        if (rentField) {
+            rentField.addEventListener('change', function () {
+                const selectedRentId = this.value;
+
+                // Fetch the rent details via an API endpoint
+                fetch(`/api/rent-details/${selectedRentId}/`)
+                    .then(response => response.json())
+                    .then(data => {
+                        // Update the tenant field
+                        if (tenantField) tenantField.value = data.tenant_id;
+
+                        // Update the property field
+                        if (propertyField) propertyField.value = data.property_id;
+                    })
+                    .catch(error => console.error('Error fetching rent details:', error));
+            });
+        }
+    });
+</script>
+
+{% endblock %}

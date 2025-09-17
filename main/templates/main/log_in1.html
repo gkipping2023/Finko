@@ -1,0 +1,28 @@
+{% extends "index.html" %}
+{% load socialaccount %}
+{% block content %}
+<main class="main-content mt-0">
+  <section class="min-vh-100 mb-8">
+    <div class="container">
+      <div class="row justify-content-center">
+        <div class="col-lg-5 text-center mx-auto">
+          <h1 class="text-dark mb-2 mt-5">Login with Google</h1>
+          <p class="text-lead text-dark">Use your Gmail account to log in or register.</p>
+        </div>
+      </div>
+      <div class="row mt-lg-n10 mt-md-n11 mt-n10">
+        <div class="col-xl-4 col-lg-5 col-md-7 mx-auto">
+          <div class="card z-index-0">
+            <div class="card-body">
+              <a href="{% provider_login_url 'google' %}" class="btn bg-gradient-dark w-100 my-4 mb-2">
+                <i class="fab fa-google"></i> Sign in with Google
+              </a>
+              <p class="text-sm mt-3 mb-0">Don't have an account? <a href="{% provider_login_url 'google' %}" class="text-dark font-weight-bolder">Register with Google</a></p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+{% endblock %}

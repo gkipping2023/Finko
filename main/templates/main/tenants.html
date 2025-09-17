@@ -1,0 +1,38 @@
+{% extends "index.html" %}
+{% block content %}
+
+<h1>Tenants</h1>
+
+<table class="table">
+    <thead>
+      <tr>
+        <th scope="col">Tenant ID</th>
+        <th scope="col">Name</th>
+        <th scope="col">Phone # </th>
+        <th scope="col">Email</th>
+        <th scope="col">Personal ID</th>
+        <th scope="col">Type of ID</th>
+        <th scope="col">Nationality</th>
+        <th scope="col">Date of Birth</th>
+        <th scope="col">Sexo</th>
+      </tr>
+    </thead>
+    <tbody>
+        {% for tenant in tenants %}
+        <tr>
+            <th scope="row">{{tenant.id}}</th>
+            <td>{{tenant.full_name}}</td>
+            <td>{{tenant.phone}}</td>
+            <td>{{tenant.email}}</td>
+            <td>{{tenant.personal_id}}</td>
+            <td>{{tenant.id_type}}</td>
+            <td>{{tenant.nac}}</td>
+            <td>{{tenant.dob}}</td>
+            <td>{{tenant.sex}}</td>
+          </tr>
+        {% endfor %}
+    </tbody>
+  </table>
+
+
+{% endblock %}

@@ -1,0 +1,18 @@
+
+{% extends "index.html" %}
+{% block content %}
+
+
+<h3>Confirmar Pago</h3>
+<p>Monto: {{ transaction.amount }}</p>
+<p>Descripción: {{ transaction.description }}</p>
+{% if transaction.confirmation_file %}
+    <a href="{{ transaction.confirmation_file.url }}" target="_blank">Ver archivo adjunto</a>
+{% endif %}
+<form method="post">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-success">Confirmar y enviar recibo</button>
+</form>
+
+
+{% endblock %}

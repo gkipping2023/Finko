@@ -1,0 +1,91 @@
+{% extends "index.html" %}
+{% block content %}
+
+<div class="container-fluid py-4">
+  <div class="row justify-content-center">
+    <div class="col-lg-8 col-md-10 col-12">
+      <div class="card shadow border-0 mb-4">
+        <div class="card-header bg-gradient-info pb-3 border-radius-lg">
+          <h4 class="text-white mb-0">Update Property</h4>
+          <p class="text-white-50 mb-0">Select and update your property details</p>
+        </div>
+        <div class="card-body">
+          <form method="get" class="mb-4">
+            <div class="mb-3">
+              <label for="property" class="form-label font-weight-bold text-dark">Select Property:</label>
+              <select class="form-control" name="property_id" id="property" onchange="this.form.submit()">
+                <option value="">--Select a Property--</option>
+                {% for property in properties %}
+                  <option value="{{ property.id }}" {% if selected_property and property.id == selected_property.id %}selected{% endif %}>
+                    {{ property.alias }} - {{ property.location }}
+                  </option>
+                {% endfor %}
+              </select>
+            </div>
+          </form>
+
+          {% if selected_property %}
+            <form method="post" autocomplete="off">
+              {% csrf_token %}
+              <div class="mb-3">
+                <p class="fw-bold mb-2"><strong>Property:</strong> {{ selected_property.alias }}</p>
+              </div>
+              {% for field in form %}
+                <div class="mb-3">
+                  <label class="form-label font-weight-bold text-dark">{{ field.label }}</label>
+                  {{ field }}
+                  {% if field.help_text %}
+                    <small class="form-text text-muted">{{ field.help_text }}</small>
+                  {% endif %}
+                  {% for error in field.errors %}
+                    <div class="text-danger small">{{ error }}</div>
+                  {% endfor %}
+                </div>
+              {% endfor %}
+              <div class="text-center">
+                <button type="submit" class="btn btn-info bg-gradient w-50 mt-3">Update</button>
+              </div>
+            </form>
+          {% endif %}
+          <div class="text-center mt-3">
+            <a href="{% url 'properties' %}" class="btn btn-secondary">Back to Properties</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% comment %} {% extends "index.html" %}
+{% block content %}
+
+<h1 class="text-center text-info text-gradient">Update Property</h1>
+<div class="form-control container-sm text-dark bg-gray-100">
+    
+    
+    <form method="get">
+        <label for="property">Select Property:</label>
+        <select class="form-control" name="property_id" id="property" onchange="this.form.submit()">
+            <option class="form-control" value="">--Select a Property--</option>
+            {% for property in properties %}
+                <option class="form-control" value="{{ property.id }}" {% if selected_property and property.id == selected_property %}selected{% endif %}>
+                    {{ property.alias }} - {{property.location}}
+                </option>
+            {% endfor %}
+        </select>
+    </form>
+
+    {% if selected_property %}
+        <form method="post">
+            {% csrf_token %}
+            <p><strong>Property:</strong> {{selected_property.alias}}</p>
+            {{ form.as_p }}
+            <button type="submit" class="btn btn-info bg-gradient">Update</button>
+        </form>
+    {% endif %}
+    
+    <a href="{% url 'properties' %}">Back to Properties</a>
+</div>
+{% endblock %} {% endcomment %}

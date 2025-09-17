@@ -1,0 +1,52 @@
+<html>
+                          <head>
+                            <style>
+                              body {
+                                font-family: 'Montserrat', Arial, sans-serif;
+                                background: #f8f9fa;
+                                color: #344767;
+                                margin: 0;
+                                padding: 0;
+                              }
+                              .container {
+                                text-align: center;
+                                max-width: 600px;
+                                margin: 40px auto;
+                                background: #fff;
+                                border-radius: 12px;
+                                box-shadow: 0 2px 8px rgba(44,62,80,0.08);
+                                padding: 32px 24px;
+                              }
+                              .btn {
+                                display: inline-block;
+                                background: #17c1e8;
+                                color: #fff !important;
+                                padding: 12px 28px;
+                                border-radius: 6px;
+                                text-decoration: none;
+                                font-weight: 600;
+                                margin-top: 16px;
+                              }
+                              .footer {
+                                color: #8392ab;
+                                font-size: 13px;
+                                margin-top: 32px;
+                                text-align: center;
+                              }
+                            </style>
+                          </head>
+                          <body>
+                            <div class="container">
+                              <h2 style="color:#17c1e8;">¡Nuevo Contrato de Alquiler!</h2>
+                              <p>Hola {tenant.first_name},</p>
+                              <p>Se ha creado un nuevo contrato de alquiler para una propiedad .</p>
+                              <p>Por favor, revisa los detalles del contrato en tu portal de inquilino.</p>
+                              <p>
+                                <a href="{request.build_absolute_uri(reverse('tenant_portal'))}" class="btn">Ir al Portal de Inquilino</a>
+                              </p>
+                              <div class="footer">
+                                Este es un mensaje automático de Finko - Property Management System.
+                              </div>
+                            </div>
+                          </body>
+                        </html>

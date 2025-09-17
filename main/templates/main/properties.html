@@ -1,0 +1,300 @@
+{% extends "index.html" %}
+{% block content %}
+
+{% if request.user.role == "O" %}
+<!-- Propiedades table -->
+<div class="container-fluid py-4">
+    <div class="row">
+      <div class="col-12">
+        <div class="card mb-4">
+          <div class="card-header pb-0">
+            <h6>Propiedades</h6>
+            {% if request.user.plan == "free" %}
+            <a class="btn btn-outline-info btn-sm mb-0 me-3" href="{% url 'user_profile' %}">Upgrade Plan</a>
+            {% else %}
+            <a class="btn btn-outline-info btn-sm mb-0 me-3" href="{% url 'properties_form' %}">Add Properties</a>
+            {% endif %}
+            <a class="btn btn-outline-primary btn-sm mb-0 me-3" href="{% url 'update_property' %}">Update Properties</a>
+          </div>
+          <div class="card-body px-0 pt-0 pb-2">
+            <div class="table-responsive p-0">
+              <table class="table align-items-center mb-0">
+                <thead>
+                  <tr>
+                    <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Propiedad</th>
+                    <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">Tipo</th>
+                    <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Mensualidad</th>
+                    <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Gastos Comunes</th>
+                    <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Disponibilidad</th>
+                    <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Mantenimientos</th>
+
+                  </tr>
+                </thead>
+                <tbody>
+                    {% for property in properties %}
+                  <tr>
+                    <td>
+                      <div class="d-flex px-2 py-1">
+                        <div>
+                          <i class="bi bi-houses me-2 px-2 text-lg font-weight-bold text-primary"></i>
+                        </div>
+                        <div class="d-flex flex-column justify-content-center">
+                          <h6 class="mb-0 text-sm">{{property.alias}}</h6>
+                          <p class="text-xs text-secondary mb-0">{{property.location}}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <p class="text-xs font-weight-bold mb-0">{{property.category}}</p>
+                      <p class="text-xs text-secondary mb-0">Organization</p>
+                    </td>
+                    <td class="align-middle text-center">
+                        <span class="text-secondary text-xs font-weight-bold">{{property.monthly_pmt}}</span>
+                      </td>
+                      <td class="align-middle text-center">
+                          <span class="text-secondary text-xs font-weight-bold">{{property.maint_fee}}</span>
+                        </td>
+                    {% if property.available is False %}
+                  <td class="align-middle text-center text-sm">
+                      <span class="badge badge-sm bg-gradient-success">Alquilado</span>
+                    </td>
+                  {% else %}
+                  <td class="align-middle text-center text-sm">
+                    <span class="badge badge-sm bg-gradient-warning">Disponible</span>
+                  </td>
+                  {% endif %}
+                    
+                    <td class="align-middle text-center text-sm">
+                        <span class="badge badge-sm bg-gradient-success">{{property.maint_status}}</span>
+                      </td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- end of Propiedades Table -->
+{% endif %}
+<!-- Alquileres -->
+    <div class="container-fluid py-4">
+        <div class="row">
+          <div class="col-12">
+            <div class="card mb-4">
+              <div class="card-header pb-0">
+                <h6>Alquileres</h6>
+                {% if request.user.role == "O" %}
+                <a class="btn btn-outline-primary btn-sm mb-0 me-3" href="{% url 'new_rent' %}">Nuevo Alquiler</a>
+                {% endif %}
+              </div>
+              <div class="card-body px-0 pt-0 pb-2">
+                <div class="table-responsive p-0">
+                  <table class="table align-items-center mb-0">
+                    <thead>
+                      <tr>
+                        <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Propiedad</th>
+                        <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">Duracion</th>
+                        <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Mensualidad</th>
+                        <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Ultimo Pago</th>
+                        <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Morosidad</th>
+                        <th class="text-secondary opacity-7"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {% if rents %}
+                        {% for rent in rents %}
+                        
+                      <tr>
+                        <td>
+                          <div class="d-flex px-2 py-1">
+                            <div>
+                              <img src="/static/assets/img/team-2.jpg" class="avatar avatar-sm me-3" alt="user1">
+                            </div>
+                            <div class="d-flex flex-column justify-content-center">
+                              <h6 class="mb-0 text-sm">{{rent.property}}</h6>
+                              <p class="text-xs text-secondary mb-0">{{property.location}}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td>
+                          <p class="text-xs font-weight-bold mb-0">{{rent.start_date}} - {{rent.end_date}}</p>
+                          <p class="text-xs text-secondary mb-0">{{rent.tenant}}</p>
+                        </td>
+                        <td class="align-middle text-center">
+                            <span class="text-secondary text-xs font-weight-bold">{{rent.rent_amount}}</span>
+                            <p class="text-xs text-secondary mb-0">Fecha de pago: {{rent.rent_due_date}}</p>
+                          </td>
+                          <td class="align-middle text-center">
+                              <span class="text-secondary text-xs font-weight-bold">{{rent.last_payment_amount}}</span>
+                              <p class="text-xs text-secondary mb-0">{{rent.last_payment_date}}</p>
+                            </td>
+                        <!-- due Days 
+                      <td class="align-middle text-center text-sm">
+                          <span class="badge badge-sm bg-gradient-success">30</span>
+                        </td> -->
+                         <!-- due Days -->
+                        <td class="align-middle text-center text-sm">
+                            {% if rent.days_past_due > 0 %}
+                                <span class="badge badge-sm bg-gradient-danger">{{ rent.days_past_due }} días</span>
+                            {% else %}
+                                <span class="badge badge-sm bg-gradient-success">0</span>
+                            {% endif %}
+                        </td>
+                        {% if request.user.role == "O" %}
+                        <td class="align-middle">
+  <div class="dropdown">
+    <a href="#" class="text-secondary font-weight-bold text-xs dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+      Edit
+    </a>
+    <ul class="dropdown-menu dropdown-menu-end">
+      <li>
+        <!-- Finish Rent Button triggers modal -->
+        <a class="btn btn-outline-danger btn-sm w-100" href="#" data-bs-toggle="modal" data-bs-target="#finishRentModal{{ rent.id }}">
+          Finalizar Alquiler
+        </a>
+      </li>
+      {% if request.user.role == "O" and rent.end_date and rent.end_date|date:"U" <= now|date:"U"|add:2592000 %}
+          <a href="{% url 'renew_lease' rent.id %}" class="btn btn-outline-success btn-sm w-100">Renew Lease</a>
+        {% else %}
+          <span class="text-muted">-</span>
+        {% endif %}
+    </ul>
+  </div>
+
+  <!-- Modal for confirmation -->
+  <div class="modal fade" id="finishRentModal{{ rent.id }}" tabindex="-1" aria-labelledby="finishRentModalLabel{{ rent.id }}" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <form method="post" action="{% url 'finish_rent' rent.id %}">
+          {% csrf_token %}
+          <div class="modal-header">
+            <h5 class="modal-title" id="finishRentModalLabel{{ rent.id }}">Confirmar Finalización</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+          </div>
+           <div class="modal-body">
+            ¿Está seguro que desea finalizar este alquiler? </br>La propiedad volverá a estar disponible.
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-danger">Finalizar Alquiler</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</td>
+{% endif %}
+                      </tr>
+                      {% endfor %}
+                      {% else %}
+                      <tr>
+                        <td colspan="6" class="text-center">No hay alquileres activos.</td>
+                      </tr>
+                      {% endif %}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+<div class="container-fluid py-4">
+    <div class="row">
+      <div class="col-12">
+        <div class="card mb-4">
+          <div class="card-header pb-0">
+            <h6>Solicitudes (Beta)</h6>
+            <a class="btn btn-outline-primary btn-sm mb-0 me-3" href="">Nueva Solicitud</a>
+          </div>
+          <div class="card-body px-0 pt-0 pb-2">
+            <div class="table-responsive p-0">
+              <table class="table align-items-center mb-0">
+                <thead>
+                  <tr>
+                    <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Fecha</th>
+                    <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">Descripcion</th>
+                    <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Estado</th>
+                    <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Provedor</th>
+                  </tr>
+                </thead>
+                <tbody>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>  
+</div>
+<div class="container-fluid py-4">
+    <div class="row">
+      <div class="col-12">
+        <div class="card mb-4">
+          <div class="card-header pb-0">
+            <h6>Pagos Recientes</h6>
+            <a class="btn btn-outline-primary btn-sm mb-0 me-3" href="{% url 'report_payment' %}">Registrar Pago</a>
+          </div>
+          <div class="card-body px-0 pt-0 pb-2">
+            <div class="table-responsive p-0">
+              <table class="table align-items-center mb-0">
+                <thead>
+                  <tr>
+              <th>
+                <p class="text-center font-weight-bold mb-0">Transaccion</p>
+                <p class="text-center text-sm text-secondary mb-0">Fecha</p>
+              </th>
+              <th>
+                <p class="text-center font-weight-bold mb-0">Monto</p>
+                <p class="text-center text-sm text-secondary mb-0">Metodo</p>
+              </th>
+                    <th class="text-center text-uppercase text-secondary font-weight-bolder opacity-7">Estado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tbody>
+                  {% for payment in payments %}
+                  <tr>
+                    <td>
+                      <p class="text-xs text-center font-weight-bold mb-0">{{ payment.transaction_number }}</p>
+                      <p class="text-xs text-center text-secondary mb-0">{{ payment.transaction_date|date:"d M Y" }}</p>
+                    </td>
+                    <td>
+                      <p class="text-xs text-center font-weight-bold mb-0">${{ payment.amount }}</p>
+                      <p class="text-xs text-center text-secondary mb-0">{{ payment.get_payment_method_display }}</p>
+                    </td>
+                    {% if payment.status == 'confirmed' %}
+                    <td class="align-middle text-center">
+                      <p class="ni ni-check-bold text-success align-middle text-sm mb-0"></p>
+                    </td>
+
+                    {% elif payment.status == 'pending' %}
+                    <td class="align-middle text-center">
+                      <p class="ni ni-fat-delete text-warning align-middle text-sm mb-0"></p>
+                    </td>
+                    {% elif payment.status == 'rejected' %}
+                    <td class="align-middle text-center">
+                      <p class="ni ni-fat-remove text-danger align-middle text-sm mb-0"></p>
+                    </td>
+                    {% endif %}
+                  </tr>
+                  {% empty %}
+                  <tr>
+                    <td colspan="4" class="text-center">No payments found.</td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>  
+</div>
+
+{% endblock %}

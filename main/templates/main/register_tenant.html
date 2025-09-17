@@ -1,0 +1,15 @@
+{% extends "index.html" %}
+{% block content %}
+
+<h1>Add new Tenant</h1>
+
+<form method="POST" enctype="multipart/form-data">
+    {% csrf_token %}
+    <div class="form-control container-sm text-dark form-control bg-gray-200">
+        {{new_tenant_form.as_p}}
+    <input type="submit" class="btn btn-primary bg-gradient container text-center my-3" name="Submit" value="Save"/>
+          </div>
+</form>
+
+
+{% endblock %}

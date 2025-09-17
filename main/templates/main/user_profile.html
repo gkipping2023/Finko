@@ -1,0 +1,59 @@
+<!-- filepath: /Users/george/Documents/GitHub/rentu/main/templates/main/user_profile.html -->
+{% extends "index.html" %}
+{% block content %}
+
+<div class="container-fluid py-4">
+  <div class="row justify-content-center">
+    <div class="col-lg-6 col-md-8 col-12">
+      <div class="card shadow border-0">
+        <div class="card-header bg-gradient-info pb-3 border-radius-lg">
+          <h4 class="text-white mb-0">User Profile</h4>
+          <p class="text-white-50 mb-0">Update your personal information</p>
+        </div>
+        <div class="card-body">
+          {% if messages %}
+            {% for message in messages %}
+              <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+            {% endfor %}
+          {% endif %}
+            <form method="POST" enctype="multipart/form-data" autocomplete="off">
+              {% csrf_token %}
+              {% for field in form %}
+                  {% if field.name != 'promo_code' or not user.promo_code %}
+                      <div class="mb-3">
+                          <label class="form-label font-weight-bold text-dark">{{ field.label }}</label>
+                          {{ field }}
+                          {% if field.help_text %}
+                              <small class="form-text text-muted">{{ field.help_text }}</small>
+                          {% endif %}
+                          {% for error in field.errors %}
+                              <div class="text-danger small">{{ error }}</div>
+                          {% endfor %}
+                      </div>
+                  {% endif %}
+              {% endfor %}
+              <div class="text-center">
+                  <button type="submit" class="btn btn-info bg-gradient w-50 mt-3">Save Changes</button>
+              </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+{% comment %} {% extends "index.html" %}
+{% block content %}
+
+<h1 class="text font-weight-bolder text-center text-info text-gradient">User Profile</h1>
+
+<form method="POST" enctype="multipart/form-data">
+    {% csrf_token %}
+    <div class="form-control container-sm text-dark form-control bg-gray-200">
+        {{form}}
+    <input type="submit" class="btn btn-info bg-gradient container text-center my-3" name="Submit" value="Save"/>
+          </div>
+</form>
+
+{% endblock %} {% endcomment %}
