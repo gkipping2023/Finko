@@ -1,3 +1,5 @@
+# For loading environment variables
+python-dotenv
 amqp==5.3.1
 asgiref==3.8.1
 billiard==4.2.1

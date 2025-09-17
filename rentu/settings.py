@@ -10,12 +10,16 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
+
 from pathlib import Path
 import os
+from dotenv import load_dotenv
+
 
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / '.env')
 
 
 # Quick-start development settings - unsuitable for production
@@ -62,8 +66,8 @@ SOCIALACCOUNT_PROVIDERS = {
             'access_type': 'online',
         },
         'APP': {
-            'client_id': '***REMOVED***',
-            'secret': '***REMOVED***',
+            'client_id': os.environ.get('GOOGLE_CLIENT_ID', ''),
+            'secret': os.environ.get('GOOGLE_CLIENT_SECRET', ''),
             'key': '',
         }
     }
@@ -147,10 +151,10 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-#Stripe
 
-STRIPE_PUBLISHABLE_KEY = 'pk_test_51S6DPsKCiMsrxq5OoUdRfhIkG4fBJFkmVPJkGhmbDpZNrOalVOnmazKP9cc2dRJ5WTKK5pGeUHTNSajW1NOddOHK00r3wGez7j'
-STRIPE_SECRET_KEY = '***REMOVED***'
+# Stripe keys from environment
+STRIPE_PUBLISHABLE_KEY = os.environ.get('STRIPE_PUBLISHABLE_KEY', '')
+STRIPE_SECRET_KEY = os.environ.get('STRIPE_SECRET_KEY', '')
 
 
 # Internationalization
