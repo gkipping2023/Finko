@@ -155,7 +155,7 @@ class NewRentForm(forms.ModelForm):
         start_date = cleaned_data.get('start_date')
         next_invoice_date = cleaned_data.get('next_invoice_date')
         if start_date and not next_invoice_date:
-            cleaned_data['next_invoice_date'] = start_date + timedelta(days=30)
+            cleaned_data['next_invoice_date'] = start_date + timedelta(days=365/12)  # Default to one month later
 
         return cleaned_data
 

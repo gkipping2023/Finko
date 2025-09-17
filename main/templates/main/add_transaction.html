@@ -10,11 +10,6 @@
           <p class="text-white-50 mb-0">Add a new payment or transaction</p>
         </div>
         <div class="card-body">
-          {% if messages %}
-            {% for message in messages %}
-              <div class="alert alert-{{ message.tags }}">{{ message }}</div>
-            {% endfor %}
-          {% endif %}
           <form method="post" id="transaction-form" autocomplete="off">
             {% csrf_token %}
             {% for field in form %}
