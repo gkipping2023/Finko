@@ -1,6 +1,7 @@
 {% extends "index.html" %}
-{% block content %}
 {% load static %}
+{% load widget_tweaks %}
+{% block content %}
 
 <div class="container-fluid py-4">
   <div class="card shadow border-0">
@@ -12,55 +13,29 @@
       <a href="{% url 'add_transaction' %}" class="btn btn-light text-info fw-bold">Add Transaction</a>
     </div>
     <div class="card-body">
-      <!-- Filter Dropdowns -->
-      <div class="row mb-3">
-        <div class="col-md-3">
-          <label for="filterTransactionNumber" class="form-label">Transaction Number</label>
-          <select id="filterTransactionNumber" class="form-select">
-            <option value="">All</option>
-            {% for transaction in transactions %}
-              <option value="{{ transaction.transaction_number }}">{{ transaction.transaction_number }}</option>
-            {% endfor %}
-          </select>
+      <!-- Django Filter Form -->
+      <!-- Date Range Picker CSS (CDN) -->
+      <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css" />
+      <form method="get" class="row mb-3 align-items-end">
+        {% for field in filter.form.visible_fields %}
+          <div class="col-md-3 mb-2">
+            <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+            {% if field.name == 'date_range' %}
+              {% render_field field class="form-control" autocomplete="off" %}
+            {% elif field.field.widget.input_type == 'select' or field.field.widget.input_type == 'select-multiple' %}
+              {% render_field field class="form-select" %}
+            {% else %}
+              {% render_field field class="form-control" %}
+            {% endif %}
+            {% if field.errors %}
+              <div class="text-danger small">{{ field.errors|striptags }}</div>
+            {% endif %}
+          </div>
+        {% endfor %}
+        <div class="col-md-2 mb-2">
+          <button type="submit" class="btn btn-info w-100">Filter</button>
         </div>
-        <div class="col-md-3">
-          <label for="filterType" class="form-label">Type</label>
-          <select id="filterType" class="form-select">
-            <option value="">All</option>
-            {% for transaction in transactions %}
-              <option value="{{ transaction.type }}">{{ transaction.type }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div class="col-md-3">
-          <label for="filterTenant" class="form-label">Tenant</label>
-          <select id="filterTenant" class="form-select">
-            <option value="">All</option>
-            {% for transaction in transactions %}
-              <option value="{{ transaction.tenant }}">{{ transaction.tenant }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div class="col-md-3">
-          <label for="filterProperty" class="form-label">Property</label>
-          <select id="filterProperty" class="form-select">
-            <option value="">All</option>
-            {% for transaction in transactions %}
-              <option value="{{ transaction.property }}">{{ transaction.property }}</option>
-            {% endfor %}
-          </select>
-        </div>
-      </div>
-      <div class="row mb-3">
-        <div class="col-md-3">
-          <label for="filterFromDate" class="form-label">From Date</label>
-          <input type="date" id="filterFromDate" class="form-control">
-        </div>
-        <div class="col-md-3">
-          <label for="filterToDate" class="form-label">To Date</label>
-          <input type="date" id="filterToDate" class="form-control">
-        </div>
-      </div>
+      </form>
       <!-- Transactions Table -->
       <div class="table-responsive">
         <table class="table align-middle mb-0" id="transactionsTable">
@@ -123,54 +98,29 @@
   </div>
 </div>
 
+<!-- jQuery and Date Range Picker JS (CDN) -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script type="text/javascript" src="https://cdn.jsdelivr.net/momentjs/latest/moment.min.js"></script>
+<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
 <script src="/static/assets/js/custom.js"></script>
-    function filterTable() {
-      for (let row of rows) {
-        let showRow = true;
 
-        // Check each filter input
-        if (filterInputs.transactionNumber.value) {
-          const cell = row.cells[1].textContent.toLowerCase();
-          showRow = cell.includes(filterInputs.transactionNumber.value.toLowerCase());
+<script>
+  $(function() {
+    var $dateRange = $("#id_date_range");
+    if ($dateRange.length) {
+      $dateRange.daterangepicker({
+        autoUpdateInput: false,
+        locale: {
+          format: 'YYYY-MM-DD',
+          cancelLabel: 'Clear'
         }
-        if (showRow && filterInputs.type.value) {
-          const cell = row.cells[0].textContent.toLowerCase();
-          showRow = cell.includes(filterInputs.type.value.toLowerCase());
-        }
-        if (showRow && filterInputs.tenant.value) {
-          const cell = row.cells[2].textContent.toLowerCase();
-          showRow = cell.includes(filterInputs.tenant.value.toLowerCase());
-        }
-        if (showRow && filterInputs.property.value) {
-          const cell = row.cells[2].textContent.toLowerCase();
-          showRow = cell.includes(filterInputs.property.value.toLowerCase());
-        }
-
-        // Check date range
-        if (showRow && (filterInputs.fromDate.value || filterInputs.toDate.value)) {
-          const dateCell = row.cells[0].textContent; // Assuming the date is in the 1st column
-          const rowDate = new Date(dateCell.split('-').reverse().join('-')); // Convert "d-M-Y" to "Y-m-d"
-          const fromDate = filterInputs.fromDate.value ? new Date(filterInputs.fromDate.value) : null;
-          const toDate = filterInputs.toDate.value ? new Date(filterInputs.toDate.value) : null;
-
-          if (fromDate && rowDate < fromDate) {
-            showRow = false;
-          }
-          if (toDate && rowDate > toDate) {
-            showRow = false;
-          }
-        }
-
-        // Show or hide the row
-        row.style.display = showRow ? '' : 'none';
-      }
-    }
-
-    // Add event listeners to filter inputs
-    for (let key in filterInputs) {
-      if (filterInputs[key]) {
-        filterInputs[key].addEventListener('change', filterTable);
-      }
+      });
+      $dateRange.on('apply.daterangepicker', function(ev, picker) {
+        $(this).val(picker.startDate.format('YYYY-MM-DD') + ' - ' + picker.endDate.format('YYYY-MM-DD'));
+      });
+      $dateRange.on('cancel.daterangepicker', function(ev, picker) {
+        $(this).val('');
+      });
     }
   });
 </script>

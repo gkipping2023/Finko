@@ -33,6 +33,8 @@ urlpatterns = [
     path('preview-transaction-confirmation/', views.preview_transaction_confirmation, name='preview_transaction_confirmation'),
     path('account/', include('allauth.urls')),  # Add allauth URLs
     path('lease/<int:lease_id>/renew/', views.renew_lease, name='renew_lease'),
+    path('set_user_role/', views.set_user_role, name='set_user_role'),
+
     
 
 

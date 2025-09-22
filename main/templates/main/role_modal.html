@@ -1,0 +1,26 @@
+<!-- templates/main/role_modal.html -->
+<div class="modal fade" id="roleModal" tabindex="-1" aria-labelledby="roleModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="roleModalLabel">Select Your Role</h5>
+      </div>
+      <div class="modal-body">
+        <form id="role-selection-form" method="post" action="{% url 'set_user_role' %}">
+          {% csrf_token %}
+          <div class="mb-3">
+            <label for="role" class="form-label">I am a...</label>
+            <select class="form-select" id="role" name="role" required>
+              <option value="">-- Select --</option>
+              <option value="O">Property Owner</option>
+              <option value="T">Tenant</option>
+            </select>
+          </div>
+          <div class="text-center">
+            <button type="submit" class="btn btn-info">Save</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>

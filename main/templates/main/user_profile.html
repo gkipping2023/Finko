@@ -9,7 +9,6 @@
           <h4 class="text-white mb-0">User Profile</h4>
           <p class="text-white-50 mb-0">Update your personal information</p>
         </div>
-          {% endif %}
             <form method="POST" enctype="multipart/form-data" autocomplete="off">
               {% csrf_token %}
               {% for field in form %}
@@ -34,20 +33,4 @@
       </div>
     </div>
   </div>
-</div>
-
 {% endblock %}
-{% comment %} {% extends "index.html" %}
-{% block content %}
-
-<h1 class="text font-weight-bolder text-center text-info text-gradient">User Profile</h1>
-
-<form method="POST" enctype="multipart/form-data">
-    {% csrf_token %}
-    <div class="form-control container-sm text-dark form-control bg-gray-200">
-        {{form}}
-    <input type="submit" class="btn btn-info bg-gradient container text-center my-3" name="Submit" value="Save"/>
-          </div>
-</form>
-
-{% endblock %} {% endcomment %}

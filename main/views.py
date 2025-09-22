@@ -1,3 +1,4 @@
+from django.views.decorators.http import require_POST
 from django.shortcuts import render, get_object_or_404, redirect
 from django.http import JsonResponse
 import re
@@ -14,13 +15,14 @@ from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
-from .models import Properties, Transaction,Rent,User, PromoCode
+from .models import Properties, Transaction,Rent,User, PromoCode, Roles
 from .forms import AddPropertyForm, NewUserForm,NewTenantForm, NewRentForm, UpdateUserForm, TransactionForm, ReportPaymentForm, RenewLeaseForm
 from django_countries.fields import Country  # Add this import if using django-countries
 #from .filters import Reserves_DailyFilter, DogsFilter, Reserves_HotelFilter
 from django.db import models  # Import models for aggregate functions
 # from django.core.mail import send_mail, EmailMultiAlternatives
 from django.template.loader import render_to_string
+from .filters import TransactionFilter
 from weasyprint import HTML
 from django.http import HttpResponse
 
@@ -40,6 +42,20 @@ def transaction_pdf(request, transaction_id):
     response = HttpResponse(pdf, content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename="Transaccion_{transaction.transaction_number}.pdf"'
     return response
+
+# Modal role selection view
+@login_required
+@require_POST
+def set_user_role(request):
+  role = request.POST.get('role')
+  if role in dict(Roles):
+    user = request.user
+    user.role = role
+    user.save()
+    messages.success(request, 'Your role has been updated.')
+  else:
+    messages.error(request, 'Invalid role selection.')
+  return redirect(request.POST.get('next', 'dashboard'))
 
 @login_required(login_url='log_in')
 def rent_details(request, rent_id):
@@ -291,6 +307,9 @@ def register_user(request):
                       <p>
                         <a href="{request.build_absolute_uri(reverse('dashboard'))}" class="btn">Ir al Panel de Control</a>
                       </p>
+                      <p style="margin-top: 24px;">
+                        <a href="{request.build_absolute_uri(reverse('user_profile'))}" class="btn" style="background:#344767;">Completa tu perfil</a>
+                      </p>
                       <div class="footer">
                         Este es un mensaje automático de Finko - Property Management System.
                       </div>
@@ -479,7 +498,9 @@ def new_rent(request):
                 property_instance.save()
 
                 # Send email to the tenant
+
                 if tenant:
+                    registration_link = request.build_absolute_uri(reverse('register_user'))
                     email = EmailMessage(
                         subject="Nuevo Contrato de Alquiler",
                         body=f"""
@@ -524,10 +545,13 @@ def new_rent(request):
                             <div class="container">
                               <h2 style="color:#17c1e8;">¡Nuevo Contrato de Alquiler!</h2>
                               <p>Hola {tenant.first_name},</p>
-                              <p>Se ha creado un nuevo contrato de alquiler para una propiedad .</p>
+                              <p>Se ha creado un nuevo contrato de alquiler para una propiedad.</p>
                               <p>Por favor, revisa los detalles del contrato en tu portal de inquilino.</p>
                               <p>
                                 <a href="{request.build_absolute_uri(reverse('tenant_portal'))}" class="btn">Ir al Portal de Inquilino</a>
+                              </p>
+                              <p style="margin-top: 24px;">
+                                ¿Aún no tienes cuenta? <a href="{registration_link}" class="btn" style="background:#344767;">Regístrate aquí</a>
                               </p>
                               <div class="footer">
                                 Este es un mensaje automático de Finko - Property Management System.
@@ -536,7 +560,6 @@ def new_rent(request):
                           </body>
                         </html>
                         """,
-                        #Add invitation to tenant portal link to register if not registered!
                         from_email=settings.DEFAULT_FROM_EMAIL,
                         to=[tenant.email],
                     )
@@ -619,30 +642,41 @@ def dashboard(request):
     return render(request, 'main/dashboard.html', context)
 
 from django.core.files.base import ContentFile
+
 @login_required(login_url='log_in')
 def payments(request):
-    if request.method == 'POST':
-        form = TransactionForm(request.POST, user=request.user)
-        if form.is_valid():
-            transaction = form.save(commit=False)
-            transaction.owner = request.user  # Set the logged-in user as the owner
-            transaction.save()
-            pdf = render_transaction_pdf(transaction)
-            messages.success(request, f"{transaction.type.capitalize()} created successfully!")
-            return redirect('payments')  # Redirect to a transaction list or dashboard
-        else:
-            messages.error(request, "There was an error creating the transaction.")
+  if request.method == 'POST':
+    form = TransactionForm(request.POST, user=request.user)
+    if form.is_valid():
+      transaction = form.save(commit=False)
+      transaction.owner = request.user  # Set the logged-in user as the owner
+      transaction.save()
+      pdf = render_transaction_pdf(transaction)
+      messages.success(request, f"{transaction.type.capitalize()} created successfully!")
+      return redirect('payments')
     else:
-        form = TransactionForm(user=request.user)
-    transactions = Transaction.objects.filter(owner=request.user).order_by('-created_at')
-    transaction_properties = Properties.objects.filter(owner=request.user).distinct()
+      messages.error(request, "There was an error creating the transaction.")
+  else:
+    form = TransactionForm(user=request.user)
 
-    context = {
-        'transaction_properties' : transaction_properties,
-        'transactions': transactions,
-        'form': form,
-    }
-    return render(request, 'main/payments.html', context)
+  transactions = Transaction.objects.filter(owner=request.user).order_by('-created_at')
+  transaction_properties = Properties.objects.filter(owner=request.user).distinct()
+
+  # Use django-filter for filtering
+  transaction_filter = TransactionFilter(request.GET, queryset=transactions)
+  # Limit tenant and property dropdowns to current user's data
+  transaction_filter.form.fields['tenant'].queryset = User.objects.filter(
+    tenant_transactions__owner=request.user, role='T'
+  ).distinct()
+  transaction_filter.form.fields['property'].queryset = transaction_properties
+
+  context = {
+    'transaction_properties': transaction_properties,
+    'transactions': transaction_filter.qs,
+    'form': form,
+    'filter': transaction_filter,
+  }
+  return render(request, 'main/payments.html', context)
 
 @login_required(login_url='log_in')
 def add_transaction(request):

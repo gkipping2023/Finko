@@ -59,7 +59,7 @@ class AddPropertyForm(ModelForm):
     class Meta:
         model = Properties
         fields = '__all__'
-        exclude = ['maint_status','available','owner']
+        exclude = ['maint_status','available','owner','size','bedrooms','bathrooms']
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -155,7 +155,7 @@ class NewRentForm(forms.ModelForm):
         start_date = cleaned_data.get('start_date')
         next_invoice_date = cleaned_data.get('next_invoice_date')
         if start_date and not next_invoice_date:
-            cleaned_data['next_invoice_date'] = start_date + timedelta(days=365/12)  # Default to one month later
+            cleaned_data['next_invoice_date'] = start_date + timedelta(days=365/12)
 
         return cleaned_data
 

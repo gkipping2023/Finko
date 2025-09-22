@@ -123,7 +123,7 @@ class User(AbstractUser):
     nac = CountryField()
     dob = models.DateField(default='1900-01-01')
     sex = models.CharField(choices=Sex,max_length=100)
-    role = models.CharField(choices=Roles,max_length=100,default='propietario')
+    role = models.CharField(choices=Roles,max_length=100,default='T')
     plan = models.CharField(choices=PLAN_CHOICES, max_length=20, default='free')
     promo_code = models.CharField(max_length=20, blank=True, null=True)
     username = models.CharField(unique=False,max_length=250)

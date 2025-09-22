@@ -46,6 +46,8 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'main.apps.MainConfig',
     'django_countries',
+    'django_filters',
+    'widget_tweaks',
     'django.contrib.sites',  # Required by allauth
     'allauth',
     'allauth.account',
