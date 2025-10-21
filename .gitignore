@@ -58,7 +58,6 @@ db.sqlite3
 celerybeat-schedule
 datadump.json
 datadump2.json
-
 # Media
 /media
 /media/
