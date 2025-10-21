@@ -7,24 +7,24 @@ from django_countries.fields import CountryField
 from datetime import timedelta
 
 class NewUserForm(UserCreationForm):
-    first_name = forms.CharField(widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'First Name'}))
-    last_name = forms.CharField(widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Last Name'}))
-    phone = forms.CharField(widget=forms.TextInput(attrs={'class': 'form-control','type':'number', 'placeholder': 'Telefono'}))
-    password1 = forms.CharField(widget=forms.PasswordInput(attrs={'class': 'form-control', 'placeholder': 'Password'}))
-    password2 = forms.CharField(widget=forms.PasswordInput(attrs={'class': 'form-control', 'placeholder': 'Password Confirmation'}))
-    email = forms.EmailField(widget=forms.EmailInput(attrs={'class': 'form-control','placeholder': 'E-mail'}))
-    role = forms.ChoiceField(choices=[('T', 'Inquilino'), ('P', 'Propietario')], widget=forms.Select(attrs={'class': 'form-control', 'placeholder': 'Eres Inquilino o Propietario?'}))
+    first_name = forms.CharField(widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nombre'}))
+    last_name = forms.CharField(widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Apellido'}))
+    phone = forms.CharField(widget=forms.TextInput(attrs={'class': 'form-control','type':'number', 'placeholder': 'Teléfono'}))
+    password1 = forms.CharField(widget=forms.PasswordInput(attrs={'class': 'form-control', 'placeholder': 'Contraseña'}))
+    password2 = forms.CharField(widget=forms.PasswordInput(attrs={'class': 'form-control', 'placeholder': 'Confirmación de Contraseña'}))
+    email = forms.EmailField(widget=forms.EmailInput(attrs={'class': 'form-control','placeholder': 'Correo Electrónico'}))
+    role = forms.ChoiceField(choices=[('T', 'Inquilino'), ('O', 'Propietario')], widget=forms.Select(attrs={'class': 'form-control', 'placeholder': '¿Eres Inquilino o Propietario?'}))
     #role = forms.ChoiceField(widget=forms.Select(attrs={'class': 'form-control'}))
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['password1'].label = 'Password'
-        self.fields['password2'].label = 'Password Confirmation'
-        self.fields['first_name'].label = 'First Name'
-        self.fields['last_name'].label = 'Last Name'
-        self.fields['phone'].label = 'Telefono'
-        self.fields['email'].label = 'E-mail'
-        self.fields['role'].label = 'Eres Inquilino o Propietario?'
+        self.fields['password1'].label = 'Contraseña'
+        self.fields['password2'].label = 'Confirmación de Contraseña'
+        self.fields['first_name'].label = 'Nombre'
+        self.fields['last_name'].label = 'Apellido'
+        self.fields['phone'].label = 'Teléfono'
+        self.fields['email'].label = 'Correo Electrónico'
+        self.fields['role'].label = '¿Eres Inquilino o Propietario?'
 
         self.fields['password1'].help_text = None
         self.fields['password2'].help_text = None

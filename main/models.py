@@ -8,27 +8,27 @@ from datetime import datetime
 # Create your models lists here.
 
 TRANSACTION_TYPES = (
-        ('invoice', 'Invoice'),
-        ('receipt', 'Receipt'),
-        ('credit', 'Credit'),
-        ('debit', 'Debit'),
-        ('fee', 'Fee'),
+        ('invoice', 'Factura'),
+        ('receipt', 'Recibo'),
+        ('credit', 'Crédito'),
+        ('debit', 'Débito'),
+        ('fee', 'Tarifa'),
         ('pago', 'Pago'),
     )
 
 ID_Type = (
-    ('cedula','Cedula'),
+    ('cedula','Cédula'),
     ('pasaporte','Pasaporte')
 )
 
 PLAN_CHOICES = (
-    ('free', 'Free/Basic'),
-    ('standard', 'Standard'),
-    ('enterprise', 'Enterprise'),
+    ('free', 'Gratis/Básico'),
+    ('standard', 'Estándar'),
+    ('enterprise', 'Empresarial'),
 )
 
 payment_method = (
-    ('ach_yappy','ACH O Yappy'),
+    ('ach_yappy','ACH o Yappy'),
     ('cash','Efectivo'),
     ('other','Otros')
 )
@@ -66,7 +66,7 @@ Status = (
 )
 
 Due_Status = (
-    ('good','Al Dia'),
+    ('good','Al Día'),
     ('late','Atrasado'),
     ('partial','Parcial')
 )

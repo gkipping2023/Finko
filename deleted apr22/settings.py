@@ -123,34 +123,16 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'rentu.wsgi.application'
 
+
+# Database
+# https://docs.djangoproject.com/en/5.1/ref/settings/#databases
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
-#MYSQL DATABASE CONFIGURATION FOR PRODUCTION ON PYTHONANYWHERE
-
-
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.mysql',
-#         'NAME': 'finko$default',                  # from PythonAnywhere Databases tab
-#         'USER': 'finko',
-#         'PASSWORD': os.environ.get('MYSQL_PASSWORD'),
-#         'HOST': 'finko.mysql.pythonanywhere-services.com',  # often something like 'youruser.mysql.pythonanywhere-services.com'
-#         'PORT': '3306',
-#         'OPTIONS': {'charset': 'utf8mb4'},
-#     }
-# }
-
-
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.sqlite3',
-#         'NAME': BASE_DIR / 'db.sqlite3',
-#     }
-# }
 
 
 # Password validation
@@ -193,9 +175,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 
 STATIC_URL = 'static/'
-
-#STATIC FOR PRODUCTION ON PYTHONANYWHERE
-# STATIC_ROOT = BASE_DIR / 'static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 MEDIA_URL = 'media/'
 STATICFILES_DIRS = [
@@ -211,10 +191,11 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Email configuration
 
-
-# The default "from" email used in your Mailgun calls
-DEFAULT_FROM_EMAIL = "Finko Notificaciones <no-reply@mg.finkoapp.com>"
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'  # not used here
-
-MAILGUN_API_KEY = os.environ.get("MAILGUN_API_KEY")
-MAILGUN_DOMAIN = os.environ.get("MAILGUN_DOMAIN")
+#EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+# Looking to send emails in production? Check out our Email API/SMTP product!
+EMAIL_BACKEND = 'django.core.mail.backends.filebased.EmailBackend'
+EMAIL_FILE_PATH = '/Users/george/Desktop/django_emails'
+EMAIL_HOST = 'sandbox.smtp.mailtrap.io'
+EMAIL_HOST_USER = '30461459bb5bd6'
+EMAIL_HOST_PASSWORD = 'eebe7b9502df01'
+EMAIL_PORT = '2525'

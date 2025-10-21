@@ -3,21 +3,21 @@
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="roleModalLabel">Select Your Role</h5>
+        <h5 class="modal-title" id="roleModalLabel">Selecciona tu Rol</h5>
       </div>
       <div class="modal-body">
         <form id="role-selection-form" method="post" action="{% url 'set_user_role' %}">
           {% csrf_token %}
           <div class="mb-3">
-            <label for="role" class="form-label">I am a...</label>
+            <label for="role" class="form-label">Soy un...</label>
             <select class="form-select" id="role" name="role" required>
-              <option value="">-- Select --</option>
-              <option value="O">Property Owner</option>
-              <option value="T">Tenant</option>
+              <option value="">-- Seleccionar --</option>
+              <option value="O">Propietario</option>
+              <option value="T">Inquilino</option>
             </select>
           </div>
           <div class="text-center">
-            <button type="submit" class="btn btn-info">Save</button>
+            <button type="submit" class="btn btn-info">Guardar</button>
           </div>
         </form>
       </div>

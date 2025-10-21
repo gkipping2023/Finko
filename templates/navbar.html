@@ -1,3 +1,4 @@
+  {% load static %}
   <!-- <aside class="sidenav navbar navbar-vertical navbar-expand-xs border-0 border-radius-xl my-3 fixed-start ms-3 d-flex" id="sidenav-main">
     <div class="sidenav-header">
       <i class="fas fa-times p-3 cursor-pointer text-secondary opacity-5 position-absolute end-0 top-0 d-none d-xl-none" aria-hidden="true" id="iconSidenav"></i>
@@ -26,7 +27,7 @@
                 </g>
               </svg>
             </div>
-            <span class="nav-link-text ms-1">Properties</span>
+            <span class="nav-link-text ms-1">Propiedades</span>
           </a>
         </li>
         <li class="nav-item">
@@ -46,7 +47,7 @@
                 </g>
               </svg>
             </div>
-            <span class="nav-link-text ms-1">Transactions</span>
+            <span class="nav-link-text ms-1">Transacciones</span>
           </a>
         </li>
         <li class="nav-item">
@@ -66,7 +67,7 @@
                 </g>
               </svg>
             </div>
-            <span class="nav-link-text ms-1">Billing</span>
+            <span class="nav-link-text ms-1">Facturación</span>
           </a>
         </li>
         <li class="nav-item">
@@ -87,7 +88,7 @@
                 </g>
               </svg>
             </div>
-            <span class="nav-link-text ms-1">Virtual Reality</span>
+            <span class="nav-link-text ms-1">Realidad Virtual</span>
           </a>
         </li>
         <li class="nav-item">
@@ -108,7 +109,7 @@
                 </g>
               </svg>
             </div>
-            <span class="nav-link-text ms-1">Rent!</span>
+            <span class="nav-link-text ms-1">¡Alquilar!</span>
           </a>
         </li>
         <li class="nav-item mt-3">
@@ -132,7 +133,7 @@
                 </g>
               </svg>
             </div>
-            <span class="nav-link-text ms-1">Profile</span>
+            <span class="nav-link-text ms-1">Perfil</span>
           </a>
         </li>
         {% if request.user.is_authenticated %}
@@ -153,7 +154,7 @@
                 </g>
               </svg>
             </div>
-            <span class="nav-link-text text-danger ms-1">Sign Out</span>
+            <span class="nav-link-text text-danger ms-1">Cerrar Sesión</span>
           </a>
         </li>
         {% endif %}
@@ -176,7 +177,7 @@
                 </g>
               </svg>
             </div>
-            <span class="nav-link-text ms-1">Sign Up</span>
+            <span class="nav-link-text ms-1">Registrarse</span>
           </a>
         </li>
       </ul>
@@ -205,9 +206,8 @@
 <nav class="navbar navbar-expand-lg bg-body-tertiary">
   <div class="container-fluid">
     <i class="fas fa-times p-3 cursor-pointer text-secondary opacity-5 position-absolute end-0 top-0 d-none d-xl-none" aria-hidden="true" id="iconSidenav"></i>
-    <a class="navbar-brand m-0" href=" / " >
-      <!-- <img src="static/assets/img/logo-ct-dark.png" class="navbar-brand-img h-10" alt="main_logo"> -->
-      <span class="ms-1 fs-2 font-weight-bold">Finko</span>
+    <a class="navbar-brand m-0" href="{% url 'home' %}">
+      <img src="{% static 'assets/img/finko_logo.png' %}" class="navbar-brand-img" style="height: 40px;" alt="Finko Logo">
     </a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
           aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
@@ -270,9 +270,8 @@
       <nav class="navbar navbar-expand-lg bg-body-tertiary">
   <div class="container-fluid">
     <i class="fas fa-times p-3 cursor-pointer text-secondary opacity-5 position-absolute end-0 top-0 d-none d-xl-none" aria-hidden="true" id="iconSidenav"></i>
-    <a class="navbar-brand m-0" href=" / " target="_blank">
-      <!-- <img src="static/assets/img/logo-ct-dark.png" class="navbar-brand-img h-10" alt="main_logo"> -->
-      <span class="ms-1 font-weight-bold">Finko</span>
+    <a class="navbar-brand m-0" href="{% url 'home' %}">
+      <img src="{% static 'assets/img/finko_logo.png' %}" class="navbar-brand-img" style="height: 40px;" alt="Finko Logo">
     </a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
           aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">

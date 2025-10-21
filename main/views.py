@@ -6,14 +6,13 @@ import stripe
 from datetime import date, datetime, timedelta
 from django.utils.timezone import now
 # import calendar
-from django.core.mail import EmailMessage
 from django.urls import reverse
 from django.conf import settings
 from django.utils.http import urlsafe_base64_encode
 from django.utils.encoding import force_bytes
 from django.shortcuts import render, redirect
 from django.contrib import messages
-from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import authenticate, login, logout, get_backends
 from django.contrib.auth.decorators import login_required
 from .models import Properties, Transaction,Rent,User, PromoCode, Roles
 from .forms import AddPropertyForm, NewUserForm,NewTenantForm, NewRentForm, UpdateUserForm, TransactionForm, ReportPaymentForm, RenewLeaseForm
@@ -25,6 +24,7 @@ from django.template.loader import render_to_string
 from .filters import TransactionFilter
 from weasyprint import HTML
 from django.http import HttpResponse
+from main.mailgun_utils import send_mailgun_simple
 
 
 #PDF Generation Function
@@ -52,9 +52,9 @@ def set_user_role(request):
     user = request.user
     user.role = role
     user.save()
-    messages.success(request, 'Your role has been updated.')
+    messages.success(request, 'Tu rol ha sido actualizado.')
   else:
-    messages.error(request, 'Invalid role selection.')
+    messages.error(request, 'Selección de rol inválida.')
   return redirect(request.POST.get('next', 'dashboard'))
 
 @login_required(login_url='log_in')
@@ -82,9 +82,7 @@ def finish_rent(request, rent_id):
 
         # Send email to the tenant
         if rent.tenant:
-            tenant_email = EmailMessage(
-                subject="Finalización de Contrato de Alquiler",
-                body=f"""
+            tenant_html = f"""
                 <html>
                   <head>
                     <style>
@@ -124,18 +122,22 @@ def finish_rent(request, rent_id):
                     </div>
                   </body>
                 </html>
-                """,
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                to=[rent.tenant.email],
-            )
-            tenant_email.content_subtype = "html"
-            tenant_email.send()
+                """
+            try:
+                send_mailgun_simple(
+                    subject="Finalización de Contrato de Alquiler",
+                    html=tenant_html,
+                    to_emails=rent.tenant.email,
+                    from_email=settings.DEFAULT_FROM_EMAIL
+                )
+            except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"Failed to send tenant email: {e}")
 
         # Send email to the owner
         if rent.owner:
-            owner_email = EmailMessage(
-                subject="Finalización de Contrato de Alquiler",
-                body=f"""
+            owner_html = f"""
                 <html>
                   <head>
                     <style>
@@ -175,12 +177,18 @@ def finish_rent(request, rent_id):
                     </div>
                   </body>
                 </html>
-                """,
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                to=[rent.owner.email],
-            )
-            owner_email.content_subtype = "html"
-            owner_email.send()
+                """
+            try:
+                send_mailgun_simple(
+                    subject="Finalización de Contrato de Alquiler",
+                    html=owner_html,
+                    to_emails=rent.owner.email,
+                    from_email=settings.DEFAULT_FROM_EMAIL
+                )
+            except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"Failed to send owner email: {e}")
 
         # Success message
         messages.success(request, "El alquiler ha sido finalizado y la propiedad está disponible.")
@@ -211,7 +219,7 @@ def log_in(request):
             login(request, user)
             return redirect('dashboard')
         else:
-            messages.error(request, 'Invalid Username or Password')
+            messages.error(request, 'Usuario o Contraseña Inválidos')
 
     context = {'page' : page}
     return render(request,'main/log_in.html',context)
@@ -241,7 +249,6 @@ def update_property(request):
             'selected_property':property_instance
             })
 
-
 def register_user(request):
     new_user_form = NewUserForm()
     if request.method == 'POST':
@@ -252,90 +259,187 @@ def register_user(request):
             user.first_name = user.first_name.capitalize()
             user.full_name = f"{user.first_name} {user.last_name}".strip().title()
             user.save()
+
             # Link any existing rents with this user's email
             unlinked_rents = Rent.objects.filter(unregistered_tenant_email=user.email, tenant__isnull=True)
             for rent in unlinked_rents:
-              rent.tenant = user
-              rent.save()
-            # Send welcome email
-            email = EmailMessage(
-                subject="¡Bienvenido a Finko - Property Management System!",
-                body=f"""
-                <html>
-                  <head>
-                    <style>
-                      body {{
-                        font-family: 'Montserrat', Arial, sans-serif;
-                        background: #f8f9fa;
-                        color: #344767;
-                        margin: 0;
-                        padding: 0;
-                      }}
-                      .container {{
-                        text-align: center;
-                        max-width: 600px;
-                        margin: 40px auto;
-                        background: #fff;
-                        border-radius: 12px;
-                        box-shadow: 0 2px 8px rgba(44,62,80,0.08);
-                        padding: 32px 24px;
-                      }}
-                      .btn {{
-                        display: inline-block;
-                        background: #17c1e8;
-                        color: #fff !important;
-                        padding: 12px 28px;
-                        border-radius: 6px;
-                        text-decoration: none;
-                        font-weight: 600;
-                        margin-top: 16px;
-                      }}
-                      .footer {{
-                        color: #8392ab;
-                        font-size: 13px;
-                        margin-top: 32px;
-                        text-align: center;
-                      }}
-                    </style>
-                  </head>
-                  <body>
-                    <div class="container">
-                      <h2 style="color:#17c1e8;">¡Bienvenido a Finko!</h2>
-                      <p>Hola {user.first_name},</p>
-                      <p>Gracias por registrarte en <strong>Finko - Property Management System</strong>. Estamos emocionados de tenerte a bordo.</p>
-                      <p>Con Finko, podrás gestionar tus propiedades, inquilinos y pagos de manera eficiente y profesional.</p>
-                      <p>
-                        <a href="{request.build_absolute_uri(reverse('dashboard'))}" class="btn">Ir al Panel de Control</a>
-                      </p>
-                      <p style="margin-top: 24px;">
-                        <a href="{request.build_absolute_uri(reverse('user_profile'))}" class="btn" style="background:#344767;">Completa tu perfil</a>
-                      </p>
-                      <div class="footer">
-                        Este es un mensaje automático de Finko - Property Management System.
-                      </div>
-                    </div>
-                  </body>
-                </html>
-                """,
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                to=[user.email],
-            )
-            email.content_subtype = "html"
-            email.send()
+                rent.tenant = user
+                rent.save()
 
-            # Log the user in and redirect to the profile page
-            # Specify backend explicitly to avoid error with multiple authentication backends
-            from django.contrib.auth import get_backends
-            backend = get_backends()[0]  # Use the first backend (ModelBackend)
-            user.backend = backend.__module__ + '.' + backend.__class__.__name__
-            login(request, user, backend=user.backend)
+            # Send welcome email via Mailgun
+            subject = "¡Bienvenido a Finko - Property Management System!"
+            body = f"""
+            <html>
+              <head>
+                <style>
+                  body {{
+                    font-family: 'Montserrat', Arial, sans-serif;
+                    background: #f8f9fa;
+                    color: #344767;
+                    margin: 0;
+                    padding: 0;
+                  }}
+                  .container {{
+                    text-align: center;
+                    max-width: 600px;
+                    margin: 40px auto;
+                    background: #fff;
+                    border-radius: 12px;
+                    box-shadow: 0 2px 8px rgba(44,62,80,0.08);
+                    padding: 32px 24px;
+                  }}
+                  .btn {{
+                    display: inline-block;
+                    background: #17c1e8;
+                    color: #fff !important;
+                    padding: 12px 28px;
+                    border-radius: 6px;
+                    text-decoration: none;
+                    font-weight: 600;
+                    margin-top: 16px;
+                  }}
+                  .footer {{
+                    color: #8392ab;
+                    font-size: 13px;
+                    margin-top: 32px;
+                    text-align: center;
+                  }}
+                </style>
+              </head>
+              <body>
+                <div class="container">
+                  <h2 style="color:#17c1e8;">¡Bienvenido a Finko!</h2>
+                  <p>Hola {user.first_name},</p>
+                  <p>Gracias por registrarte en <strong>Finko - Property Management System</strong>. Estamos emocionados de tenerte a bordo.</p>
+                  <p>Con Finko, podrás gestionar tus propiedades, inquilinos y pagos de manera eficiente y profesional.</p>
+                  <p>
+                    <a href="{request.build_absolute_uri(reverse('dashboard'))}" class="btn">Ir al Panel de Control</a>
+                  </p>
+                  <p style="margin-top: 24px;">
+                    <a href="{request.build_absolute_uri(reverse('user_profile'))}" class="btn" style="background:#344767;">Completa tu perfil</a>
+                  </p>
+                  <div class="footer">
+                    Este es un mensaje automático de Finko - Property Management System.
+                  </div>
+                </div>
+              </body>
+            </html>
+            """
+
+            try:
+                send_mailgun_simple(subject=subject, html=body, to_emails=user.email, from_email=settings.DEFAULT_FROM_EMAIL)
+            except Exception as e:
+                # Optional: log the error for debugging
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"Failed to send welcome email to {user.email}: {e}")
+
+            # Log the user in and redirect
+            # Set the backend attribute on the user object for Django's login system
+            user.backend = 'django.contrib.auth.backends.ModelBackend'
+            login(request, user)
             return redirect('user_profile')
         else:
             print(new_user_form.errors)
-    context = {
-        'new_user_form': new_user_form,
-    }
+
+    context = {'new_user_form': new_user_form}
     return render(request, 'main/register_user.html', context)
+
+
+# def register_user(request):
+#     new_user_form = NewUserForm()
+#     if request.method == 'POST':
+#         new_user_form = NewUserForm(request.POST)
+#         if new_user_form.is_valid():
+#             user = new_user_form.save(commit=False)
+#             user.last_name = user.last_name.capitalize()
+#             user.first_name = user.first_name.capitalize()
+#             user.full_name = f"{user.first_name} {user.last_name}".strip().title()
+#             user.save()
+#             # Link any existing rents with this user's email
+#             unlinked_rents = Rent.objects.filter(unregistered_tenant_email=user.email, tenant__isnull=True)
+#             for rent in unlinked_rents:
+#               rent.tenant = user
+#               rent.save()
+#             # Send welcome email
+#             email = EmailMessage(
+#                 subject="¡Bienvenido a Finko - Property Management System!",
+#                 body=f"""
+#                 <html>
+#                   <head>
+#                     <style>
+#                       body {{
+#                         font-family: 'Montserrat', Arial, sans-serif;
+#                         background: #f8f9fa;
+#                         color: #344767;
+#                         margin: 0;
+#                         padding: 0;
+#                       }}
+#                       .container {{
+#                         text-align: center;
+#                         max-width: 600px;
+#                         margin: 40px auto;
+#                         background: #fff;
+#                         border-radius: 12px;
+#                         box-shadow: 0 2px 8px rgba(44,62,80,0.08);
+#                         padding: 32px 24px;
+#                       }}
+#                       .btn {{
+#                         display: inline-block;
+#                         background: #17c1e8;
+#                         color: #fff !important;
+#                         padding: 12px 28px;
+#                         border-radius: 6px;
+#                         text-decoration: none;
+#                         font-weight: 600;
+#                         margin-top: 16px;
+#                       }}
+#                       .footer {{
+#                         color: #8392ab;
+#                         font-size: 13px;
+#                         margin-top: 32px;
+#                         text-align: center;
+#                       }}
+#                     </style>
+#                   </head>
+#                   <body>
+#                     <div class="container">
+#                       <h2 style="color:#17c1e8;">¡Bienvenido a Finko!</h2>
+#                       <p>Hola {user.first_name},</p>
+#                       <p>Gracias por registrarte en <strong>Finko - Property Management System</strong>. Estamos emocionados de tenerte a bordo.</p>
+#                       <p>Con Finko, podrás gestionar tus propiedades, inquilinos y pagos de manera eficiente y profesional.</p>
+#                       <p>
+#                         <a href="{request.build_absolute_uri(reverse('dashboard'))}" class="btn">Ir al Panel de Control</a>
+#                       </p>
+#                       <p style="margin-top: 24px;">
+#                         <a href="{request.build_absolute_uri(reverse('user_profile'))}" class="btn" style="background:#344767;">Completa tu perfil</a>
+#                       </p>
+#                       <div class="footer">
+#                         Este es un mensaje automático de Finko - Property Management System.
+#                       </div>
+#                     </div>
+#                   </body>
+#                 </html>
+#                 """,
+#                 from_email=settings.DEFAULT_FROM_EMAIL,
+#                 to=[user.email],
+#             )
+#             email.content_subtype = "html"
+#             email.send()
+
+#             # Log the user in and redirect to the profile page
+#             # Specify backend explicitly to avoid error with multiple authentication backends
+#             from django.contrib.auth import get_backends
+#             backend = get_backends()[0]  # Use the first backend (ModelBackend)
+#             user.backend = backend.__module__ + '.' + backend.__class__.__name__
+#             login(request, user, backend=user.backend)
+#             return redirect('user_profile')
+#         else:
+#             print(new_user_form.errors)
+#     context = {
+#         'new_user_form': new_user_form,
+#     }
+#     return render(request, 'main/register_user.html', context)
 # def register_user(request):
 #     new_user_form = NewUserForm()
 #     if request.method == 'POST':
@@ -374,7 +478,7 @@ def user_profile(request):
 
             # Validate the promo code
             if input_promo_code and input_promo_code not in valid_promo_codes:
-                messages.error(request, 'Invalid Promo Code')
+                messages.error(request, 'Código Promocional Inválido')
                 return render(request, 'main/user_profile.html', {'form': form})
 
             # Save the promo code and other fields
@@ -383,10 +487,10 @@ def user_profile(request):
             if nac_code:
                 user.nac = Country(nac_code)
             form.save()
-            messages.success(request, 'Profile Updated Successfully')
+            messages.success(request, 'Perfil Actualizado Exitosamente')
             return redirect('dashboard')
         else:
-            messages.error(request, 'Error in update, Please verify your profile')
+            messages.error(request, 'Error al actualizar, por favor verifica tu perfil')
 
     context = {
         'form': form
@@ -501,9 +605,7 @@ def new_rent(request):
 
                 if tenant:
                     registration_link = request.build_absolute_uri(reverse('register_user'))
-                    email = EmailMessage(
-                        subject="Nuevo Contrato de Alquiler",
-                        body=f"""
+                    tenant_html = f"""
                         <html>
                           <head>
                             <style>
@@ -559,12 +661,18 @@ def new_rent(request):
                             </div>
                           </body>
                         </html>
-                        """,
-                        from_email=settings.DEFAULT_FROM_EMAIL,
-                        to=[tenant.email],
-                    )
-                    email.content_subtype = "html"
-                    email.send()
+                        """
+                    try:
+                        send_mailgun_simple(
+                            subject="Nuevo Contrato de Alquiler",
+                            html=tenant_html,
+                            to_emails=tenant.email,
+                            from_email=settings.DEFAULT_FROM_EMAIL
+                        )
+                    except Exception as e:
+                        import logging
+                        logger = logging.getLogger(__name__)
+                        logger.error(f"Failed to send tenant notification email: {e}")
 
                 messages.success(request, "Contrato de alquiler creado exitosamente y se ha notificado al inquilino.")
                 return redirect('properties')
@@ -591,7 +699,7 @@ def renew_lease(request, lease_id):
             renewed_lease.is_active = True
             renewed_lease.status = True
             renewed_lease.save()
-            messages.success(request, "Lease renewed with updated terms!")
+            messages.success(request, "Contrato renovado con términos actualizados!")
             return redirect('properties')
     else:
         form = RenewLeaseForm(instance=lease)
@@ -652,10 +760,10 @@ def payments(request):
       transaction.owner = request.user  # Set the logged-in user as the owner
       transaction.save()
       pdf = render_transaction_pdf(transaction)
-      messages.success(request, f"{transaction.type.capitalize()} created successfully!")
+      messages.success(request, f"¡{transaction.get_type_display()} creado exitosamente!")
       return redirect('payments')
     else:
-      messages.error(request, "There was an error creating the transaction.")
+      messages.error(request, "Hubo un error al crear la transacción.")
   else:
     form = TransactionForm(user=request.user)
 
@@ -688,10 +796,10 @@ def add_transaction(request):
             transaction.status = 'confirmed' 
             transaction.save()
             pdf = render_transaction_pdf(transaction)
-            messages.success(request, f"{transaction.type.capitalize()} created successfully!")
+            messages.success(request, f"¡{transaction.get_type_display()} creado exitosamente!")
             return redirect('transaction_pdf', transaction_id=transaction.id)  # Redirect to a transaction list or dashboard
         else:
-            messages.error(request, "There was an error creating the transaction.")
+            messages.error(request, "Hubo un error al crear la transacción.")
     else:
         form = TransactionForm(user=request.user)
     context = {
@@ -715,10 +823,8 @@ def report_payments(request):
             confirm_url = request.build_absolute_uri(
                 reverse('confirm_payment', args=[transaction.id])
             )
-                        # Example for report_payment (sending to owner)
-            email = EmailMessage(
-                subject="Nuevo pago pendiente de confirmación",
-                body=f"""
+            # Example for report_payment (sending to owner)
+            owner_html = f"""
                 <html>
                   <head>
                     <style>
@@ -770,14 +876,25 @@ def report_payments(request):
                     </div>
                   </body>
                 </html>
-                """,
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                to=[owner_email],
-            )
-            email.content_subtype = "html"
+                """
+            
+            # Prepare attachments if confirmation file exists
+            attachments = []
             if transaction.confirmation_file:
-                email.attach(transaction.confirmation_file.name, transaction.confirmation_file.read())
-            email.send()
+                attachments.append((transaction.confirmation_file.name, transaction.confirmation_file.read()))
+            
+            try:
+                send_mailgun_simple(
+                    subject="Nuevo pago pendiente de confirmación",
+                    html=owner_html,
+                    to_emails=owner_email,
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    attachments=attachments if attachments else None
+                )
+            except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"Failed to send payment notification email: {e}")
             messages.success(request, "Pago registrado. Esperando confirmación del propietario.")
             return redirect('report_payment')
     else:
@@ -800,15 +917,13 @@ def confirm_payment(request, transaction_id):
 
 from django.template.loader import render_to_string
 from weasyprint import HTML
-from django.core.mail import EmailMessage
 
 def send_receipt_to_tenant(transaction):
     html_string = render_to_string('main/transaction_confirmation.html', {'transaction': transaction})
     pdf = HTML(string=html_string).write_pdf()
     tenant_email = transaction.tenant.email
-    email = EmailMessage(
-        subject="Recibo de pago confirmado",
-        body="""
+    
+    email_html = """
         <html>
           <head>
             <style>
@@ -846,13 +961,22 @@ def send_receipt_to_tenant(transaction):
             </div>
           </body>
         </html>
-        """,
-        from_email=settings.DEFAULT_FROM_EMAIL,
-        to=[tenant_email],
-    )
-    email.attach(f"recibo_{transaction.transaction_number}.pdf", pdf, 'application/pdf')
-    email.content_subtype = "html"
-    email.send()
+        """
+    
+    attachments = [(f"recibo_{transaction.transaction_number}.pdf", pdf)]
+    
+    try:
+        send_mailgun_simple(
+            subject="Recibo de pago confirmado",
+            html=email_html,
+            to_emails=tenant_email,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            attachments=attachments
+        )
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Failed to send receipt email: {e}")
 
 @login_required(login_url='log_in')
 def expenses(request):
