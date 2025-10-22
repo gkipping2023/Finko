@@ -16,7 +16,7 @@ def send_mailgun_simple(subject: str, text: str = None, html: str = None, to_ema
     """
     if isinstance(to_emails, str):
         to_emails = [to_emails]
-    from_email = from_email or f"YourApp <mailgun@{MAILGUN_DOMAIN}>"
+    from_email = from_email or f"FinkoApp <mailgun@{MAILGUN_DOMAIN}>"
     auth = ("api", MAILGUN_API_KEY)
     data = {
         "from": from_email,

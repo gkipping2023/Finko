@@ -812,12 +812,18 @@ def report_payments(request):
     if request.method == 'POST':
         form = ReportPaymentForm(request.POST, request.FILES, user=request.user)
         if form.is_valid():
+            # Get the uploaded file before saving the transaction
+            confirmation_file = request.FILES.get('confirmation_file')
+            
             transaction = form.save(commit=False)
             transaction.owner = transaction.property.owner  # Set the owner as the property's owner
             transaction.tenant = request.user  # Set the tenant as the logged-in user
             #transaction.type = 'payment'
             transaction.status = 'pending'
+            # Don't save the confirmation_file to the model
+            transaction.confirmation_file = None
             transaction.save()
+            
             # Send email to owner
             owner_email = transaction.property.owner.email
             confirm_url = request.build_absolute_uri(
@@ -880,8 +886,8 @@ def report_payments(request):
             
             # Prepare attachments if confirmation file exists
             attachments = []
-            if transaction.confirmation_file:
-                attachments.append((transaction.confirmation_file.name, transaction.confirmation_file.read()))
+            if confirmation_file:
+                attachments.append((confirmation_file.name, confirmation_file.read()))
             
             try:
                 send_mailgun_simple(
@@ -908,6 +914,7 @@ def confirm_payment(request, transaction_id):
     transaction = get_object_or_404(Transaction, id=transaction_id)
     if request.method == 'POST':
         transaction.status = 'confirmed'
+        transaction.type = 'receipt' #Cambia el tipo de pago a recibo al confirmar.
         transaction.save()
         # Generate PDF and send to tenant (see next step)
         send_receipt_to_tenant(transaction)

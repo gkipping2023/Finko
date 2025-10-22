@@ -10,9 +10,9 @@ from datetime import datetime
 TRANSACTION_TYPES = (
         ('invoice', 'Factura'),
         ('receipt', 'Recibo'),
-        ('credit', 'Crédito'),
-        ('debit', 'Débito'),
-        ('fee', 'Tarifa'),
+        ('credit', 'Credito'),
+        ('debit', 'Debito'),
+        ('fee', 'Recargo'),
         ('pago', 'Pago'),
     )
 

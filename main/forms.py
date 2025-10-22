@@ -236,6 +236,13 @@ class TransactionForm(forms.ModelForm):
             self.fields['rent'].queryset = Rent.objects.filter(owner=user,is_active=True)
 
 class ReportPaymentForm(forms.ModelForm):
+    # Add confirmation_file as a separate field that won't be saved to the model
+    confirmation_file = forms.FileField(
+        required=False, 
+        widget=forms.ClearableFileInput(attrs={'class': 'form-control-file'}),
+        help_text="Adjuntar comprobante de pago"
+    )
+    
     class Meta:
         model = Transaction
         fields = ['transaction_date','type','rent','tenant', 'property', 'amount', 'description', 'payment_method','confirmation_file']
@@ -259,4 +266,25 @@ class ReportPaymentForm(forms.ModelForm):
             self.fields['tenant'].initial = user.id
             rented_properties = Properties.objects.filter(rent__tenant=user).distinct()
             self.fields['property'].queryset = rented_properties
-            self.fields['rent'].queryset = Rent.objects.filter(tenant=user)
+            self.fields['rent'].queryset = Rent.objects.filter(tenant=user, is_active=True)
+            
+            # For tenants, restrict transaction type to only "Pago"
+            if user.role == 'T':  # Tenant role
+                self.fields['type'].choices = [('pago', 'Pago')]
+                self.fields['type'].initial = 'pago'
+                self.fields['type'].widget.attrs['disabled'] = True
+                self.fields['type'].widget.attrs['readonly'] = True
+                # Store user role for clean method
+                self._user_role = user.role
+            else:
+                self._user_role = user.role if user else None
+
+    def clean_type(self):
+        """Ensure tenants can only submit 'pago' transaction type"""
+        type_value = self.cleaned_data.get('type')
+        
+        # If user is a tenant and type is not provided (due to disabled field) or is different from 'pago'
+        if hasattr(self, '_user_role') and self._user_role == 'T':
+            return 'pago'
+        
+        return type_value

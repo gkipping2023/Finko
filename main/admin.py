@@ -25,7 +25,7 @@ class TransactionAdmin(admin.ModelAdmin):
 
 @admin.register(Rent)
 class RentAdmin(admin.ModelAdmin):
-    list_display = ('property', 'owner', 'tenant', 'start_date', 'end_date', 'rent_amount', 'status')
+    list_display = ('property', 'owner', 'tenant', 'start_date', 'end_date', 'rent_amount', 'status','is_active')
     list_filter = ('status', 'owner', 'tenant')
     search_fields = ('property__alias', 'owner__email', 'tenant__email')
 
