@@ -816,12 +816,18 @@ def report_payments(request):
             confirmation_file = request.FILES.get('confirmation_file')
             
             transaction = form.save(commit=False)
+            # Set the owner and tenant BEFORE calling save() to ensure proper transaction number generation
             transaction.owner = transaction.property.owner  # Set the owner as the property's owner
             transaction.tenant = request.user  # Set the tenant as the logged-in user
-            #transaction.type = 'payment'
             transaction.status = 'pending'
             # Don't save the confirmation_file to the model
             transaction.confirmation_file = None
+            
+            # Ensure all required fields are set before saving
+            if not transaction.owner:
+                messages.error(request, "Error: No se pudo determinar el propietario de la propiedad.")
+                return render(request, 'main/report_payment.html', {'form': form})
+            
             transaction.save()
             
             # Send email to owner
@@ -1005,7 +1011,7 @@ def properties(request):
     payments = []
     if request.user.role == 'O':
         # If the user is an owner, filter rents by owner
-        rents = Rent.objects.filter(owner=request.user,status=True)
+        rents = Rent.objects.filter(owner=request.user,is_active=True)
         payments = Transaction.objects.filter(owner=request.user, type='receipt').order_by('-transaction_date')[:10]
     elif request.user.role == 'T':
         # If the user is a tenant, filter rents by tenant

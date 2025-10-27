@@ -121,7 +121,11 @@
                         </td>
                         <td>
                           <p class="text-xs font-weight-bold mb-0">{{rent.start_date}} - {{rent.end_date}}</p>
+                        {% if request.user.role == "O" %}
                           <p class="text-xs text-secondary mb-0">{{rent.tenant}}</p>
+                        {% elif request.user.role == "T" %}
+                          <p class="text-xs text-secondary mb-0">{{rent.owner}}</p>
+                        {% endif %}
                         </td>
                         <td class="align-middle text-center">
                             <span class="text-secondary text-xs font-weight-bold">{{rent.rent_amount}}</span>

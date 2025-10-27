@@ -274,17 +274,19 @@ class ReportPaymentForm(forms.ModelForm):
                 self.fields['type'].initial = 'pago'
                 self.fields['type'].widget.attrs['disabled'] = True
                 self.fields['type'].widget.attrs['readonly'] = True
+                self.fields['type'].required = False  # Make field not required for tenants
                 # Store user role for clean method
                 self._user_role = user.role
             else:
                 self._user_role = user.role if user else None
 
-    def clean_type(self):
-        """Ensure tenants can only submit 'pago' transaction type"""
-        type_value = self.cleaned_data.get('type')
+    def clean(self):
+        """Custom validation for the entire form"""
+        cleaned_data = super().clean()
         
-        # If user is a tenant and type is not provided (due to disabled field) or is different from 'pago'
+        # Handle type field for tenants
         if hasattr(self, '_user_role') and self._user_role == 'T':
-            return 'pago'
+            # For tenants, always set type to 'pago' regardless of what was submitted
+            cleaned_data['type'] = 'pago'
         
-        return type_value
+        return cleaned_data

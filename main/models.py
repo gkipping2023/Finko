@@ -214,15 +214,32 @@ class Transaction(models.Model):
     def save(self, *args, **kwargs):
         if not self.pk:
             # Only generate sequence number for new transactions
-            # Get the last sequence number for this owner and type
-            last_number = Transaction.objects.filter(owner=self.owner, type=self.type).aggregate(
-                Max('sequence_number')
-            )['sequence_number__max'] or 0 # Default to 0 if no transactions exist
-            self.sequence_number = last_number + 1 # Increment the sequence number
+            # Use a more robust approach to prevent duplicate transaction numbers
+            import uuid
+            from django.db import transaction
+            
+            with transaction.atomic():
+                # Get the last sequence number for this owner, type, and property
+                last_number = Transaction.objects.filter(
+                    owner=self.owner, 
+                    type=self.type, 
+                    property=self.property
+                ).aggregate(
+                    Max('sequence_number')
+                )['sequence_number__max'] or 0 # Default to 0 if no transactions exist
+                self.sequence_number = last_number + 1 # Increment the sequence number
 
-            # Build the transaction number
-            padded_seq = str(self.sequence_number).zfill(4)
-            self.transaction_number = f"{self.type.upper()}-{self.owner.id}-{padded_seq}"
+                # Build the transaction number with property_id included
+                padded_seq = str(self.sequence_number).zfill(4)
+                property_id = self.property.id if self.property else 0
+                base_transaction_number = f"{self.type.upper()}-{self.owner.id}-{property_id}-{padded_seq}"
+                
+                # Check if this transaction number already exists
+                counter = 0
+                self.transaction_number = base_transaction_number
+                while Transaction.objects.filter(transaction_number=self.transaction_number).exists():
+                    counter += 1
+                    self.transaction_number = f"{base_transaction_number}-{counter}"
 
         super().save(*args, **kwargs)
 

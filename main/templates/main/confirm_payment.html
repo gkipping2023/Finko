@@ -2,17 +2,128 @@
 {% extends "index.html" %}
 {% block content %}
 
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="mb-0">Confirmar Pago</h3>
+                </div>
+                <div class="card-body">
+                    <p><strong>Monto:</strong> ${{ transaction.amount }}</p>
+                    <p><strong>Descripción:</strong> {{ transaction.description }}</p>
+                    <p><strong>Inquilino:</strong> {{ transaction.tenant.first_name }} {{ transaction.tenant.last_name }}</p>
+                    <p><strong>Propiedad:</strong> {{ transaction.property.alias }}</p>
+                    
+                    {% if transaction.confirmation_file %}
+                        <div class="mb-3">
+                            <p><strong>Archivo de confirmación:</strong></p>
+                            <a href="{{ transaction.confirmation_file.url }}" target="_blank" class="btn btn-outline-info btn-sm">
+                                <i class="fas fa-file-pdf"></i> Ver archivo original
+                            </a>
+                        </div>
+                    {% endif %}
+                    
+                    <form method="post">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-success btn-lg">
+                            <i class="fas fa-check"></i> Confirmar y enviar recibo
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0">Vista previa del recibo</h4>
+                    <small class="text-muted">Este será el PDF que se enviará al inquilino</small>
+                </div>
+                <div class="card-body">
+                    <div class="pdf-preview border p-3" style="background-color: #f8f9fa; min-height: 500px;">
+                        <div class="receipt-preview">
+                            <div class="text-center mb-4">
+                                <h4 class="text-primary">RECIBO DE PAGO</h4>
+                                <hr>
+                            </div>
+                            
+                            <div class="row mb-3">
+                                <div class="col-6">
+                                    <strong>Número de transacción:</strong><br>
+                                    <span class="text-muted">{{ transaction.transaction_number }}</span>
+                                </div>
+                                <div class="col-6">
+                                    <strong>Fecha:</strong><br>
+                                    <span class="text-muted">{{ transaction.transaction_date|date:"d/m/Y" }}</span>
+                                </div>
+                            </div>
+                            
+                            <div class="row mb-3">
+                                <div class="col-12">
+                                    <strong>Inquilino:</strong><br>
+                                    <span class="text-muted">{{ transaction.tenant.first_name }} {{ transaction.tenant.last_name }}</span><br>
+                                    <span class="text-muted">{{ transaction.tenant.email }}</span>
+                                </div>
+                            </div>
+                            
+                            <div class="row mb-3">
+                                <div class="col-12">
+                                    <strong>Propiedad:</strong><br>
+                                    <span class="text-muted">{{ transaction.property.alias }}</span><br>
+                                    <span class="text-muted">{{ transaction.property.address }}</span>
+                                </div>
+                            </div>
+                            
+                            <div class="row mb-3">
+                                <div class="col-12">
+                                    <strong>Concepto:</strong><br>
+                                    <span class="text-muted">{{ transaction.description }}</span>
+                                </div>
+                            </div>
+                            
+                            <div class="row mb-3">
+                                <div class="col-6">
+                                    <strong>Método de pago:</strong><br>
+                                    <span class="text-muted">{{ transaction.get_payment_method_display }}</span>
+                                </div>
+                                <div class="col-6">
+                                    <strong>Estado:</strong><br>
+                                    <span class="badge badge-success">Confirmado</span>
+                                </div>
+                            </div>
+                            
+                            <hr>
+                            <div class="text-center">
+                                <h3 class="text-success">
+                                    <strong>Total: ${{ transaction.amount }}</strong>
+                                </h3>
+                            </div>
+                            <hr>
+                            
+                            <div class="text-center text-muted small mt-4">
+                                <p>Este recibo confirma el pago recibido.</p>
+                                <p>Generado automáticamente por el sistema Rentu</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
-<h3>Confirmar Pago</h3>
-<p>Monto: {{ transaction.amount }}</p>
-<p>Descripción: {{ transaction.description }}</p>
-{% if transaction.confirmation_file %}
-    <a href="{{ transaction.confirmation_file.url }}" target="_blank">Ver archivo adjunto</a>
-{% endif %}
-<form method="post">
-    {% csrf_token %}
-    <button type="submit" class="btn btn-success">Confirmar y enviar recibo</button>
-</form>
-
+<style>
+.pdf-preview {
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+.receipt-preview {
+    background: white;
+    padding: 20px;
+    border-radius: 4px;
+    font-family: 'Arial', sans-serif;
+}
+</style>
 
 {% endblock %}
