@@ -1,0 +1,183 @@
+{% extends "index.html" %}
+{% block content %}
+
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h3 class="mb-0">Administrar Etiquetas de Formularios</h3>
+                    <div>
+                        <a href="{% url 'export_form_labels' %}" class="btn btn-success btn-sm">
+                            <i class="fas fa-download"></i> Exportar JSON
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <h5>Formularios Disponibles</h5>
+                            <div class="list-group" id="formsList">
+                                {% for form_name in forms %}
+                                <a href="#" class="list-group-item list-group-item-action" 
+                                   onclick="loadFormData('{{ form_name }}')" data-form="{{ form_name }}">
+                                    {{ form_name }}
+                                    <small class="text-muted d-block">
+                                        {{ form_labels|get_item:form_name|length }} campos
+                                    </small>
+                                </a>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        <div class="col-md-8">
+                            <div id="formDetails" class="d-none">
+                                <h5 id="selectedFormName"></h5>
+                                
+                                <!-- Labels Tab -->
+                                <ul class="nav nav-tabs" id="formTabs" role="tablist">
+                                    <li class="nav-item" role="presentation">
+                                        <a class="nav-link active" id="labels-tab" data-toggle="tab" href="#labels" role="tab">
+                                            Etiquetas
+                                        </a>
+                                    </li>
+                                    <li class="nav-item" role="presentation">
+                                        <a class="nav-link" id="help-tab" data-toggle="tab" href="#help" role="tab">
+                                            Textos de Ayuda
+                                        </a>
+                                    </li>
+                                    <li class="nav-item" role="presentation">
+                                        <a class="nav-link" id="placeholders-tab" data-toggle="tab" href="#placeholders" role="tab">
+                                            Placeholders
+                                        </a>
+                                    </li>
+                                </ul>
+                                
+                                <div class="tab-content mt-3" id="formTabsContent">
+                                    <div class="tab-pane fade show active" id="labels" role="tabpanel">
+                                        <div id="labelsContent"></div>
+                                    </div>
+                                    <div class="tab-pane fade" id="help" role="tabpanel">
+                                        <div id="helpContent"></div>
+                                    </div>
+                                    <div class="tab-pane fade" id="placeholders" role="tabpanel">
+                                        <div id="placeholdersContent"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div id="noFormSelected" class="text-center text-muted mt-5">
+                                <i class="fas fa-arrow-left fa-3x mb-3"></i>
+                                <h5>Selecciona un formulario para ver sus etiquetas</h5>
+                                <p>Elige un formulario de la lista para ver y editar sus etiquetas, textos de ayuda y placeholders.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.field-row {
+    border-bottom: 1px solid #eee;
+    padding: 10px 0;
+}
+.field-row:last-child {
+    border-bottom: none;
+}
+.field-name {
+    font-weight: bold;
+    color: #333;
+}
+.field-value {
+    color: #666;
+    font-style: italic;
+}
+</style>
+
+<script>
+function loadFormData(formName) {
+    // Update active form in list
+    document.querySelectorAll('.list-group-item').forEach(item => {
+        item.classList.remove('active');
+    });
+    document.querySelector(`[data-form="${formName}"]`).classList.add('active');
+    
+    // Show form details
+    document.getElementById('noFormSelected').classList.add('d-none');
+    document.getElementById('formDetails').classList.remove('d-none');
+    document.getElementById('selectedFormName').textContent = formName;
+    
+    // Fetch form data
+    fetch(`/admin/forms/${formName}/data/`)
+        .then(response => response.json())
+        .then(data => {
+            populateLabels(data.labels);
+            populateHelpTexts(data.help_texts);
+            populatePlaceholders(data.placeholders);
+        })
+        .catch(error => {
+            console.error('Error loading form data:', error);
+        });
+}
+
+function populateLabels(labels) {
+    const container = document.getElementById('labelsContent');
+    if (Object.keys(labels).length === 0) {
+        container.innerHTML = '<p class="text-muted">No hay etiquetas definidas para este formulario.</p>';
+        return;
+    }
+    
+    let html = '';
+    for (const [field, label] of Object.entries(labels)) {
+        html += `
+            <div class="field-row">
+                <div class="field-name">${field}:</div>
+                <div class="field-value">"${label}"</div>
+            </div>
+        `;
+    }
+    container.innerHTML = html;
+}
+
+function populateHelpTexts(helpTexts) {
+    const container = document.getElementById('helpContent');
+    if (Object.keys(helpTexts).length === 0) {
+        container.innerHTML = '<p class="text-muted">No hay textos de ayuda definidos para este formulario.</p>';
+        return;
+    }
+    
+    let html = '';
+    for (const [field, helpText] of Object.entries(helpTexts)) {
+        html += `
+            <div class="field-row">
+                <div class="field-name">${field}:</div>
+                <div class="field-value">"${helpText}"</div>
+            </div>
+        `;
+    }
+    container.innerHTML = html;
+}
+
+function populatePlaceholders(placeholders) {
+    const container = document.getElementById('placeholdersContent');
+    if (Object.keys(placeholders).length === 0) {
+        container.innerHTML = '<p class="text-muted">No hay placeholders definidos para este formulario.</p>';
+        return;
+    }
+    
+    let html = '';
+    for (const [field, placeholder] of Object.entries(placeholders)) {
+        html += `
+            <div class="field-row">
+                <div class="field-name">${field}:</div>
+                <div class="field-value">"${placeholder}"</div>
+            </div>
+        `;
+    }
+    container.innerHTML = html;
+}
+</script>
+
+{% endblock %}

@@ -1,6 +1,6 @@
 from django.urls import path, include
 from django.contrib.auth import views as auth_views
-from . import views
+from . import views,admin_views
 from django.views.generic import TemplateView
 
 urlpatterns = [
@@ -34,6 +34,9 @@ urlpatterns = [
     path('account/', include('allauth.urls')),  # Add allauth URLs
     path('lease/<int:lease_id>/renew/', views.renew_lease, name='renew_lease'),
     path('set_user_role/', views.set_user_role, name='set_user_role'),
+    path('admin/form-labels/', admin_views.form_labels_admin, name='form_labels_admin'),
+    path('admin/forms/<str:form_name>/data/', admin_views.get_form_data, name='get_form_data'),
+    path('admin/form-labels/export/', admin_views.export_form_labels, name='export_form_labels'),
 
     
 

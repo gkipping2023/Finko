@@ -3,32 +3,23 @@ from .models import PLAN_CHOICES, User,Properties,Transaction, Rent, ID_Type, Se
 from django.contrib.auth.forms import UserCreationForm
 from django import forms
 from django_countries.fields import CountryField
-#from crispy_forms.helper import FormHelper
+from .form_mixins import CustomizableFormMixin, BaseCustomModelForm, BaseCustomUserCreationForm
 from datetime import timedelta
 
-class NewUserForm(UserCreationForm):
-    first_name = forms.CharField(widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nombre'}))
-    last_name = forms.CharField(widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Apellido'}))
-    phone = forms.CharField(widget=forms.TextInput(attrs={'class': 'form-control','type':'number', 'placeholder': 'Teléfono'}))
-    password1 = forms.CharField(widget=forms.PasswordInput(attrs={'class': 'form-control', 'placeholder': 'Contraseña'}))
-    password2 = forms.CharField(widget=forms.PasswordInput(attrs={'class': 'form-control', 'placeholder': 'Confirmación de Contraseña'}))
-    email = forms.EmailField(widget=forms.EmailInput(attrs={'class': 'form-control','placeholder': 'Correo Electrónico'}))
-    role = forms.ChoiceField(choices=[('T', 'Inquilino'), ('O', 'Propietario')], widget=forms.Select(attrs={'class': 'form-control', 'placeholder': '¿Eres Inquilino o Propietario?'}))
-    #role = forms.ChoiceField(widget=forms.Select(attrs={'class': 'form-control'}))
+class NewUserForm(CustomizableFormMixin, UserCreationForm):
+    first_name = forms.CharField(widget=forms.TextInput(attrs={'class': 'form-control'}))
+    last_name = forms.CharField(widget=forms.TextInput(attrs={'class': 'form-control'}))
+    phone = forms.CharField(widget=forms.TextInput(attrs={'class': 'form-control','type':'number'}))
+    password1 = forms.CharField(widget=forms.PasswordInput(attrs={'class': 'form-control'}))
+    password2 = forms.CharField(widget=forms.PasswordInput(attrs={'class': 'form-control'}))
+    email = forms.EmailField(widget=forms.EmailInput(attrs={'class': 'form-control'}))
+    role = forms.ChoiceField(choices=[('T', 'Inquilino'), ('O', 'Propietario')], widget=forms.Select(attrs={'class': 'form-control'}))
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['password1'].label = 'Contraseña'
-        self.fields['password2'].label = 'Confirmación de Contraseña'
-        self.fields['first_name'].label = 'Nombre'
-        self.fields['last_name'].label = 'Apellido'
-        self.fields['phone'].label = 'Teléfono'
-        self.fields['email'].label = 'Correo Electrónico'
-        self.fields['role'].label = '¿Eres Inquilino o Propietario?'
-
+        # Remove default help texts
         self.fields['password1'].help_text = None
         self.fields['password2'].help_text = None
-
 
     class Meta:
         model = User
@@ -37,9 +28,10 @@ class NewUserForm(UserCreationForm):
             'role': forms.Select(attrs={'class': 'form-control'}),
         }
 
-class UpdateUserForm(ModelForm):
+class UpdateUserForm(BaseCustomModelForm):
     dob = forms.DateField(widget=forms.DateInput(attrs={'type': 'date'}))
     promo_code = forms.CharField(max_length=20, required=False)
+    
     class Meta:
         model = User
         fields = ['first_name', 'last_name', 'id_type','role','personal_id', 'nac', 'dob', 'sex', 'promo_code']
@@ -55,7 +47,7 @@ class UpdateUserForm(ModelForm):
             self.fields['promo_code'].widget = forms.HiddenInput()  # Hide the field
 
 
-class AddPropertyForm(ModelForm):
+class AddPropertyForm(BaseCustomModelForm):
     class Meta:
         model = Properties
         fields = '__all__'
@@ -108,7 +100,7 @@ class AddPropertyForm(ModelForm):
 #             property_instance.save()
 #         return property_instance
 
-class NewRentForm(forms.ModelForm):
+class NewRentForm(BaseCustomModelForm):
     start_date = forms.DateField(widget=forms.DateInput(attrs={'type':'date', 'class':'form-control'}))
     end_date = forms.DateField(widget=forms.DateInput(attrs={'type':'date', 'class':'form-control'}))
     next_invoice_date = forms.DateField(widget=forms.DateInput(attrs={'type':'date', 'class':'form-control'}), required=False)
@@ -169,7 +161,7 @@ class NewRentForm(forms.ModelForm):
             rent.save()
         return rent
 
-class RenewLeaseForm(forms.ModelForm):
+class RenewLeaseForm(BaseCustomModelForm):
     start_date = forms.DateField(widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}))
     end_date = forms.DateField(widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}))
     rent_amount = forms.DecimalField(widget=forms.NumberInput(attrs={'class': 'form-control'}))
@@ -177,9 +169,8 @@ class RenewLeaseForm(forms.ModelForm):
     class Meta:
         model = Rent
         fields = ['start_date', 'end_date', 'rent_amount']
-        # Add other fields if you want them editable
 
-class NewTenantForm(forms.ModelForm):
+class NewTenantForm(BaseCustomModelForm):
     dob = forms.DateField(widget=forms.DateInput(attrs={'type': 'date'}))
     phone = forms.CharField(widget=forms.TextInput(attrs={'class': 'form-control', 'type': 'number'}))
     email = forms.EmailField(widget=forms.EmailInput(attrs={'class': 'form-control'}))
@@ -206,7 +197,7 @@ class NewTenantForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.fields['role'].disabled = True  # Disable the role field to ensure it is always "Inquilino"
 
-class TransactionForm(forms.ModelForm):
+class TransactionForm(BaseCustomModelForm):
     class Meta:
         model = Transaction
         fields = ['transaction_date','type','rent','tenant', 'property', 'amount', 'description', 'payment_method','confirmation_file']
@@ -235,12 +226,11 @@ class TransactionForm(forms.ModelForm):
             # Filter rents associated with the current user
             self.fields['rent'].queryset = Rent.objects.filter(owner=user,is_active=True)
 
-class ReportPaymentForm(forms.ModelForm):
+class ReportPaymentForm(BaseCustomModelForm):
     # Add confirmation_file as a separate field that won't be saved to the model
     confirmation_file = forms.FileField(
         required=False, 
-        widget=forms.ClearableFileInput(attrs={'class': 'form-control-file'}),
-        help_text="Adjuntar comprobante de pago"
+        widget=forms.ClearableFileInput(attrs={'class': 'form-control-file'})
     )
     
     class Meta:
