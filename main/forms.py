@@ -1,5 +1,5 @@
 from django.forms import ModelForm, ModelChoiceField
-from .models import PLAN_CHOICES, User,Properties,Transaction, Rent, ID_Type, Sex
+from .models import PLAN_CHOICES, User,Properties,Transaction, Rent, ID_Type, Sex, payment_method
 from django.contrib.auth.forms import UserCreationForm
 from django import forms
 from django_countries.fields import CountryField
@@ -139,9 +139,20 @@ class NewRentForm(BaseCustomModelForm):
         name = cleaned_data.get('unregistered_tenant_name')
         email = cleaned_data.get('unregistered_tenant_email')
 
-        # Require either a registered tenant or unregistered tenant info (name and email)
-        if not tenant and not (name and email):
-            raise forms.ValidationError("Please select a registered tenant or enter name and email for an unregistered tenant.")
+        # Check if EITHER registered tenant OR both unregistered fields are provided
+        has_registered_tenant = tenant is not None
+        has_unregistered_tenant = name and email
+
+        if not has_registered_tenant and not has_unregistered_tenant:
+            raise forms.ValidationError(
+                "Por favor selecciona un inquilino registrado o ingresa el nombre y correo de un inquilino no registrado."
+            )
+
+        # If both are provided, show error
+        if has_unregistered_tenant and has_registered_tenant:
+            raise forms.ValidationError(
+                "Por favor selecciona solo una opción: inquilino registrado O inquilino no registrado."
+            )
 
         # Set next_invoice_date if not provided
         start_date = cleaned_data.get('start_date')
@@ -278,5 +289,95 @@ class ReportPaymentForm(BaseCustomModelForm):
         if hasattr(self, '_user_role') and self._user_role == 'T':
             # For tenants, always set type to 'pago' regardless of what was submitted
             cleaned_data['type'] = 'pago'
+        
+        return cleaned_data
+
+class PublicPaymentForm(forms.Form):
+    """Form for public payment portal - no login required"""
+    rent_number = forms.CharField(
+        max_length=100,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Ej: RENT-1-5-0001'
+        }),
+        label='Número de Contrato'
+    )
+    tenant_email = forms.EmailField(
+        widget=forms.EmailInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'correo@ejemplo.com'
+        }),
+        label='Correo Electrónico'
+    )
+    transaction_date = forms.DateField(
+        widget=forms.DateInput(attrs={
+            'type': 'date',
+            'class': 'form-control'
+        }),
+        label='Fecha del Pago'
+    )
+    amount = forms.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control',
+            'placeholder': '0.00',
+            'step': '0.01'
+        }),
+        label='Monto Pagado'
+    )
+    payment_method = forms.ChoiceField(
+        choices=payment_method,
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        label='Método de Pago'
+    )
+    description = forms.CharField(
+        required=False,
+        widget=forms.Textarea(attrs={
+            'class': 'form-control',
+            'rows': 3,
+            'placeholder': 'Descripción del pago (opcional)'
+        }),
+        label='Descripción'
+    )
+    confirmation_file = forms.FileField(
+        required=False,
+        widget=forms.FileInput(attrs={
+            'class': 'form-control',
+            'accept': 'image/*,.pdf'
+        }),
+        label='Comprobante de Pago',
+        help_text='Sube una imagen o PDF del comprobante de pago'
+    )
+
+    def clean_rent_number(self):
+        rent_number = self.cleaned_data.get('rent_number')
+        try:
+            rent = Rent.objects.get(rent_number=rent_number, is_active=True)
+            return rent_number
+        except Rent.DoesNotExist:
+            raise forms.ValidationError('Número de contrato no válido o inactivo.')
+    
+    def clean(self):
+        cleaned_data = super().clean()
+        rent_number = cleaned_data.get('rent_number')
+        tenant_email = cleaned_data.get('tenant_email')
+        
+        if rent_number and tenant_email:
+            try:
+                rent = Rent.objects.get(rent_number=rent_number, is_active=True)
+                # Verify email matches tenant or unregistered tenant email
+                email_match = False
+                if rent.tenant and rent.tenant.email == tenant_email:
+                    email_match = True
+                elif rent.unregistered_tenant_email == tenant_email:
+                    email_match = True
+                
+                if not email_match:
+                    raise forms.ValidationError(
+                        'El correo electrónico no coincide con el inquilino de este contrato.'
+                    )
+            except Rent.DoesNotExist:
+                pass  # Already handled in clean_rent_number
         
         return cleaned_data

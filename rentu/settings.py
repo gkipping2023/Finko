@@ -203,10 +203,16 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Email configuration
 
+# Mailgun Configuration
+MAILGUN_API_KEY = os.environ.get('MAILGUN_API_KEY')
+MAILGUN_DOMAIN = os.environ.get('MAILGUN_DOMAIN')
+MAILGUN_REGION = os.environ.get('MAILGUN_REGION', 'US')
 
-# The default "from" email used in your Mailgun calls
-DEFAULT_FROM_EMAIL = "Finko Notificaciones <no-reply@mg.finkoapp.com>"
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'  # not used here
-
-MAILGUN_API_KEY = os.environ.get("MAILGUN_API_KEY")
-MAILGUN_DOMAIN = os.environ.get("MAILGUN_DOMAIN")
+# Fallback Email Configuration (for PythonAnywhere free tier)
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'  # or your SMTP provider
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER')
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD')
+DEFAULT_FROM_EMAIL = 'Finko <noreply@finkoapp.com>'

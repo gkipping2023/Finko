@@ -178,6 +178,8 @@ class Rent(models.Model):
     next_invoice_date = models.DateField(null=True, blank=True)
     status = models.BooleanField(default=True) #MOROSIDAD cambiaremos a dias de morosidad.
     is_active = models.BooleanField(default=True) #Activo o inactivo
+    rent_number = models.CharField(max_length=100, unique=True, editable=False, null=True, blank=True)  # Unique rent identifier
+    rent_sequence_number = models.PositiveIntegerField(editable=False, null=True, blank=True)
     unregistered_tenant_name = models.CharField(max_length=250, blank=True, null=True)
     unregistered_tenant_email = models.EmailField(max_length=250, blank=True, null=True)
     unregistered_tenant_phone = models.CharField(max_length=25, blank=True, null=True)
@@ -187,8 +189,34 @@ class Rent(models.Model):
     unregistered_tenant_nac = CountryField(blank=True, null=True)
     unregistered_tenant_sex = models.CharField(choices=Sex,max_length=100,null=True, blank=True)
 
+    def save(self, *args, **kwargs):
+        if not self.pk and not self.rent_number:
+            # Generate rent number for new rents
+            from django.db import transaction
+            with transaction.atomic():
+                # Get last sequence number for this owner and property
+                last_number = Rent.objects.filter(
+                    owner=self.owner,
+                    property=self.property
+                ).aggregate(Max('rent_sequence_number'))['rent_sequence_number__max'] or 0
+                self.rent_sequence_number = last_number + 1
+                
+                # Format: RENT-OWNER_ID-PROPERTY_ID-SEQUENCE
+                padded_seq = str(self.rent_sequence_number).zfill(4)
+                property_id = self.property.id if self.property else 0
+                base_rent_number = f"RENT-{self.owner.id}-{property_id}-{padded_seq}"
+                
+                # Check for duplicates
+                counter = 0
+                self.rent_number = base_rent_number
+                while Rent.objects.filter(rent_number=self.rent_number).exists():
+                    counter += 1
+                    self.rent_number = f"{base_rent_number}-{counter}"
+        
+        super().save(*args, **kwargs)
+
     def __str__(self):
-        return f"{self.tenant} - {self.property}"
+        return f"{self.rent_number} - {self.tenant or self.unregistered_tenant_name} - {self.property}"
 
 
 class Transaction(models.Model):

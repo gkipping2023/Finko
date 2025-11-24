@@ -209,10 +209,17 @@
     <a class="navbar-brand m-0" href="{% url 'home' %}">
       <img src="{% static 'assets/img/finko_logo.png' %}" class="navbar-brand-img" style="height: 40px;" alt="Finko Logo">
     </a>
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
-          aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-          <i class="fa fa-bars"></i>
-        </button>
+    
+    <!-- Always visible Reportar Pago button (outside collapse) -->
+    <a class="btn btn-info text-white btn-sm ms-auto me-2 d-lg-none" href="{% url 'public_payment_portal' %}">
+      <i class="fas fa-money-bill-wave me-1"></i>
+      Reportar Pago
+    </a>
+    
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+      aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+      <i class="fa fa-bars"></i>
+    </button>
     <div class="collapse navbar-collapse" id="navbarNav">
       <ul class="navbar-nav">
         <!-- Main nav links -->
@@ -255,6 +262,12 @@
       <!-- Right-aligned user/profile/logout -->
        
       <ul class="navbar-nav ms-auto d-flex align-items-center">
+        <li class="nav-item d-none d-lg-block">
+          <a class="btn btn-info text-white btn-sm mb-0 me-3" href="{% url 'public_payment_portal' %}">
+            <i class="fas fa-money-bill-wave me-1"></i>
+            Reportar Pago
+          </a>
+        </li>
         <li class="nav-item">
           <a href="{% url 'user_profile' %}" class="nav-link text-dark d-flex align-items-center" style="text-decoration:none;">
             <i class="fa fa-user-circle fa-lg me-1"></i>
@@ -273,10 +286,17 @@
     <a class="navbar-brand m-0" href="{% url 'home' %}">
       <img src="{% static 'assets/img/finko_logo.png' %}" class="navbar-brand-img" style="height: 40px;" alt="Finko Logo">
     </a>
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
-          aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-          <i class="fa fa-bars"></i>
-        </button>
+    
+    <!-- Always visible Reportar Pago button (outside collapse) -->
+    <a class="btn btn-info text-white btn-sm ms-auto me-2 d-lg-none" href="{% url 'public_payment_portal' %}">
+      <i class="fas fa-money-bill-wave me-1"></i>
+      Reportar Pago
+    </a>
+    
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+      aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+      <i class="fa fa-bars"></i>
+    </button>
     <div class="collapse navbar-collapse" id="navbarNav">
       <ul class="navbar-nav mx-auto">
         <!-- Main nav links -->
@@ -302,6 +322,12 @@
         </li>
       </ul>
       <ul class="navbar-nav ms-auto d-flex align-items-center">
+        <li class="nav-item d-none d-lg-block">
+          <a class="btn btn-info text-white btn-sm mb-0 me-3" href="{% url 'public_payment_portal' %}">
+            <i class="fas fa-money-bill-wave me-1"></i>
+            Reportar Pago
+          </a>
+        </li>
         <li class="nav-item">
             <span class="fw-bold">{{ request.user.first_name }} {{request.user.last_name}}</span>
         </li>

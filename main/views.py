@@ -15,7 +15,7 @@ from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout, get_backends
 from django.contrib.auth.decorators import login_required
 from .models import Properties, Transaction,Rent,User, PromoCode, Roles
-from .forms import AddPropertyForm, NewUserForm,NewTenantForm, NewRentForm, UpdateUserForm, TransactionForm, ReportPaymentForm, RenewLeaseForm
+from .forms import AddPropertyForm, NewUserForm,NewTenantForm, NewRentForm, UpdateUserForm, TransactionForm, ReportPaymentForm, RenewLeaseForm, PublicPaymentForm
 from django_countries.fields import Country  # Add this import if using django-countries
 #from .filters import Reserves_DailyFilter, DogsFilter, Reserves_HotelFilter
 from django.db import models  # Import models for aggregate functions
@@ -569,41 +569,60 @@ def user_profile(request):
 
 @login_required(login_url='log_in')
 def new_rent(request):
-    property_id = request.GET.get('property_id')
-    personal_id = request.GET.get('personal_id')
+    property_id = request.GET.get('property_id') or request.POST.get('property_id')
+    personal_id = request.GET.get('personal_id') or request.POST.get('personal_id')
     tenant = None
     property_instance = None
     form = None
 
-    # Search for tenant by personal_id
+    # Search for tenant by personal_id (from GET or POST)
     if personal_id:
         try:
             tenant = User.objects.get(personal_id=personal_id, role='T')
         except User.DoesNotExist:
             tenant = None
-            print("Tenant not found")
+            messages.warning(request, f"No se encontró ningún inquilino registrado con ID: {personal_id}")
 
     # Fetch the selected property
     if property_id:
         property_instance = get_object_or_404(Properties, id=property_id, owner=request.user)
         if request.method == "POST":
-            form = NewRentForm(request.POST)
+            # Create a mutable copy of POST data to inject tenant if found
+            post_data = request.POST.copy()
+            if tenant:
+                post_data['tenant'] = tenant.id
+            
+            form = NewRentForm(post_data)
+            
             if form.is_valid():
                 # Save the rent details
                 rent = form.save(commit=False)
                 rent.property = property_instance
                 rent.owner = request.user  # Set the owner as the logged-in user
+                
+                # Set tenant if found via search
                 if tenant:
                     rent.tenant = tenant
-                # If no tenant, unregistered fields will be saved
+                # If no tenant found, unregistered fields will be saved from form
+                
                 rent.save()
                 # Update the property's availability
                 property_instance.available = False
                 property_instance.save()
 
-                # Send email to the tenant
+                # Determine recipient for email notification
+                if rent.tenant:
+                    recipient_email = rent.tenant.email
+                    recipient_name = rent.tenant.first_name
+                elif rent.unregistered_tenant_email:
+                    recipient_email = rent.unregistered_tenant_email
+                    recipient_name = rent.unregistered_tenant_name
+                else:
+                    recipient_email = None
+                    recipient_name = None
 
-                if tenant:
+                # Send email notification
+                if recipient_email:
                     registration_link = request.build_absolute_uri(reverse('register_user'))
                     tenant_html = f"""
                         <html>
@@ -646,12 +665,10 @@ def new_rent(request):
                           <body>
                             <div class="container">
                               <h2 style="color:#17c1e8;">¡Nuevo Contrato de Alquiler!</h2>
-                              <p>Hola {tenant.first_name},</p>
-                              <p>Se ha creado un nuevo contrato de alquiler para una propiedad.</p>
+                              <p>Hola {recipient_name},</p>
+                              <p>Se ha creado un nuevo contrato de alquiler para la propiedad <strong>{rent.property.alias}</strong>.</p>
                               <p>Por favor, revisa los detalles del contrato en tu portal de inquilino.</p>
-                              <p>
-                                <a href="{request.build_absolute_uri(reverse('tenant_portal'))}" class="btn">Ir al Portal de Inquilino</a>
-                              </p>
+                              {f'<p><a href="{request.build_absolute_uri(reverse("tenant_portal"))}" class="btn">Ir al Portal de Inquilino</a></p>' if rent.tenant else ''}
                               <p style="margin-top: 24px;">
                                 ¿Aún no tienes cuenta? <a href="{registration_link}" class="btn" style="background:#344767;">Regístrate aquí</a>
                               </p>
@@ -666,7 +683,7 @@ def new_rent(request):
                         send_mailgun_simple(
                             subject="Nuevo Contrato de Alquiler",
                             html=tenant_html,
-                            to_emails=tenant.email,
+                            to_emails=recipient_email,
                             from_email=settings.DEFAULT_FROM_EMAIL
                         )
                     except Exception as e:
@@ -678,8 +695,13 @@ def new_rent(request):
                 return redirect('properties')
             else:
                 print(form.errors)
+                messages.error(request, "Por favor corrige los errores en el formulario.")
         else:
-            form = NewRentForm()
+            # Pre-populate tenant if found via search
+            initial_data = {}
+            if tenant:
+                initial_data['tenant'] = tenant.id
+            form = NewRentForm(initial=initial_data)
 
     return render(request, 'main/new_rent.html', {
         'form': form,
@@ -1187,3 +1209,242 @@ def preview_transaction_confirmation(request):
 
     # Render the template with the dummy data
     return render(request, 'main/transaction_confirmation.html', {'transaction': dummy_transaction})
+
+def public_payment_portal(request):
+    """Public payment portal - no login required"""
+    if request.method == 'POST':
+        form = PublicPaymentForm(request.POST, request.FILES)
+        if form.is_valid():
+            # Get form data
+            rent_number = form.cleaned_data['rent_number']
+            tenant_email = form.cleaned_data['tenant_email']
+            transaction_date = form.cleaned_data['transaction_date']
+            amount = form.cleaned_data['amount']
+            payment_method = form.cleaned_data['payment_method']
+            description = form.cleaned_data.get('description', '')
+            confirmation_file = request.FILES.get('confirmation_file')
+            
+            try:
+                # Get the rent
+                rent = Rent.objects.get(rent_number=rent_number, is_active=True)
+                
+                # Create transaction
+                transaction = Transaction(
+                    type='pago',
+                    owner=rent.owner,
+                    tenant=rent.tenant,
+                    property=rent.property,
+                    rent=rent,
+                    amount=amount,
+                    description=description or f'Pago reportado vía portal público - Contrato {rent_number}',
+                    payment_method=payment_method,
+                    transaction_date=transaction_date,
+                    status='pending',
+                    confirmation_file=None  # Don't save file to model
+                )
+                transaction.save()
+                
+                # Send notification email to owner
+                owner_email = rent.owner.email
+                confirm_url = request.build_absolute_uri(
+                    reverse('confirm_payment', args=[transaction.id])
+                )
+                
+                owner_html = f"""
+                    <html>
+                      <head>
+                        <style>
+                          body {{
+                            font-family: 'Montserrat', Arial, sans-serif;
+                            background: #f8f9fa;
+                            color: #344767;
+                            margin: 0;
+                            padding: 0;
+                          }}
+                          .container {{
+                            max-width: 600px;
+                            margin: 40px auto;
+                            background: #fff;
+                            border-radius: 12px;
+                            box-shadow: 0 2px 8px rgba(44,62,80,0.08);
+                            padding: 32px 24px;
+                          }}
+                          .header {{
+                            text-align: center;
+                            color: #17c1e8;
+                            margin-bottom: 24px;
+                          }}
+                          .info-box {{
+                            background: #f8f9fa;
+                            border-left: 4px solid #17c1e8;
+                            padding: 16px;
+                            margin: 16px 0;
+                          }}
+                          .btn {{
+                            display: inline-block;
+                            background: #17c1e8;
+                            color: #fff !important;
+                            padding: 12px 28px;
+                            border-radius: 6px;
+                            text-decoration: none;
+                            font-weight: 600;
+                            margin-top: 16px;
+                          }}
+                          .footer {{
+                            color: #8392ab;
+                            font-size: 13px;
+                            margin-top: 32px;
+                            text-align: center;
+                          }}
+                        </style>
+                      </head>
+                      <body>
+                        <div class="container">
+                          <h2 class="header">Nuevo Pago Reportado - Portal Público</h2>
+                          <p>Hola {rent.owner.first_name},</p>
+                          <p>Se ha reportado un nuevo pago a través del portal público para el contrato <strong>{rent_number}</strong>.</p>
+                          
+                          <div class="info-box">
+                            <strong>Detalles del Pago:</strong><br>
+                            <strong>Propiedad:</strong> {rent.property.alias}<br>
+                            <strong>Inquilino:</strong> {rent.tenant.full_name if rent.tenant else rent.unregistered_tenant_name}<br>
+                            <strong>Monto:</strong> ${amount}<br>
+                            <strong>Fecha:</strong> {transaction_date}<br>
+                            <strong>Método:</strong> {transaction.get_payment_method_display()}<br>
+                            <strong>Número de Transacción:</strong> {transaction.transaction_number}
+                          </div>
+                          
+                          <p>Por favor revisa y confirma este pago en tu panel de control.</p>
+                          <p style="text-align: center;">
+                            <a href="{confirm_url}" class="btn">Confirmar Pago</a>
+                          </p>
+                          
+                          <div class="footer">
+                            Este es un mensaje automático de Finko - Property Management System.
+                          </div>
+                        </div>
+                      </body>
+                    </html>
+                    """
+                
+                # Prepare email attachments
+                attachments = []
+                if confirmation_file:
+                    attachments.append((
+                        confirmation_file.name,
+                        confirmation_file.read()
+                    ))
+                
+                try:
+                    send_mailgun_simple(
+                        subject=f"Nuevo Pago Reportado - Contrato {rent_number}",
+                        html=owner_html,
+                        to_emails=owner_email,
+                        from_email=settings.DEFAULT_FROM_EMAIL,
+                        attachments=attachments if attachments else None
+                    )
+                except Exception as e:
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.error(f"Failed to send owner notification email: {e}")
+                
+                # Send confirmation to tenant
+                tenant_html = f"""
+                    <html>
+                      <head>
+                        <style>
+                          body {{
+                            font-family: 'Montserrat', Arial, sans-serif;
+                            background: #f8f9fa;
+                            color: #344767;
+                            margin: 0;
+                            padding: 0;
+                          }}
+                          .container {{
+                            max-width: 600px;
+                            margin: 40px auto;
+                            background: #fff;
+                            border-radius: 12px;
+                            box-shadow: 0 2px 8px rgba(44,62,80,0.08);
+                            padding: 32px 24px;
+                          }}
+                          .success-icon {{
+                            text-align: center;
+                            font-size: 48px;
+                            color: #82d616;
+                            margin-bottom: 16px;
+                          }}
+                          .info-box {{
+                            background: #f8f9fa;
+                            border-left: 4px solid #82d616;
+                            padding: 16px;
+                            margin: 16px 0;
+                          }}
+                          .footer {{
+                            color: #8392ab;
+                            font-size: 13px;
+                            margin-top: 32px;
+                            text-align: center;
+                          }}
+                        </style>
+                      </head>
+                      <body>
+                        <div class="container">
+                          <div class="success-icon">✓</div>
+                          <h2 style="color:#82d616; text-align:center;">¡Pago Reportado Exitosamente!</h2>
+                          <p>Tu pago ha sido reportado correctamente y está pendiente de confirmación por el propietario.</p>
+                          
+                          <div class="info-box">
+                            <strong>Resumen del Pago:</strong><br>
+                            <strong>Contrato:</strong> {rent_number}<br>
+                            <strong>Propiedad:</strong> {rent.property.alias}<br>
+                            <strong>Monto:</strong> ${amount}<br>
+                            <strong>Fecha:</strong> {transaction_date}<br>
+                            <strong>Número de Transacción:</strong> {transaction.transaction_number}
+                          </div>
+                          
+                          <p>Recibirás una notificación cuando el propietario confirme el pago.</p>
+                          
+                          <div class="footer">
+                            Este es un mensaje automático de Finko - Property Management System.<br>
+                            Para consultas, contacta a tu propietario.
+                          </div>
+                        </div>
+                      </body>
+                    </html>
+                    """
+                
+                try:
+                    send_mailgun_simple(
+                        subject="Confirmación de Reporte de Pago",
+                        html=tenant_html,
+                        to_emails=tenant_email,
+                        from_email=settings.DEFAULT_FROM_EMAIL
+                    )
+                except Exception as e:
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.error(f"Failed to send tenant confirmation email: {e}")
+                
+                messages.success(request, 
+                    f'¡Pago reportado exitosamente! Número de transacción: {transaction.transaction_number}. '
+                    'Recibirás una confirmación por correo electrónico.')
+                return redirect('public_payment_success')
+                
+            except Rent.DoesNotExist:
+                messages.error(request, 'No se pudo procesar el pago. Verifica el número de contrato.')
+            except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"Error processing public payment: {e}")
+                messages.error(request, 'Ocurrió un error al procesar el pago. Por favor intenta de nuevo.')
+        else:
+            messages.error(request, 'Por favor corrige los errores en el formulario.')
+    else:
+        form = PublicPaymentForm()
+    
+    return render(request, 'main/public_payment_portal.html', {'form': form})
+
+def public_payment_success(request):
+    """Success page after payment submission"""
+    return render(request, 'main/public_payment_success.html')

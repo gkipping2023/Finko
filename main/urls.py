@@ -37,6 +37,10 @@ urlpatterns = [
     path('admin/form-labels/', admin_views.form_labels_admin, name='form_labels_admin'),
     path('admin/forms/<str:form_name>/data/', admin_views.get_form_data, name='get_form_data'),
     path('admin/form-labels/export/', admin_views.export_form_labels, name='export_form_labels'),
+    
+    # Public payment portal (no login required)
+    path('pay/', views.public_payment_portal, name='public_payment_portal'),
+    path('pay/success/', views.public_payment_success, name='public_payment_success'),
 
     
 

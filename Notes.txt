@@ -20,6 +20,18 @@ source .venv/bin/activate
 deactivate
 export DYLD_FALLBACK_LIBRARY_PATH=/opt/homebrew/lib:$DYLD_FALLBACK_LIBRARY_PATH
 
+# On your local machine
+git add main/mailgun_utils.py
+git commit -m "Update mailgun_utils with attachment support"
+git push origin main
+
+# On PythonAnywhere Bash console
+cd ~/your-project-directory
+git pull origin main
+
+# Reload your web app
+# Go to Web tab and click "Reload"
+
 1 de Agosto 2025:
 REGISTRO DE PAGO:
 Hay que mejorar el report payment form, para que sea mas dinamico

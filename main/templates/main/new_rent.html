@@ -55,6 +55,15 @@
             <!-- Rent Form -->
             <form method="POST" autocomplete="off">
               {% csrf_token %}
+              
+              <!-- Hidden fields to preserve search parameters -->
+              {% if personal_id %}
+              <input type="hidden" name="personal_id" value="{{ personal_id }}">
+              {% endif %}
+              {% if selected_property %}
+              <input type="hidden" name="property_id" value="{{ selected_property.id }}">
+              {% endif %}
+              
               <div class="mb-3">
                 <p class="fw-bold mb-2"><strong>Property:</strong> {{ selected_property.alias }}</p>
               </div>
@@ -73,8 +82,12 @@
               {% endif %}
             {% endfor %}
             
-              <!-- Unregistered tenant fields (toggle visibility with JS) -->
-            <div id="unregistered-fields" style="display: {% if not tenant and personal_id %}block{% else %}none{% endif %};">
+            <!-- Unregistered tenant fields (toggle visibility with JS) -->
+            {% if not tenant and personal_id %}
+            <div id="unregistered-fields" style="display: block;">
+            {% else %}
+            <div id="unregistered-fields" style="display: none;">
+            {% endif %}
               <div class="mb-3">
                 <label class="form-label font-weight-bold text-dark" for="id_unregistered_tenant_name">Tenant Name</label>
                 {{ form.unregistered_tenant_name }}
