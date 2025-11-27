@@ -206,7 +206,48 @@ def home(request):
     context= {'STRIPE_PUBLISHABLE_KEY': settings.STRIPE_PUBLISHABLE_KEY,
 
     }
-    return render(request,'main/home.html',context)
+    return render(request,'main/landing.html',context)
+
+def features(request):
+    return render(request, 'main/features.html')
+
+def about(request):
+    return render(request, 'main/about.html')
+
+def contact(request):
+    if request.method == 'POST':
+        # Handle contact form submission
+        name = request.POST.get('name')
+        email = request.POST.get('email')
+        phone = request.POST.get('phone', '')
+        subject = request.POST.get('subject')
+        message = request.POST.get('message')
+        
+        # Send email notification
+        email_subject = f"Nuevo mensaje de contacto: {subject}"
+        email_body = f"""
+        Nombre: {name}
+        Email: {email}
+        Teléfono: {phone}
+        Asunto: {subject}
+        
+        Mensaje:
+        {message}
+        """
+        
+        try:
+            send_mailgun_simple(
+                to_email=settings.DEFAULT_FROM_EMAIL,
+                subject=email_subject,
+                body=email_body
+            )
+            messages.success(request, 'Tu mensaje ha sido enviado exitosamente. Te contactaremos pronto.')
+        except Exception as e:
+            messages.error(request, 'Hubo un error al enviar tu mensaje. Por favor intenta de nuevo.')
+        
+        return redirect('contact')
+    
+    return render(request, 'main/contact.html')
 
 def log_in(request):
     page = 'login'
@@ -1112,9 +1153,17 @@ def get_days_past_due(rent):
         last_day = monthrange(today.year, today.month)[1]
         due_date = date(today.year, today.month, last_day)
 
-    # If last payment covers this month, not past due
-    last_payment = Transaction.objects.filter(rent=rent, type='receipt', status='confirmed').order_by('-transaction_date').first()
-    if last_payment and last_payment.transaction_date and last_payment.transaction_date >= due_date:
+    # Calculate total confirmed payments for current month
+    first_day_of_month = date(today.year, today.month, 1)
+    total_payments = Transaction.objects.filter(
+        rent=rent, 
+        type='receipt', 
+        status='confirmed',
+        transaction_date__gte=first_day_of_month
+    ).aggregate(total=models.Sum('amount'))['total'] or 0
+
+    # If confirmed payments cover the full rent amount, not past due
+    if total_payments >= rent.rent_amount:
         return 0
 
     # If today is before or on due date, not past due
@@ -1123,6 +1172,7 @@ def get_days_past_due(rent):
 
     # Otherwise, calculate days past due
     return (today - due_date).days
+
 
 @login_required(login_url='log_in')
 def maintenance(request):
@@ -1448,3 +1498,177 @@ def public_payment_portal(request):
 def public_payment_success(request):
     """Success page after payment submission"""
     return render(request, 'main/public_payment_success.html')
+
+
+# ============================================
+# DATA PROTECTION VIEWS (LEY 81 COMPLIANCE)
+# ============================================
+
+def privacy_policy(request):
+    """Display privacy policy page (Ley 81 compliant)"""
+    from django.utils import timezone
+    return render(request, 'main/privacy_policy.html', {
+        'current_date': timezone.now().strftime('%d de %B de %Y')
+    })
+
+def terms_of_service(request):
+    """Display terms of service page"""
+    from django.utils import timezone
+    return render(request, 'main/terms_of_service.html', {
+        'current_date': timezone.now().strftime('%d de %B de %Y')
+    })
+
+@login_required(login_url='log_in')
+def my_data(request):
+    """Allow users to view all their personal data (Right to Access - Ley 81)"""
+    from .models import AuditLog
+    
+    user = request.user
+    
+    # Log this access
+    AuditLog.objects.create(
+        user=user,
+        action='view',
+        model_name='User',
+        object_id=user.id,
+        ip_address=request.META.get('REMOTE_ADDR'),
+        details='User accessed their personal data'
+    )
+    
+    # Gather all user data
+    user_data = {
+        'personal_info': {
+            'Nombre': user.first_name,
+            'Apellido': user.last_name,
+            'Email': user.email,
+            'Teléfono': user.phone,
+            'Identificación': user.personal_id if hasattr(user, 'personal_id') else 'N/A',
+            'Rol': user.get_role_display() if user.role else 'N/A',
+        },
+        'account_info': {
+            'Fecha de registro': user.date_joined.strftime('%d/%m/%Y %H:%M') if user.date_joined else 'N/A',
+            'Última actualización': user.last_privacy_update.strftime('%d/%m/%Y %H:%M') if user.last_privacy_update else 'N/A',
+            'Plan': user.get_plan_display() if hasattr(user, 'plan') else 'N/A',
+        },
+        'consents': {
+            'Política de Privacidad': f"Aceptada el {user.privacy_policy_accepted_date.strftime('%d/%m/%Y %H:%M')}" if user.privacy_policy_accepted and user.privacy_policy_accepted_date else "No aceptada",
+            'Términos y Condiciones': f"Aceptados el {user.terms_accepted_date.strftime('%d/%m/%Y %H:%M')}" if user.terms_accepted and user.terms_accepted_date else "No aceptados",
+            'Marketing': "Sí" if user.marketing_consent else "No",
+        }
+    }
+    
+    # Add role-specific data
+    if user.role == 'O':  # Owner
+        user_data['properties'] = Properties.objects.filter(owner=user)
+        user_data['rents'] = Rent.objects.filter(owner=user)
+        user_data['transactions'] = Transaction.objects.filter(owner=user).order_by('-created_at')[:20]  # Last 20
+    elif user.role == 'T':  # Tenant
+        user_data['rents'] = Rent.objects.filter(tenant=user)
+        user_data['transactions'] = Transaction.objects.filter(tenant=user).order_by('-created_at')[:20]  # Last 20
+    
+    return render(request, 'main/my_data.html', {'user_data': user_data})
+
+
+@login_required(login_url='log_in')
+def export_my_data(request):
+    """Export user data in JSON format (Right to Data Portability - Ley 81)"""
+    import json
+    from django.http import HttpResponse
+    from .models import AuditLog
+    
+    user = request.user
+    
+    # Log this export
+    AuditLog.objects.create(
+        user=user,
+        action='export',
+        model_name='User',
+        object_id=user.id,
+        ip_address=request.META.get('REMOTE_ADDR'),
+        details='User exported their personal data'
+    )
+    
+    # Compile all user data
+    data = {
+        'personal_info': {
+            'first_name': user.first_name,
+            'last_name': user.last_name,
+            'email': user.email,
+            'phone': user.phone,
+            'personal_id': user.personal_id if hasattr(user, 'personal_id') else None,
+            'role': user.get_role_display() if user.role else None,
+            'plan': user.get_plan_display() if hasattr(user, 'plan') else None,
+        },
+        'account_created': str(user.date_joined) if user.date_joined else None,
+        'consents': {
+            'privacy_policy': user.privacy_policy_accepted,
+            'privacy_policy_date': str(user.privacy_policy_accepted_date) if user.privacy_policy_accepted_date else None,
+            'terms_accepted': user.terms_accepted,
+            'terms_date': str(user.terms_accepted_date) if user.terms_accepted_date else None,
+            'marketing': user.marketing_consent,
+        }
+    }
+    
+    # Add role-specific data
+    if user.role == 'O':
+        data['properties'] = list(Properties.objects.filter(owner=user).values())
+        data['rents'] = list(Rent.objects.filter(owner=user).values())
+        data['transactions'] = list(Transaction.objects.filter(owner=user).values())
+    elif user.role == 'T':
+        data['rents'] = list(Rent.objects.filter(tenant=user).values())
+        data['payments'] = list(Transaction.objects.filter(tenant=user).values())
+    
+    # Create JSON response
+    response = HttpResponse(
+        json.dumps(data, indent=2, default=str),
+        content_type='application/json'
+    )
+    response['Content-Disposition'] = f'attachment; filename="my_data_{user.email}.json"'
+    
+    return response
+
+
+@login_required(login_url='log_in')
+def delete_my_account(request):
+    """Request account deletion (Right to Erasure - Ley 81)"""
+    from .models import AuditLog
+    
+    if request.method == 'POST':
+        user = request.user
+        
+        # Mark for deletion
+        from django.utils import timezone
+        user.data_deletion_requested = True
+        user.data_deletion_request_date = timezone.now()
+        user.save()
+        
+        # Log this request
+        AuditLog.objects.create(
+            user=user,
+            action='delete_request',
+            model_name='User',
+            object_id=user.id,
+            ip_address=request.META.get('REMOTE_ADDR'),
+            details='User requested account deletion'
+        )
+        
+        # Send notification to admin
+        try:
+            send_mailgun_simple(
+                subject=f"Solicitud de eliminación de cuenta - {user.email}",
+                text=f"El usuario {user.email} ({user.full_name}) ha solicitado la eliminación de su cuenta el {timezone.now().strftime('%d/%m/%Y %H:%M')}.\n\nProcesar conforme a la Ley 81 de Protección de Datos de Panamá.",
+                to_emails=settings.ADMINS[0][1] if settings.ADMINS else 'admin@finkoapp.com',
+                from_email=settings.DEFAULT_FROM_EMAIL
+            )
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Failed to send deletion request notification: {e}")
+        
+        messages.success(request, 
+            "Su solicitud de eliminación de cuenta ha sido registrada. "
+            "Procesaremos su solicitud dentro de 30 días hábiles según lo establecido por la Ley 81 de Protección de Datos de Panamá.")
+        
+        return redirect('home')
+    
+    return render(request, 'main/delete_account.html')

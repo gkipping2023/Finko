@@ -1,0 +1,93 @@
+{% extends "index.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-6 col-md-8">
+            <div class="card shadow-lg">
+                <div class="card-header bg-gradient-danger py-4">
+                    <h3 class="text-white mb-0">
+                        <i class="fas fa-user-times me-2"></i>
+                        Solicitar Eliminación de Cuenta
+                    </h3>
+                    <p class="text-white text-sm mb-0">Derecho al Olvido - Ley 81</p>
+                </div>
+                <div class="card-body p-4">
+                    <div class="alert alert-warning border-warning">
+                        <h6 class="alert-heading">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            Advertencia Importante
+                        </h6>
+                        <p class="mb-0">
+                            Esta acción iniciará el proceso de eliminación de su cuenta y todos sus datos personales. 
+                            Este proceso es <strong>irreversible</strong>.
+                        </p>
+                    </div>
+
+                    <h6 class="text-dark mb-3">¿Qué sucederá con mis datos?</h6>
+                    <ul class="text-secondary mb-4">
+                        <li>Su cuenta será desactivada inmediatamente</li>
+                        <li>Sus datos personales serán anonimizados dentro de 30 días hábiles</li>
+                        <li>Se conservarán registros mínimos necesarios para cumplir obligaciones fiscales (5 años)</li>
+                        <li>Los datos relacionados con transacciones financieras se mantendrán anonimizados por requisitos legales</li>
+                        <li>Recibirá una confirmación por email cuando el proceso se complete</li>
+                    </ul>
+
+                    <h6 class="text-dark mb-3">Información que se eliminará:</h6>
+                    <ul class="text-secondary mb-4">
+                        <li>Nombre, apellido y datos personales de identificación</li>
+                        <li>Correo electrónico y teléfono</li>
+                        <li>Información de propiedades (si no hay contratos activos)</li>
+                        <li>Preferencias de cuenta y consentimientos</li>
+                    </ul>
+
+                    <h6 class="text-dark mb-3">Antes de continuar:</h6>
+                    <div class="alert alert-info border-info">
+                        <ul class="mb-0">
+                            <li>Asegúrese de no tener contratos de alquiler activos</li>
+                            <li>Descargue todos los documentos importantes</li>
+                            <li>Exporte sus datos si necesita conservarlos (<a href="{% url 'export_my_data' %}">Exportar Datos</a>)</li>
+                            <li>Resuelva cualquier pago pendiente</li>
+                        </ul>
+                    </div>
+
+                    <form method="POST" class="mt-4">
+                        {% csrf_token %}
+                        
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" id="confirm_deletion" required>
+                            <label class="form-check-label text-dark" for="confirm_deletion">
+                                Confirmo que he leído y entiendo las consecuencias de eliminar mi cuenta
+                            </label>
+                        </div>
+
+                        <div class="form-check mb-4">
+                            <input class="form-check-input" type="checkbox" id="confirm_irreversible" required>
+                            <label class="form-check-label text-dark" for="confirm_irreversible">
+                                Entiendo que esta acción es irreversible y que mis datos serán eliminados permanentemente
+                            </label>
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'my_data' %}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left me-1"></i> Cancelar
+                            </a>
+                            <button type="submit" class="btn btn-danger" onclick="return confirm('¿Está completamente seguro de que desea solicitar la eliminación de su cuenta? Esta acción no se puede deshacer.')">
+                                <i class="fas fa-trash-alt me-1"></i> Solicitar Eliminación
+                            </button>
+                        </div>
+                    </form>
+
+                    <div class="mt-4 text-center">
+                        <small class="text-muted">
+                            <i class="fas fa-info-circle me-1"></i>
+                            Si tiene dudas, contáctenos en privacy@finkoapp.com
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

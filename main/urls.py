@@ -5,6 +5,12 @@ from django.views.generic import TemplateView
 
 urlpatterns = [
     path('',views.home,name='home'),
+    
+    # New landing pages
+    path('features/', views.features, name='features'),
+    path('about/', views.about, name='about'),
+    path('contact/', views.contact, name='contact'),
+    
     path('api/rent-details/<int:rent_id>/', views.rent_details, name='rent_details'),
     path('import',views.view_import,name='import'),
     path('dashboard',views.dashboard,name='dashboard'),
@@ -41,6 +47,13 @@ urlpatterns = [
     # Public payment portal (no login required)
     path('pay/', views.public_payment_portal, name='public_payment_portal'),
     path('pay/success/', views.public_payment_success, name='public_payment_success'),
+    
+    # Data Protection & Privacy (Ley 81 Compliance)
+    path('privacy/', views.privacy_policy, name='privacy_policy'),
+    path('terms/', views.terms_of_service, name='terms_of_service'),
+    path('my-data/', views.my_data, name='my_data'),
+    path('export-my-data/', views.export_my_data, name='export_my_data'),
+    path('delete-account/', views.delete_my_account, name='delete_account'),
 
     
 

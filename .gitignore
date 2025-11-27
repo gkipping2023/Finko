@@ -58,6 +58,9 @@ db.sqlite3
 celerybeat-schedule
 datadump.json
 datadump2.json
+Notes.txt
+finko_pythonanywhere_com_wsgi
+
 # Media
 /media
 /media/

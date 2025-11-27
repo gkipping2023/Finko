@@ -1,0 +1,157 @@
+{% extends "index.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-lg-10 mx-auto">
+            <div class="card shadow-lg">
+                <div class="card-header bg-gradient-info py-4">
+                    <h3 class="text-white mb-0">
+                        <i class="fas fa-file-contract me-2"></i>
+                        Términos y Condiciones de Uso
+                    </h3>
+                    <p class="text-white text-sm mb-0">Finko - Property Management System</p>
+                </div>
+                <div class="card-body p-4">
+                    <div class="terms-content">
+                        <h5 class="text-info">1. Aceptación de los Términos</h5>
+                        <p>
+                            Al acceder y utilizar Finko, usted acepta estar sujeto a estos términos y condiciones. 
+                            Si no está de acuerdo con alguno de estos términos, no debe utilizar nuestro servicio.
+                        </p>
+
+                        <h5 class="text-info mt-4">2. Descripción del Servicio</h5>
+                        <p>
+                            Finko es una plataforma de gestión de propiedades en alquiler que permite a propietarios 
+                            e inquilinos:
+                        </p>
+                        <ul>
+                            <li>Gestionar contratos de alquiler</li>
+                            <li>Registrar y rastrear pagos</li>
+                            <li>Generar documentos y reportes</li>
+                            <li>Comunicarse sobre asuntos relacionados con la propiedad</li>
+                        </ul>
+
+                        <h5 class="text-info mt-4">3. Registro de Cuenta</h5>
+                        <p>Para utilizar nuestro servicio, debe:</p>
+                        <ul>
+                            <li>Proporcionar información veraz y completa</li>
+                            <li>Mantener la seguridad de su contraseña</li>
+                            <li>Ser mayor de 18 años o tener el consentimiento de un tutor legal</li>
+                            <li>Aceptar nuestra Política de Privacidad</li>
+                        </ul>
+
+                        <h5 class="text-info mt-4">4. Uso Aceptable</h5>
+                        <p>Usted se compromete a:</p>
+                        <ul>
+                            <li>Utilizar el servicio de manera legal y apropiada</li>
+                            <li>No compartir su cuenta con terceros</li>
+                            <li>No intentar acceder a cuentas de otros usuarios</li>
+                            <li>No cargar contenido ilegal, ofensivo o malicioso</li>
+                            <li>No utilizar el servicio para fines fraudulentos</li>
+                        </ul>
+
+                        <h5 class="text-info mt-4">5. Responsabilidades del Usuario</h5>
+                        <h6 class="text-dark mt-3">Propietarios:</h6>
+                        <ul>
+                            <li>Proporcionar información veraz sobre sus propiedades</li>
+                            <li>Cumplir con las leyes de alquiler aplicables en Panamá</li>
+                            <li>Responder a solicitudes de inquilinos de manera oportuna</li>
+                        </ul>
+                        <h6 class="text-dark mt-3">Inquilinos:</h6>
+                        <ul>
+                            <li>Reportar pagos de manera precisa y honesta</li>
+                            <li>Cumplir con los términos de su contrato de alquiler</li>
+                            <li>Comunicar problemas de manera apropiada</li>
+                        </ul>
+
+                        <h5 class="text-info mt-4">6. Pagos y Suscripciones</h5>
+                        <ul>
+                            <li>Algunos servicios pueden requerir una suscripción de pago</li>
+                            <li>Los precios están sujetos a cambios con previo aviso</li>
+                            <li>No se ofrecen reembolsos salvo lo requerido por ley</li>
+                            <li>Usted es responsable de cualquier impuesto aplicable</li>
+                        </ul>
+
+                        <h5 class="text-info mt-4">7. Propiedad Intelectual</h5>
+                        <p>
+                            Todo el contenido, diseño, logos y software de Finko son propiedad de la empresa 
+                            y están protegidos por las leyes de propiedad intelectual de Panamá.
+                        </p>
+
+                        <h5 class="text-info mt-4">8. Limitación de Responsabilidad</h5>
+                        <p>
+                            Finko actúa como una plataforma facilitadora. No somos parte de los contratos de 
+                            alquiler entre propietarios e inquilinos. No nos hacemos responsables de:
+                        </p>
+                        <ul>
+                            <li>Disputas entre propietarios e inquilinos</li>
+                            <li>La veracidad de la información proporcionada por los usuarios</li>
+                            <li>Daños a propiedades o incumplimientos contractuales</li>
+                            <li>Pérdida de datos debido a fallas técnicas</li>
+                        </ul>
+
+                        <h5 class="text-info mt-4">9. Terminación del Servicio</h5>
+                        <p>Nos reservamos el derecho de:</p>
+                        <ul>
+                            <li>Suspender o terminar cuentas que violen estos términos</li>
+                            <li>Modificar o discontinuar el servicio en cualquier momento</li>
+                            <li>Eliminar contenido inapropiado</li>
+                        </ul>
+
+                        <h5 class="text-info mt-4">10. Modificaciones a los Términos</h5>
+                        <p>
+                            Podemos actualizar estos términos ocasionalmente. Le notificaremos de cambios 
+                            significativos por correo electrónico o mediante un aviso en la plataforma.
+                        </p>
+
+                        <h5 class="text-info mt-4">11. Ley Aplicable y Jurisdicción</h5>
+                        <p>
+                            Estos términos se rigen por las leyes de la República de Panamá. Cualquier 
+                            disputa será resuelta en los tribunales competentes de Panamá.
+                        </p>
+
+                        <h5 class="text-info mt-4">12. Contacto</h5>
+                        <p>
+                            Para preguntas sobre estos términos, contáctenos en:<br>
+                            <strong>Email:</strong> support@finkoapp.com<br>
+                            <strong>Privacidad:</strong> privacy@finkoapp.com
+                        </p>
+
+                        <div class="alert alert-info mt-4">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <strong>Última actualización:</strong> {{ current_date }}
+                        </div>
+
+                        <div class="text-center mt-4">
+                            <a href="{% url 'home' %}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left me-1"></i> Volver al Inicio
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.terms-content h5 {
+    margin-top: 1.5rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #17c1e8;
+}
+.terms-content ul {
+    padding-left: 1.5rem;
+}
+.terms-content li {
+    margin-bottom: 0.5rem;
+    line-height: 1.6;
+}
+.terms-content p {
+    line-height: 1.6;
+    color: #67748e;
+}
+</style>
+{% endblock %}

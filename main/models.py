@@ -131,6 +131,17 @@ class User(AbstractUser):
     stripe_customer_id = models.CharField(max_length=255, blank=True, null=True)
     stripe_subscription_id = models.CharField(max_length=255, blank=True, null=True)
     plan = models.CharField(choices=PLAN_CHOICES, max_length=20, default='free')
+    
+    # Data Protection Fields (Ley 81 Compliance)
+    privacy_policy_accepted = models.BooleanField(default=False, verbose_name="Política de Privacidad Aceptada")
+    privacy_policy_accepted_date = models.DateTimeField(null=True, blank=True, verbose_name="Fecha de Aceptación de Privacidad")
+    terms_accepted = models.BooleanField(default=False, verbose_name="Términos y Condiciones Aceptados")
+    terms_accepted_date = models.DateTimeField(null=True, blank=True, verbose_name="Fecha de Aceptación de Términos")
+    marketing_consent = models.BooleanField(default=False, verbose_name="Consentimiento de Marketing")
+    data_retention_consent = models.BooleanField(default=True, verbose_name="Consentimiento de Retención de Datos")
+    last_privacy_update = models.DateTimeField(auto_now=True, verbose_name="Última Actualización de Privacidad")
+    data_deletion_requested = models.BooleanField(default=False, verbose_name="Eliminación de Datos Solicitada")
+    data_deletion_request_date = models.DateTimeField(null=True, blank=True, verbose_name="Fecha de Solicitud de Eliminación")
 
     # Convert country code to full country name before saving.
     def save(self, *args, **kwargs):
@@ -274,3 +285,23 @@ class Transaction(models.Model):
     def __str__(self):
         return f"{self.transaction_number} - {self.amount} ({self.created_at.strftime('%Y-%m-%d')})"
 
+
+class AuditLog(models.Model):
+    """Track data access for Ley 81 compliance"""
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    action = models.CharField(max_length=100)  # 'view', 'edit', 'delete', 'export', 'login'
+    model_name = models.CharField(max_length=50)
+    object_id = models.IntegerField(null=True, blank=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    timestamp = models.DateTimeField(auto_now_add=True)
+    details = models.TextField(blank=True)
+    
+    class Meta:
+        ordering = ['-timestamp']
+        indexes = [
+            models.Index(fields=['user', 'timestamp']),
+            models.Index(fields=['action', 'timestamp']),
+        ]
+    
+    def __str__(self):
+        return f"{self.user} - {self.action} - {self.timestamp}"

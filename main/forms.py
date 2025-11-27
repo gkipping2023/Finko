@@ -15,6 +15,25 @@ class NewUserForm(CustomizableFormMixin, UserCreationForm):
     email = forms.EmailField(widget=forms.EmailInput(attrs={'class': 'form-control'}))
     role = forms.ChoiceField(choices=[('T', 'Inquilino'), ('O', 'Propietario')], widget=forms.Select(attrs={'class': 'form-control'}))
     
+    # Data Protection Consent Fields (Ley 81)
+    privacy_policy_accepted = forms.BooleanField(
+        required=True,
+        label='He leído y acepto la Política de Privacidad',
+        error_messages={'required': 'Debe aceptar la Política de Privacidad para continuar'},
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'})
+    )
+    terms_accepted = forms.BooleanField(
+        required=True,
+        label='He leído y acepto los Términos y Condiciones',
+        error_messages={'required': 'Debe aceptar los Términos y Condiciones para continuar'},
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'})
+    )
+    marketing_consent = forms.BooleanField(
+        required=False,
+        label='Acepto recibir comunicaciones de marketing por correo electrónico',
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'})
+    )
+    
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # Remove default help texts
@@ -23,10 +42,25 @@ class NewUserForm(CustomizableFormMixin, UserCreationForm):
 
     class Meta:
         model = User
-        fields = ['first_name','last_name','phone','email','role']
+        fields = ['first_name','last_name','phone','email','role','privacy_policy_accepted','terms_accepted','marketing_consent']
         widgets = {
             'role': forms.Select(attrs={'class': 'form-control'}),
         }
+    
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        
+        # Record consent timestamps
+        from django.utils import timezone
+        if self.cleaned_data['privacy_policy_accepted']:
+            user.privacy_policy_accepted_date = timezone.now()
+        if self.cleaned_data['terms_accepted']:
+            user.terms_accepted_date = timezone.now()
+        
+        if commit:
+            user.save()
+        return user
+
 
 class UpdateUserForm(BaseCustomModelForm):
     dob = forms.DateField(widget=forms.DateInput(attrs={'type': 'date'}))

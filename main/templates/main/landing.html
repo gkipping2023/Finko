@@ -1,0 +1,405 @@
+{% extends 'index.html' %}
+{% load static %}
+
+{% block content %}
+<!-- Link to custom landing page CSS -->
+<link rel="stylesheet" href="{% static 'assets/css/finko-landing.css' %}">
+
+<!-- Hero Section -->
+<section class="finko-hero">
+  <div class="container">
+    <div class="row align-items-center">
+      <div class="col-lg-6 mb-5 mb-lg-0">
+        <div class="fade-in">
+          <h1 class="hero-title">Finko – Gestión de tus Propiedades</h1>
+          <p class="hero-subtitle">
+            Simplifica la administración de tus propiedades en alquiler. Gestiona inquilinos, pagos, contratos y mantenimiento desde una sola plataforma.
+          </p>
+          <div class="hero-cta">
+            {% if request.user.is_authenticated %}
+              <a href="{% url 'dashboard' %}" class="btn-finko-primary">Ir al Dashboard</a>
+            {% else %}
+              <a href="{% url 'register_user' %}" class="btn-finko-primary">Comienza Gratis</a>
+              <a href="#demo" class="btn-finko-secondary">Ver Demo</a>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      <div class="col-lg-6">
+        <div class="hero-image slide-in-right">
+          <img src="{% static 'assets/img/dashboard-mockup.png' %}" alt="Finko Dashboard" 
+               onerror="this.src='{% static 'assets/img/IMG_3734_2.PNG' %}'">
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Features Section -->
+<section class="finko-features">
+  <div class="container">
+    <h2 class="section-title">Gestiona Todo en un Solo Lugar</h2>
+    <p class="section-subtitle">
+      Finko centraliza todas las herramientas que necesitas para administrar tus propiedades de manera profesional y eficiente.
+    </p>
+    
+    <div class="row g-4">
+      <!-- Feature 1: Gestión de Inquilinos -->
+      <div class="col-md-6 col-lg-4">
+        <div class="feature-card fade-in">
+          <div class="feature-icon">
+            <i class="fas fa-users"></i>
+          </div>
+          <h3 class="feature-title">Gestión de Inquilinos</h3>
+          <p class="feature-description">
+            Administra la información de tus inquilinos, contratos vigentes, historial de pagos y documentación importante en un solo lugar.
+          </p>
+        </div>
+      </div>
+
+      <!-- Feature 2: Pagos y Recordatorios -->
+      <div class="col-md-6 col-lg-4">
+        <div class="feature-card fade-in">
+          <div class="feature-icon">
+            <i class="fas fa-credit-card"></i>
+          </div>
+          <h3 class="feature-title">Pagos y Recordatorios Automáticos</h3>
+          <p class="feature-description">
+            Los inquilinos pueden reportar pagos fácilmente. Recibe notificaciones automáticas y confirma transacciones con un clic.
+          </p>
+        </div>
+      </div>
+
+      <!-- Feature 3: Contratos Digitales -->
+      <div class="col-md-6 col-lg-4">
+        <div class="feature-card fade-in">
+          <div class="feature-icon">
+            <i class="fas fa-file-contract"></i>
+          </div>
+          <h3 class="feature-title">Contratos Digitales</h3>
+          <p class="feature-description">
+            Crea, renueva y gestiona contratos de alquiler digitalmente. Genera PDFs profesionales y mantén todo organizado.
+          </p>
+        </div>
+      </div>
+
+      <!-- Feature 4: Control de Mantenimiento -->
+      <div class="col-md-6 col-lg-4">
+        <div class="feature-card fade-in">
+          <div class="feature-icon">
+            <i class="fas fa-tools"></i>
+          </div>
+          <h3 class="feature-title">Control de Mantenimiento</h3>
+          <p class="feature-description">
+            Registra gastos de mantenimiento, reparaciones y mejoras. Mantén un historial completo de inversiones en tus propiedades.
+          </p>
+        </div>
+      </div>
+
+      <!-- Feature 5: Reportes y Finanzas -->
+      <div class="col-md-6 col-lg-4">
+        <div class="feature-card fade-in">
+          <div class="feature-icon">
+            <i class="fas fa-chart-line"></i>
+          </div>
+          <h3 class="feature-title">Reportes y Finanzas</h3>
+          <p class="feature-description">
+            Visualiza ingresos, gastos, ocupación y rentabilidad. Descarga reportes detallados para tu contabilidad.
+          </p>
+        </div>
+      </div>
+
+      <!-- Feature 6: Portal de Inquilinos -->
+      <div class="col-md-6 col-lg-4">
+        <div class="feature-card fade-in">
+          <div class="feature-icon">
+            <i class="fas fa-mobile-alt"></i>
+          </div>
+          <h3 class="feature-title">Portal de Inquilinos</h3>
+          <p class="feature-description">
+            Los inquilinos pueden reportar pagos sin necesidad de registrarse, usando solo su número de contrato. Fácil y rápido.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Comparison Section: Sin Finko vs Con Finko -->
+<section class="finko-comparison">
+  <div class="container">
+    <h2 class="section-title">La Diferencia es Obvia</h2>
+    <p class="section-subtitle">
+      Deja atrás el caos administrativo y adopta una solución profesional.
+    </p>
+    
+    <div class="comparison-table">
+      <div class="comparison-header">
+        <h3 style="margin: 0;">¿Cómo administras tus propiedades hoy?</h3>
+      </div>
+      
+      <div class="comparison-row">
+        <div class="comparison-col">
+          <span class="comparison-label comparison-before">❌ Sin Finko</span>
+          <p>Hojas de Excel desorganizadas y difíciles de actualizar</p>
+        </div>
+        <div class="comparison-col">
+          <span class="comparison-label comparison-after">✅ Con Finko</span>
+          <p>Dashboard centralizado con toda la información al instante</p>
+        </div>
+      </div>
+      
+      <div class="comparison-row">
+        <div class="comparison-col">
+          <span class="comparison-label comparison-before">❌ Sin Finko</span>
+          <p>Mensajes de WhatsApp y correos perdidos con confirmaciones de pago</p>
+        </div>
+        <div class="comparison-col">
+          <span class="comparison-label comparison-after">✅ Con Finko</span>
+          <p>Portal de pagos 24/7 con notificaciones automáticas</p>
+        </div>
+      </div>
+      
+      <div class="comparison-row">
+        <div class="comparison-col">
+          <span class="comparison-label comparison-before">❌ Sin Finko</span>
+          <p>Recibos y contratos hechos a mano o en Word</p>
+        </div>
+        <div class="comparison-col">
+          <span class="comparison-label comparison-after">✅ Con Finko</span>
+          <p>Documentos profesionales en PDF generados automáticamente</p>
+        </div>
+      </div>
+      
+      <div class="comparison-row">
+        <div class="comparison-col">
+          <span class="comparison-label comparison-before">❌ Sin Finko</span>
+          <p>Seguimiento manual de pagos atrasados y cálculo de mora</p>
+        </div>
+        <div class="comparison-col">
+          <span class="comparison-label comparison-after">✅ Con Finko</span>
+          <p>Sistema automático de seguimiento con alertas y reportes</p>
+        </div>
+      </div>
+      
+      <div class="comparison-row">
+        <div class="comparison-col">
+          <span class="comparison-label comparison-before">❌ Sin Finko</span>
+          <p>Archivos físicos y digitales dispersos en diferentes lugares</p>
+        </div>
+        <div class="comparison-col">
+          <span class="comparison-label comparison-after">✅ Con Finko</span>
+          <p>Toda la documentación centralizada y accesible desde cualquier lugar</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Testimonials Section -->
+<section class="finko-testimonials">
+  <div class="container">
+    <h2 class="section-title">Lo que Dicen Nuestros Usuarios</h2>
+    <p class="section-subtitle">
+      Propietarios como tú ya están simplificando su gestión con Finko.
+    </p>
+    
+    <div class="row g-4">
+      <div class="col-lg-4">
+        <div class="testimonial-card">
+          <p class="testimonial-quote">
+            "Finko cambió completamente la forma en que administro mis 5 propiedades. Antes perdía horas en Excel, ahora todo es automático y profesional."
+          </p>
+          <div class="testimonial-author">
+            <div class="testimonial-avatar">MC</div>
+            <div class="testimonial-info">
+              <div class="testimonial-name">María Castillo</div>
+              <div class="testimonial-role">Propietaria, Ciudad de Panamá</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="col-lg-4">
+        <div class="testimonial-card">
+          <p class="testimonial-quote">
+            "El portal de pagos para inquilinos es genial. Ya no tengo que estar persiguiendo comprobantes por WhatsApp. Todo queda registrado automáticamente."
+          </p>
+          <div class="testimonial-author">
+            <div class="testimonial-avatar">JR</div>
+            <div class="testimonial-info">
+              <div class="testimonial-name">Jorge Rodríguez</div>
+              <div class="testimonial-role">Inversionista Inmobiliario</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="col-lg-4">
+        <div class="testimonial-card">
+          <p class="testimonial-quote">
+            "Como inquilino, reportar mi pago es súper fácil. Solo necesito mi número de contrato y listo. Me llega la confirmación por correo enseguida."
+          </p>
+          <div class="testimonial-author">
+            <div class="testimonial-avatar">AM</div>
+            <div class="testimonial-info">
+              <div class="testimonial-name">Ana Morales</div>
+              <div class="testimonial-role">Inquilina</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Pricing Section -->
+<section class="finko-pricing" id="pricing">
+  <div class="container">
+    <h2 class="section-title">Planes Simples y Transparentes</h2>
+    <p class="section-subtitle">
+      Elige el plan que mejor se adapte al tamaño de tu negocio inmobiliario.
+    </p>
+    
+    <div class="row g-4 justify-content-center">
+      <!-- Free/Basic Plan -->
+      <div class="col-lg-4 col-md-6">
+        <div class="pricing-card">
+          <h3 class="pricing-plan">Básico</h3>
+          <div class="pricing-price">$0<span>/mes</span></div>
+          <p class="pricing-description">Perfecto para empezar con una propiedad</p>
+          <ul class="pricing-features">
+            <li><i class="fas fa-check-circle"></i> 1 Propiedad</li>
+            <li><i class="fas fa-check-circle"></i> Gestión de inquilinos</li>
+            <li><i class="fas fa-check-circle"></i> Portal de pagos</li>
+            <li><i class="fas fa-check-circle"></i> Contratos digitales</li>
+            <li><i class="fas fa-check-circle"></i> Notificaciones por email</li>
+            <li class="disabled"><i class="fas fa-times-circle"></i> Reportes avanzados</li>
+            <li class="disabled"><i class="fas fa-times-circle"></i> Múltiples propiedades</li>
+          </ul>
+          {% if not request.user.is_authenticated %}
+            <a href="{% url 'register_user' %}" class="btn-finko-secondary w-100">Comenzar Gratis</a>
+          {% else %}
+            <a href="{% url 'dashboard' %}" class="btn-finko-secondary w-100">Ir al Dashboard</a>
+          {% endif %}
+        </div>
+      </div>
+      
+      <!-- Standard Plan (Featured) -->
+      <div class="col-lg-4 col-md-6">
+        <div class="pricing-card featured">
+          <div class="pricing-badge">Más Popular</div>
+          <h3 class="pricing-plan">Estándar</h3>
+          <div class="pricing-price">$3.99<span>/mes</span></div>
+          <p class="pricing-description">Ideal para propietarios con múltiples unidades</p>
+          <ul class="pricing-features">
+            <li><i class="fas fa-check-circle"></i> Hasta 3 Propiedades</li>
+            <li><i class="fas fa-check-circle"></i> Todo del plan Básico</li>
+            <li><i class="fas fa-check-circle"></i> Reportes financieros</li>
+            <li><i class="fas fa-check-circle"></i> Gestión de gastos</li>
+            <li><i class="fas fa-check-circle"></i> Soporte prioritario</li>
+            <li><i class="fas fa-check-circle"></i> Exportación de datos</li>
+            <li><i class="fas fa-check-circle"></i> Múltiples inquilinos</li>
+          </ul>
+          {% if not request.user.is_authenticated %}
+            <a href="{% url 'register_user' %}" class="btn-finko-primary w-100">Comenzar Ahora</a>
+          {% else %}
+            <button id="checkout-button" class="btn-finko-primary w-100">Actualizar Plan</button>
+            <script src="https://js.stripe.com/v3/"></script>
+            <script>
+                document.getElementById('checkout-button').addEventListener('click', function () {
+                    fetch('/create-subscription-checkout-session/')
+                        .then(response => response.json())
+                        .then(data => {
+                            var stripe = Stripe("{{ STRIPE_PUBLISHABLE_KEY }}");
+                            stripe.redirectToCheckout({ sessionId: data.id });
+        });
+    });
+  </script>
+          {% endif %}
+        </div>
+      </div>
+      
+      <!-- Enterprise Plan -->
+      <div class="col-lg-4 col-md-6">
+        <div class="pricing-card">
+          <h3 class="pricing-plan">Empresarial</h3>
+          <div class="pricing-price">Personalizado</div>
+          <p class="pricing-description">Para administradores profesionales</p>
+          <ul class="pricing-features">
+            <li><i class="fas fa-check-circle"></i> Propiedades ilimitadas</li>
+            <li><i class="fas fa-check-circle"></i> Todo del plan Estándar</li>
+            <li><i class="fas fa-check-circle"></i> API personalizada</li>
+            <li><i class="fas fa-check-circle"></i> Múltiples usuarios</li>
+            <li><i class="fas fa-check-circle"></i> Branding personalizado</li>
+            <li><i class="fas fa-check-circle"></i> Soporte dedicado</li>
+            <li><i class="fas fa-check-circle"></i> Integraciones avanzadas</li>
+          </ul>
+          <a href="#contact" class="btn-finko-orange w-100">Contactar Ventas</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA Section -->
+<section class="finko-cta">
+  <div class="container text-center">
+    <h2 class="cta-title">¿Listo para Simplificar tu Gestión Inmobiliaria?</h2>
+    <p class="cta-subtitle">
+      Únete a cientos de propietarios que ya están ahorrando tiempo y dinero con Finko.
+    </p>
+    {% if not request.user.is_authenticated %}
+      <a href="{% url 'register_user' %}" class="btn-finko-orange" style="background: white; color: var(--finko-purple);">
+        Comenzar Gratis - Sin Tarjeta de Crédito
+      </a>
+    {% else %}
+      <a href="{% url 'dashboard' %}" class="btn-finko-orange" style="background: white; color: var(--finko-purple);">
+        Ir a Mi Dashboard
+      </a>
+    {% endif %}
+  </div>
+</section>
+
+<!-- Demo Anchor -->
+<div id="demo" style="padding-top: 100px; margin-top: -100px;"></div>
+
+<!-- JavaScript for smooth scrolling -->
+<script>
+document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+  anchor.addEventListener('click', function (e) {
+    e.preventDefault();
+    const target = document.querySelector(this.getAttribute('href'));
+    if (target) {
+      target.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start'
+      });
+    }
+  });
+});
+
+// Intersection Observer for fade-in animations
+const observerOptions = {
+  threshold: 0.1,
+  rootMargin: '0px 0px -50px 0px'
+};
+
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.style.opacity = '1';
+      entry.target.style.transform = 'translateY(0)';
+    }
+  });
+}, observerOptions);
+
+document.querySelectorAll('.fade-in').forEach(el => {
+  el.style.opacity = '0';
+  el.style.transform = 'translateY(20px)';
+  el.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+  observer.observe(el);
+});
+</script>
+
+{% endblock %}

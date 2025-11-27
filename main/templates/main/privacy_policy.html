@@ -1,0 +1,160 @@
+{% extends "index.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-lg-10 mx-auto">
+            <div class="card shadow-lg">
+                <div class="card-header bg-gradient-info py-4">
+                    <h3 class="text-white mb-0">
+                        <i class="fas fa-shield-alt me-2"></i>
+                        Política de Privacidad y Protección de Datos
+                    </h3>
+                    <p class="text-white text-sm mb-0">Conforme a la Ley 81 de Protección de Datos Personales de Panamá</p>
+                </div>
+                <div class="card-body p-4">
+                    <div class="privacy-content">
+                        <h5 class="text-info">1. Responsable del Tratamiento de Datos</h5>
+                        <p>
+                            <strong>Finko - Property Management System</strong><br>
+                            Responsable de la recopilación y tratamiento de sus datos personales.<br>
+                            Contacto: privacy@finkoapp.com
+                        </p>
+
+                        <h5 class="text-info mt-4">2. Datos que Recopilamos</h5>
+                        <p>Recopilamos los siguientes datos personales:</p>
+                        <ul>
+                            <li><strong>Datos de identificación:</strong> Nombre, apellido, cédula/pasaporte</li>
+                            <li><strong>Datos de contacto:</strong> Correo electrónico, teléfono</li>
+                            <li><strong>Datos financieros:</strong> Información de pagos y transacciones (cuando aplique)</li>
+                            <li><strong>Datos de propiedades:</strong> Direcciones, detalles de contratos de alquiler</li>
+                        </ul>
+
+                        <h5 class="text-info mt-4">3. Finalidad del Tratamiento</h5>
+                        <p>Sus datos personales se utilizan para:</p>
+                        <ul>
+                            <li>Gestionar contratos de alquiler entre propietarios e inquilinos</li>
+                            <li>Procesar y registrar pagos de alquiler</li>
+                            <li>Generar facturas y recibos</li>
+                            <li>Comunicarnos con usted sobre su cuenta y servicios</li>
+                            <li>Cumplir con obligaciones legales y fiscales</li>
+                        </ul>
+
+                        <h5 class="text-info mt-4">4. Base Legal (Ley 81 de Panamá)</h5>
+                        <p>El tratamiento de sus datos se fundamenta en:</p>
+                        <ul>
+                            <li><strong>Consentimiento expreso:</strong> Usted ha aceptado expresamente nuestra política</li>
+                            <li><strong>Ejecución contractual:</strong> Para gestionar contratos de alquiler</li>
+                            <li><strong>Obligación legal:</strong> Cumplimiento de requisitos fiscales y legales</li>
+                        </ul>
+
+                        <h5 class="text-info mt-4">5. Sus Derechos (Conforme a Ley 81)</h5>
+                        <p>Como titular de datos personales, usted tiene derecho a:</p>
+                        <ul>
+                            <li><strong>Acceso:</strong> Conocer qué datos tenemos sobre usted</li>
+                            <li><strong>Rectificación:</strong> Corregir datos inexactos o incompletos</li>
+                            <li><strong>Cancelación:</strong> Solicitar la eliminación de sus datos</li>
+                            <li><strong>Oposición:</strong> Oponerse al tratamiento de sus datos</li>
+                            <li><strong>Portabilidad:</strong> Obtener una copia de sus datos en formato estructurado</li>
+                        </ul>
+                        {% if request.user.is_authenticated %}
+                        <p>
+                            <a href="{% url 'my_data' %}" class="btn btn-info btn-sm">
+                                <i class="fas fa-eye me-1"></i> Ver Mis Datos
+                            </a>
+                            <a href="{% url 'export_my_data' %}" class="btn btn-outline-info btn-sm">
+                                <i class="fas fa-download me-1"></i> Exportar Mis Datos
+                            </a>
+                        </p>
+                        {% endif %}
+
+                        <h5 class="text-info mt-4">6. Seguridad de los Datos</h5>
+                        <p>Implementamos medidas de seguridad técnicas y organizativas:</p>
+                        <ul>
+                            <li>Cifrado de contraseñas mediante algoritmos seguros</li>
+                            <li>Transmisión segura de datos mediante HTTPS/SSL</li>
+                            <li>Acceso restringido a datos personales</li>
+                            <li>Copias de seguridad regulares</li>
+                            <li>Auditorías de seguridad periódicas</li>
+                        </ul>
+
+                        <h5 class="text-info mt-4">7. Retención de Datos</h5>
+                        <p>
+                            Conservamos sus datos personales mientras mantenga una cuenta activa o según sea 
+                            necesario para cumplir con obligaciones legales (mínimo 5 años para registros fiscales 
+                            conforme a legislación panameña).
+                        </p>
+
+                        <h5 class="text-info mt-4">8. Transferencia de Datos</h5>
+                        <p>
+                            No transferimos sus datos personales a terceros, excepto:
+                        </p>
+                        <ul>
+                            <li>Con su consentimiento expreso</li>
+                            <li>Cuando sea requerido por ley o autoridad competente</li>
+                            <li>A proveedores de servicios esenciales (hosting, email) bajo acuerdos de confidencialidad</li>
+                        </ul>
+
+                        <h5 class="text-info mt-4">9. Cookies y Tecnologías Similares</h5>
+                        <p>
+                            Utilizamos cookies esenciales para el funcionamiento del sistema (sesión de usuario). 
+                            No utilizamos cookies de rastreo o publicidad.
+                        </p>
+
+                        <h5 class="text-info mt-4">10. Cambios a esta Política</h5>
+                        <p>
+                            Nos reservamos el derecho de actualizar esta política. Le notificaremos de cualquier 
+                            cambio significativo por correo electrónico y/o mediante aviso destacado en nuestra plataforma.
+                        </p>
+
+                        <h5 class="text-info mt-4">11. Contacto y Quejas</h5>
+                        <p>
+                            Para ejercer sus derechos o presentar consultas sobre el tratamiento de sus datos:
+                        </p>
+                        <ul>
+                            <li><strong>Email:</strong> privacy@finkoapp.com</li>
+                            <li><strong>Respuesta:</strong> Dentro de 15 días hábiles</li>
+                        </ul>
+                        <p>
+                            Si no está satisfecho con nuestra respuesta, puede presentar una queja ante la 
+                            <strong>Autoridad Nacional de Transparencia y Acceso a la Información (ANTAI)</strong> 
+                            de Panamá, responsable de la aplicación de la Ley 81.
+                        </p>
+
+                        <div class="alert alert-info mt-4">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <strong>Última actualización:</strong> {{ current_date }}
+                        </div>
+
+                        <div class="text-center mt-4">
+                            <a href="{% url 'home' %}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left me-1"></i> Volver al Inicio
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.privacy-content h5 {
+    margin-top: 1.5rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #17c1e8;
+}
+.privacy-content ul {
+    padding-left: 1.5rem;
+}
+.privacy-content li {
+    margin-bottom: 0.5rem;
+    line-height: 1.6;
+}
+.privacy-content p {
+    line-height: 1.6;
+    color: #67748e;
+}
+</style>
+{% endblock %}

@@ -113,50 +113,78 @@
    <footer class="footer py-5">
     <div class="container">
       <div class="row">
-        <div class="col-lg-8 mb-4 mx-auto text-center">
-          <a href="javascript:;" target="_blank" class="text-secondary me-xl-5 me-3 mb-sm-0 mb-2">
-            Company
+        <!-- Main Navigation Links -->
+        <div class="col-lg-10 mb-4 mx-auto text-center">
+          <a href="{% url 'home' %}" class="text-secondary me-xl-5 me-3 mb-sm-0 mb-2">
+            Inicio
           </a>
-          <a href="javascript:;" target="_blank" class="text-secondary me-xl-5 me-3 mb-sm-0 mb-2">
-            About Us
+          <a href="{% url 'features' %}" class="text-secondary me-xl-5 me-3 mb-sm-0 mb-2">
+            Funcionalidades
           </a>
-          <a href="javascript:;" target="_blank" class="text-secondary me-xl-5 me-3 mb-sm-0 mb-2">
-            Team
+          <a href="{% url 'about' %}" class="text-secondary me-xl-5 me-3 mb-sm-0 mb-2">
+            Sobre Nosotros
           </a>
-          <a href="javascript:;" target="_blank" class="text-secondary me-xl-5 me-3 mb-sm-0 mb-2">
-            Products
+          <a href="{% url 'pricing'%}" class="text-secondary me-xl-5 me-3 mb-sm-0 mb-2">
+            Planes
           </a>
-          <a href="javascript:;" target="_blank" class="text-secondary me-xl-5 me-3 mb-sm-0 mb-2">
-            Blog
+          <a href="{% url 'contact' %}" class="text-secondary me-xl-5 me-3 mb-sm-0 mb-2">
+            Contacto
           </a>
-          <a href="{% url 'pricing'%}" target="_blank" class="text-secondary me-xl-5 me-3 mb-sm-0 mb-2">
-            Pricing
+          {% if request.user.is_authenticated %}
+          <a href="{% url 'dashboard' %}" class="text-secondary me-xl-5 me-3 mb-sm-0 mb-2">
+            Dashboard
+          </a>
+          {% endif %}
+        </div>
+        
+        <!-- Privacy & Legal Links -->
+        <div class="col-lg-10 mb-3 mx-auto text-center">
+          <a href="{% url 'privacy_policy' %}" class="text-secondary me-xl-4 me-3">
+            <i class="fas fa-shield-alt me-1"></i> Privacidad
+          </a>
+          <a href="{% url 'terms_of_service' %}" class="text-secondary me-xl-4 me-3">
+            <i class="fas fa-file-contract me-1"></i> Términos
+          </a>
+          {% if request.user.is_authenticated %}
+          <a href="{% url 'my_data' %}" class="text-secondary me-xl-4 me-3">
+            <i class="fas fa-user-shield me-1"></i> Mis Datos
+          </a>
+          {% endif %}
+          <a href="{% url 'public_payment_portal' %}" class="text-secondary me-xl-4 me-3">
+            <i class="fas fa-credit-card me-1"></i> Reportar Pago
           </a>
         </div>
-        <div class="col-lg-8 mx-auto text-center mb-4 mt-2">
-          <a href="javascript:;" target="_blank" class="text-secondary me-xl-4 me-4">
-            <span class="text-lg fab fa-dribbble"></span>
+        
+        <!-- Social Media Icons -->
+        <div class="col-lg-10 mx-auto text-center mb-4 mt-2">
+          <a href="https://facebook.com/finkoapp" target="_blank" class="text-secondary me-xl-4 me-4">
+            <span class="text-lg fab fa-facebook"></span>
           </a>
-          <a href="javascript:;" target="_blank" class="text-secondary me-xl-4 me-4">
-            <span class="text-lg fab fa-twitter"></span>
-          </a>
-          <a href="javascript:;" target="_blank" class="text-secondary me-xl-4 me-4">
+          <a href="https://instagram.com/finkoapp" target="_blank" class="text-secondary me-xl-4 me-4">
             <span class="text-lg fab fa-instagram"></span>
           </a>
-          <a href="javascript:;" target="_blank" class="text-secondary me-xl-4 me-4">
-            <span class="text-lg fab fa-pinterest"></span>
+          <a href="https://twitter.com/finkoapp" target="_blank" class="text-secondary me-xl-4 me-4">
+            <span class="text-lg fab fa-twitter"></span>
           </a>
-          <a href="javascript:;" target="_blank" class="text-secondary me-xl-4 me-4">
-            <span class="text-lg fab fa-github"></span>
+          <a href="https://linkedin.com/company/finkoapp" target="_blank" class="text-secondary me-xl-4 me-4">
+            <span class="text-lg fab fa-linkedin"></span>
+          </a>
+          <a href="https://wa.me/507XXXXXXXX" target="_blank" class="text-secondary me-xl-4 me-4">
+            <span class="text-lg fab fa-whatsapp"></span>
           </a>
         </div>
       </div>
+      
+      <!-- Copyright -->
       <div class="row">
-        <div class="col-8 mx-auto text-center mt-1">
+        <div class="col-10 mx-auto text-center mt-1">
           <p class="mb-0 text-secondary">
             Copyright © <script>
               document.write(new Date().getFullYear())
-            </script> Finko by CANAL Development.
+            </script> Finko - Property Management System by CANAL Development.
+          </p>
+          <p class="mb-0 text-secondary mt-2" style="font-size: 0.85rem;">
+            🇵🇦 Hecho en Panamá | Cumple con Ley 81 de Protección de Datos
           </p>
         </div>
       </div>

@@ -301,24 +301,19 @@
       <ul class="navbar-nav mx-auto">
         <!-- Main nav links -->
         <li class="nav-item">
-          <a class="nav-link" href="">Contacto</a>
+          <a class="nav-link" href="{% url 'home' %}">Inicio</a>
         </li>
         <li class="nav-item">
-          <a class="nav-link" href="{% url 'pricing'%}">Planes</a>
+          <a class="nav-link" href="{% url 'features' %}">Funcionalidades</a>
         </li>
         <li class="nav-item">
-          <a class="nav-link" href="">Nosotros</a>
+          <a class="nav-link" href="{% url 'pricing' %}">Planes</a>
         </li>
-        <li class="nav-item dropdown">
-          <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-            Devs
-          </a>
-          <ul class="dropdown-menu">
-            <li><a class="dropdown-item" href="/admin">Admin Panel</a></li>
-            <li><hr class="dropdown-divider"></li>
-            <li><a class="dropdown-item" href="{% url 'tenants' %}">Tenants</a></li>
-            <li><a class="dropdown-item" href="#">Something else here</a></li>
-          </ul>
+        <li class="nav-item">
+          <a class="nav-link" href="{% url 'about' %}">Nosotros</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="{% url 'contact' %}">Contacto</a>
         </li>
       </ul>
       <ul class="navbar-nav ms-auto d-flex align-items-center">

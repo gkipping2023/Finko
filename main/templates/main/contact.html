@@ -1,0 +1,202 @@
+{% extends 'index.html' %}
+{% load static %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'assets/css/finko-landing.css' %}">
+
+<!-- Contact Hero -->
+<section class="finko-hero" style="padding: 80px 0 60px;">
+  <div class="container text-center">
+    <h1 class="hero-title">Contáctanos</h1>
+    <p class="hero-subtitle mx-auto">
+      ¿Tienes preguntas? Estamos aquí para ayudarte. Envíanos un mensaje o consulta nuestras preguntas frecuentes.
+    </p>
+  </div>
+</section>
+
+<!-- Contact Form & Info -->
+<section class="py-5">
+  <div class="container">
+    <div class="row g-5">
+      <!-- Contact Form -->
+      <div class="col-lg-7">
+        <div class="contact-form">
+          <h3 class="mb-4">Envíanos un Mensaje</h3>
+          <form method="post" action="#">
+            {% csrf_token %}
+            <div class="form-group">
+              <label class="form-label">Nombre Completo</label>
+              <input type="text" class="form-control-finko" name="name" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Correo Electrónico</label>
+              <input type="email" class="form-control-finko" name="email" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Teléfono (opcional)</label>
+              <input type="tel" class="form-control-finko" name="phone">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Asunto</label>
+              <select class="form-control-finko" name="subject" required>
+                <option value="">Selecciona un asunto</option>
+                <option value="general">Consulta General</option>
+                <option value="support">Soporte Técnico</option>
+                <option value="sales">Ventas / Planes</option>
+                <option value="feedback">Comentarios / Sugerencias</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Mensaje</label>
+              <textarea class="form-control-finko" name="message" rows="5" required></textarea>
+            </div>
+            <button type="submit" class="btn-finko-primary w-100">Enviar Mensaje</button>
+          </form>
+        </div>
+      </div>
+      
+      <!-- Contact Info & WhatsApp -->
+      <div class="col-lg-5">
+        <div class="mb-5">
+          <h3 class="mb-4">Información de Contacto</h3>
+          <div class="feature-card mb-3">
+            <div class="d-flex align-items-start">
+              <div class="feature-icon me-3" style="width: 50px; height: 50px; font-size: 20px;">
+                <i class="fas fa-envelope"></i>
+              </div>
+              <div>
+                <h5 class="mb-2">Email</h5>
+                <p class="text-muted mb-0">soporte@finkoapp.com</p>
+              </div>
+            </div>
+          </div>
+          
+          <div class="feature-card mb-3">
+            <div class="d-flex align-items-start">
+              <div class="feature-icon me-3" style="width: 50px; height: 50px; font-size: 20px; background: linear-gradient(135deg, #25D366 0%, #128C7E 100%);">
+                <i class="fab fa-whatsapp"></i>
+              </div>
+              <div>
+                <h5 class="mb-2">WhatsApp</h5>
+                <p class="text-muted mb-2">+507 XXXX-XXXX</p>
+                <a href="https://wa.me/507XXXXXXXX?text=Hola, tengo una consulta sobre Finko" 
+                   target="_blank" 
+                   class="btn-finko-secondary btn-sm">
+                  <i class="fab fa-whatsapp me-2"></i>Chatear Ahora
+                </a>
+              </div>
+            </div>
+          </div>
+          
+          <div class="feature-card">
+            <div class="d-flex align-items-start">
+              <div class="feature-icon me-3" style="width: 50px; height: 50px; font-size: 20px; background: linear-gradient(135deg, #ff751f 0%, #ff8c42 100%);">
+                <i class="fas fa-map-marker-alt"></i>
+              </div>
+              <div>
+                <h5 class="mb-2">Ubicación</h5>
+                <p class="text-muted mb-0">Panamá, República de Panamá</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Social Media -->
+        <div>
+          <h3 class="mb-4">Síguenos</h3>
+          <div class="footer-social">
+            <a href="#" title="Facebook"><i class="fab fa-facebook-f"></i></a>
+            <a href="#" title="Instagram"><i class="fab fa-instagram"></i></a>
+            <a href="#" title="Twitter"><i class="fab fa-twitter"></i></a>
+            <a href="#" title="LinkedIn"><i class="fab fa-linkedin-in"></i></a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ Section -->
+<section class="py-5 bg-finko-light">
+  <div class="container">
+    <h2 class="section-title">Preguntas Frecuentes</h2>
+    <p class="section-subtitle">Respuestas a las preguntas más comunes sobre Finko</p>
+    
+    <div class="row">
+      <div class="col-lg-10 mx-auto">
+        <div class="faq-item">
+          <h4 class="faq-question">¿Finko es gratis?</h4>
+          <p class="faq-answer">
+            Sí, ofrecemos un plan gratuito para siempre que incluye 1 propiedad con todas las funciones básicas. 
+            Si necesitas gestionar más propiedades o acceder a funciones avanzadas, puedes actualizar a nuestros planes pagos.
+          </p>
+        </div>
+        
+        <div class="faq-item">
+          <h4 class="faq-question">¿Necesito tarjeta de crédito para registrarme?</h4>
+          <p class="faq-answer">
+            No. Puedes registrarte y usar el plan gratuito sin necesidad de ingresar información de pago. 
+            Solo necesitarás una tarjeta si decides actualizar a un plan premium.
+          </p>
+        </div>
+        
+        <div class="faq-item">
+          <h4 class="faq-question">¿Los inquilinos necesitan crear una cuenta?</h4>
+          <p class="faq-answer">
+            No. Los inquilinos pueden reportar pagos usando nuestro portal público con solo su número de contrato. 
+            No necesitan registrarse ni crear contraseñas.
+          </p>
+        </div>
+        
+        <div class="faq-item">
+          <h4 class="faq-question">¿Mis datos están seguros?</h4>
+          <p class="faq-answer">
+            Absolutamente. Finko cumple con la Ley 81 de Protección de Datos de Panamá. Toda la información 
+            está cifrada y almacenada de forma segura. Nunca compartimos tus datos con terceros.
+          </p>
+        </div>
+        
+        <div class="faq-item">
+          <h4 class="faq-question">¿Puedo cancelar en cualquier momento?</h4>
+          <p class="faq-answer">
+            Sí, puedes cancelar tu suscripción en cualquier momento sin penalizaciones. Si cancelas, 
+            mantendrás acceso hasta el final de tu período de facturación actual.
+          </p>
+        </div>
+        
+        <div class="faq-item">
+          <h4 class="faq-question">¿Ofrecen soporte técnico?</h4>
+          <p class="faq-answer">
+            Sí, todos los usuarios tienen acceso a soporte por email. Los usuarios de planes pagos 
+            reciben soporte prioritario con tiempos de respuesta más rápidos.
+          </p>
+        </div>
+        
+        <div class="faq-item">
+          <h4 class="faq-question">¿Puedo importar mis datos existentes?</h4>
+          <p class="faq-answer">
+            Sí, si ya tienes propiedades, inquilinos y contratos en otro sistema, podemos ayudarte 
+            a importar tu información. Contacta con nuestro equipo de soporte para más detalles.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA Section -->
+<section class="finko-cta">
+  <div class="container text-center">
+    <h2 class="cta-title">¿No Encontraste tu Respuesta?</h2>
+    <p class="cta-subtitle">
+      Nuestro equipo está listo para ayudarte. Contáctanos por WhatsApp o email.
+    </p>
+    <a href="https://wa.me/507XXXXXXXX?text=Hola, tengo una consulta sobre Finko" 
+       target="_blank"
+       class="btn-finko-orange" style="background: white; color: var(--finko-purple);">
+      <i class="fab fa-whatsapp me-2"></i>Chatear por WhatsApp
+    </a>
+  </div>
+</section>
+
+{% endblock %}

@@ -1,0 +1,211 @@
+{% extends "index.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-lg-10 mx-auto">
+            <div class="card shadow-lg">
+                <div class="card-header bg-gradient-info py-4">
+                    <h3 class="text-white mb-0">
+                        <i class="fas fa-user-shield me-2"></i>
+                        Mis Datos Personales
+                    </h3>
+                    <p class="text-white text-sm mb-0">Accede y administra tu información personal (Derecho de Acceso - Ley 81)</p>
+                </div>
+                <div class="card-body p-4">
+                    
+                    <!-- Personal Information -->
+                    <div class="mb-4">
+                        <h5 class="text-info border-bottom pb-2">
+                            <i class="fas fa-id-card me-2"></i>Información Personal
+                        </h5>
+                        <div class="row">
+                            {% for key, value in user_data.personal_info.items %}
+                            <div class="col-md-6 mb-3">
+                                <strong class="text-dark">{{ key }}:</strong>
+                                <span class="text-secondary">{{ value|default:"N/A" }}</span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <!-- Account Information -->
+                    <div class="mb-4">
+                        <h5 class="text-info border-bottom pb-2">
+                            <i class="fas fa-user-cog me-2"></i>Información de Cuenta
+                        </h5>
+                        <div class="row">
+                            {% for key, value in user_data.account_info.items %}
+                            <div class="col-md-6 mb-3">
+                                <strong class="text-dark">{{ key }}:</strong>
+                                <span class="text-secondary">{{ value|default:"N/A" }}</span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <!-- Consents -->
+                    <div class="mb-4">
+                        <h5 class="text-info border-bottom pb-2">
+                            <i class="fas fa-check-circle me-2"></i>Consentimientos
+                        </h5>
+                        <div class="row">
+                            {% for key, value in user_data.consents.items %}
+                            <div class="col-md-6 mb-3">
+                                <strong class="text-dark">{{ key }}:</strong>
+                                <span class="text-secondary">{{ value }}</span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <!-- Properties (if owner) -->
+                    {% if user_data.properties %}
+                    <div class="mb-4">
+                        <h5 class="text-info border-bottom pb-2">
+                            <i class="fas fa-building me-2"></i>Mis Propiedades ({{ user_data.properties.count }})
+                        </h5>
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Alias</th>
+                                        <th>Ubicación</th>
+                                        <th>Categoría</th>
+                                        <th>Estado</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for property in user_data.properties %}
+                                    <tr>
+                                        <td>{{ property.alias }}</td>
+                                        <td>{{ property.location }}</td>
+                                        <td>{{ property.get_category_display }}</td>
+                                        <td>
+                                            {% if property.available %}
+                                            <span class="badge bg-success">Disponible</span>
+                                            {% else %}
+                                            <span class="badge bg-secondary">No Disponible</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Rents -->
+                    {% if user_data.rents %}
+                    <div class="mb-4">
+                        <h5 class="text-info border-bottom pb-2">
+                            <i class="fas fa-file-contract me-2"></i>Contratos de Alquiler ({{ user_data.rents.count }})
+                        </h5>
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Número de Contrato</th>
+                                        <th>Propiedad</th>
+                                        <th>Monto</th>
+                                        <th>Fecha Inicio</th>
+                                        <th>Estado</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for rent in user_data.rents %}
+                                    <tr>
+                                        <td>{{ rent.rent_number|default:"N/A" }}</td>
+                                        <td>{{ rent.property.alias }}</td>
+                                        <td>${{ rent.rent_amount }}</td>
+                                        <td>{{ rent.start_date }}</td>
+                                        <td>
+                                            {% if rent.is_active %}
+                                            <span class="badge bg-success">Activo</span>
+                                            {% else %}
+                                            <span class="badge bg-secondary">Inactivo</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Transactions -->
+                    {% if user_data.transactions %}
+                    <div class="mb-4">
+                        <h5 class="text-info border-bottom pb-2">
+                            <i class="fas fa-exchange-alt me-2"></i>Transacciones Recientes (últimas 20)
+                        </h5>
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Número</th>
+                                        <th>Tipo</th>
+                                        <th>Monto</th>
+                                        <th>Fecha</th>
+                                        <th>Estado</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for transaction in user_data.transactions %}
+                                    <tr>
+                                        <td>{{ transaction.transaction_number|default:"N/A" }}</td>
+                                        <td>{{ transaction.get_type_display }}</td>
+                                        <td>${{ transaction.amount }}</td>
+                                        <td>{{ transaction.created_at|date:"d/m/Y" }}</td>
+                                        <td>
+                                            {% if transaction.status == 'confirmed' %}
+                                            <span class="badge bg-success">Confirmado</span>
+                                            {% elif transaction.status == 'pending' %}
+                                            <span class="badge bg-warning">Pendiente</span>
+                                            {% else %}
+                                            <span class="badge bg-secondary">{{ transaction.get_status_display }}</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Action Buttons -->
+                    <div class="alert alert-light border">
+                        <h6 class="text-dark mb-3">
+                            <i class="fas fa-tools me-2"></i>Acciones sobre tus datos
+                        </h6>
+                        <div class="d-flex flex-wrap gap-2">
+                            <a href="{% url 'user_profile' %}" class="btn btn-outline-info btn-sm">
+                                <i class="fas fa-edit me-1"></i> Editar Datos
+                            </a>
+                            <a href="{% url 'export_my_data' %}" class="btn btn-outline-success btn-sm">
+                                <i class="fas fa-download me-1"></i> Exportar Datos (JSON)
+                            </a>
+                            <a href="{% url 'privacy_policy' %}" class="btn btn-outline-secondary btn-sm">
+                                <i class="fas fa-shield-alt me-1"></i> Política de Privacidad
+                            </a>
+                            <a href="{% url 'delete_account' %}" class="btn btn-outline-danger btn-sm">
+                                <i class="fas fa-user-times me-1"></i> Solicitar Eliminación
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="text-center mt-4">
+                        <a href="{% url 'dashboard' %}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left me-1"></i> Volver al Dashboard
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
