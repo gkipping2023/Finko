@@ -332,7 +332,7 @@ class PublicPaymentForm(forms.Form):
         max_length=100,
         widget=forms.TextInput(attrs={
             'class': 'form-control',
-            'placeholder': 'Ej: RENT-1-5-0001'
+            'placeholder': 'Ej: REF-1-1-0001'
         }),
         label='Número de Contrato'
     )

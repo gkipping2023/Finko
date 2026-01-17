@@ -1,0 +1,66 @@
+{% extends "index.html" %}
+
+{% block content %}
+<div class="container-fluid py-4">
+  <div class="row">
+    <div class="col-md-8 offset-md-2">
+      <div class="card">
+        <div class="card-body">
+          <h4 class="font-weight-bolder">Generador de Documentos</h4>
+          <p class="text-muted">Crea cartas, reportes y descargas del historial de pagos en PDF.</p>
+
+          <div class="row mt-4">
+            <div class="col-md-12">
+              <div class="card shadow-sm">
+                <div class="card-body">
+                  <h6 class="mb-2">Historial de Pagos (Filtro)</h6>
+                  <p class="text-sm text-muted">Selecciona rango de fechas y propiedades para ver o descargar el resumen.</p>
+
+                  <form method="get" class="row g-2">
+                    <input type="hidden" name="action" value="preview">
+                    <div class="col-md-3">
+                      <label class="form-label">Desde</label>
+                      <input type="date" name="start_date" class="form-control">
+                    </div>
+                    <div class="col-md-3">
+                      <label class="form-label">Hasta</label>
+                      <input type="date" name="end_date" class="form-control">
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label">Propiedades</label>
+                      <select name="properties" class="form-select" multiple>
+                        {% for p in properties %}
+                        <option value="{{ p.id }}">{{ p.alias }}</option>
+                        {% endfor %}
+                      </select>
+                      <div class="form-text">Mantén presionada la tecla Ctrl/Cmd para seleccionar varias.</div>
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end">
+                      <button class="btn btn-primary w-100" type="submit">Generar Vista Previa</button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="row mt-3">
+            <div class="col-md-6">
+              <div class="card shadow-sm">
+                <div class="card-body">
+                  <h6 class="mb-2">Carta Personalizada</h6>
+                  <p class="text-sm text-muted">Genera una carta para imprimir o enviar.</p>
+                  <a href="?action=letter" class="btn btn-info">Crear Carta</a>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <hr />
+          <p class="text-muted small mt-3">Si necesitas formatos adicionales, contacta al soporte.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

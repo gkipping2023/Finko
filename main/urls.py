@@ -24,6 +24,7 @@ urlpatterns = [
     path('properties_form',views.properties_form,name='properties_form'),
     path('register_user',views.register_user,name='register_user'),
     path('reports',views.reports,name='reports'),
+    path('generate-documents/', views.generate_documents, name='generate_documents'),
     path('tenants',views.tenants,name='tenants'),
     path('tenant_portal',views.tenant_portal,name='tenant_portal'),
     path('register_tenant',views.register_tenant,name='register_tenant'),

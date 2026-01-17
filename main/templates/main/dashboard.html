@@ -2,9 +2,9 @@
 
 {% block content %}
 {% include "main/role_modal.html" %}
-
 <div class="container-fluid py-4">
-  <!-- Portfolio Overview -->
+  {% if request.user.role == 'O' %}
+  <!-- Owner: Portfolio Overview + Financial Snapshot -->
   <div class="row">
     <div class="col-lg-6 col-md-6 col-12">
       <div class="card">
@@ -60,48 +60,155 @@
         </div>
       </div>
     </div>
+  </div>
 
-<div class="row mt-4">
-  <!-- Recent Payments -->
-  <div class="col-lg-6 col-md-6 col-12">
-    <div class="card">
-      <div class="card-body">
-        <h5 class="font-weight-bolder">Pagos Recientes</h5>
-        <table class="table align-middle mb-0">
-          <th>Monto</th>
-          <th>Fecha</th>
-          {% for payment in recent_payments %}
-          <tr>
-            <td class="text font-weight-bold">${{ payment.amount }}</td>
-            <td>{{ payment.transaction_date|date:"M d, Y" }}</td>
-          </tr>
-          {% endfor %}
-        </table>
+  <div class="row mt-4">
+    <!-- Recent Payments -->
+    <div class="col-lg-6 col-md-6 col-12">
+      <div class="card">
+        <div class="card-body">
+          <h5 class="font-weight-bolder">Pagos Recientes</h5>
+          <table class="table align-middle mb-0">
+            <th>Monto</th>
+            <th>Fecha</th>
+            {% for payment in recent_payments %}
+            <tr>
+              <td class="text font-weight-bold">${{ payment.amount }}</td>
+              <td>{{ payment.transaction_date|date:"M d, Y" }}</td>
+            </tr>
+            {% endfor %}
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Alerts / Notifications -->
+    <div class="col-lg-6 col-md-6 col-12 mt-4 mt-md-0">
+      <div class="card">
+        <div class="card-body">
+          <h5 class="font-weight-bolder">Alertas / Notificaciones</h5>
+          <ul class="list-group">
+            <li class="list-group-item d-flex align-items-center">
+              <i class="ni ni-bell-55 text-danger text-lg me-3"></i>
+              <span>Alertas de Alquiler Vencido: <strong>{{ overdue_rent_alerts }}</strong></span>
+            </li>
+            <li class="list-group-item d-flex align-items-center">
+              <i class="ni ni-calendar-grid-58 text-warning text-lg me-3"></i>
+              <span>Contratos por Vencer Pronto: <strong>{{ leases_expiring_soon }}</strong></span>
+            </li>
+            <li class="list-group-item d-flex align-items-center">
+              <i class="ni ni-settings text-info text-lg me-3"></i>
+              <span>Solicitudes de Mantenimiento Pendientes: <strong>{{ pending_maintenance_requests }}</strong></span>
+            </li>
+          </ul>
+        </div>
       </div>
     </div>
   </div>
-
-  <!-- Alerts / Notifications -->
-  <div class="col-lg-6 col-md-6 col-12 mt-4 mt-md-0">
-    <div class="card">
-      <div class="card-body">
-        <h5 class="font-weight-bolder">Alertas / Notificaciones</h5>
-        <ul class="list-group">
-          <li class="list-group-item d-flex align-items-center">
-            <i class="ni ni-bell-55 text-danger text-lg me-3"></i>
-            <span>Alertas de Alquiler Vencido: <strong>{{ overdue_rent_alerts }}</strong></span>
-          </li>
-          <li class="list-group-item d-flex align-items-center">
-            <i class="ni ni-calendar-grid-58 text-warning text-lg me-3"></i>
-            <span>Contratos por Vencer Pronto: <strong>{{ leases_expiring_soon }}</strong></span>
-          </li>
-          <li class="list-group-item d-flex align-items-center">
-            <i class="ni ni-settings text-info text-lg me-3"></i>
-            <span>Solicitudes de Mantenimiento Pendientes: <strong>{{ pending_maintenance_requests }}</strong></span>
-          </li>
-        </ul>
+  {% elif request.user.role == 'T' %}
+  <!-- Tenant: show only tenant-relevant items -->
+  <div class="row">
+    <div class="col-lg-8 col-12">
+      <div class="card">
+        <div class="card-body">
+          <h5 class="font-weight-bolder">Mi Contrato</h5>
+          {% if tenant_next_rent %}
+            <div class="d-flex justify-content-between">
+              <div>
+                <strong>{{ tenant_next_rent.property.alias }}</strong><br/>
+                <small class="text-muted">Renta: ${{ tenant_next_rent.rent_amount }}</small>
+              </div>
+              <div class="text-end">
+                <div>Vence: <strong>{{ tenant_next_rent.rent_due_date }}</strong></div>
+                <div>Días vencido: <strong>{{ tenant_next_rent.days_past_due|default:0 }}</strong></div>
+              </div>
+            </div>
+            <div class="mt-3">
+              <a href="{% url 'public_payment_portal' %}" class="btn btn-info">Reportar Pago</a>
+              <a href="{% url 'generate_documents' %}" class="btn btn-link">Descargar Historial</a>
+            </div>
+          {% else %}
+            <p class="text-muted">No hay contratos activos.</p>
+          {% endif %}
+        </div>
+      </div>
+      <div class="card mt-3">
+        <div class="card-body">
+          <h6 class="font-weight-bolder">Pagos Recientes</h6>
+          <table class="table mb-0">
+            {% for p in tenant_recent_payments %}
+            <tr>
+              <td>${{ p.amount }}</td>
+              <td>{{ p.transaction_date|date:"M d, Y" }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="2" class="text-muted">No hay pagos recientes.</td></tr>
+            {% endfor %}
+          </table>
+        </div>
       </div>
     </div>
+
+    <div class="col-lg-4 col-12 mt-3 mt-lg-0">
+      <div class="card">
+        <div class="card-body">
+          <h5 class="font-weight-bolder">Alertas / Notificaciones</h5>
+          <ul class="list-group">
+            <li class="list-group-item d-flex align-items-center">
+              <i class="ni ni-bell-55 text-danger text-lg me-3"></i>
+              <span>Alertas de Alquiler Vencido: <strong>{{ overdue_rent_alerts }}</strong></span>
+            </li>
+            <li class="list-group-item d-flex align-items-center">
+              <i class="ni ni-calendar-grid-58 text-warning text-lg me-3"></i>
+              <span>Contratos por Vencer Pronto: <strong>{{ leases_expiring_soon }}</strong></span>
+            </li>
+            <li class="list-group-item d-flex align-items-center">
+              <i class="ni ni-settings text-info text-lg me-3"></i>
+              <span>Solicitudes de Mantenimiento Pendientes: <strong>{{ pending_maintenance_requests }}</strong></span>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+ 
+<!-- Role-specific section (Owner-only) -->
+<div class="row mt-4">
+  <div class="col-12">
+    {% if request.user.role == 'O' %}
+      <div class="card">
+        <div class="card-body">
+          <h5 class="font-weight-bolder">Propiedades</h5>
+          <div class="table-responsive">
+            <table class="table align-middle mb-0">
+              <thead>
+                <tr>
+                  <th>Alias</th>
+                  <th>Últ. Pago</th>
+                  <th>Fecha</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for p in owner_properties %}
+                <tr>
+                  <td><strong>{{ p.alias }}</strong><br/><small class="text-muted">{{ p.location }}</small></td>
+                  <td>{% if p.last_payment_amount %}${{ p.last_payment_amount }}{% else %}-{% endif %}</td>
+                  <td>{% if p.last_payment_date %}{{ p.last_payment_date|date:"M d, Y" }}{% else %}-{% endif %}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="3" class="text-muted">No hay propiedades registradas.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          <div class="mt-3">
+            <a href="{% url 'properties' %}" class="btn btn-sm btn-info">Ver Propiedades</a>
+            <a href="{% url 'generate_documents' %}" class="btn btn-sm btn-link">Generar Reportes</a>
+          </div>
+        </div>
+      </div>
+    {% endif %}
   </div>
 </div>
    

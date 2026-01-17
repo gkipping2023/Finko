@@ -1,0 +1,32 @@
+{% extends "index.html" %}
+
+{% block content %}
+<div class="container-fluid py-4">
+  <div class="row">
+    <div class="col-md-8 offset-md-2">
+      <div class="card">
+        <div class="card-body">
+          <h4 class="font-weight-bolder">Crear Carta</h4>
+          <form method="post" action="?action=letter">
+            {% csrf_token %}
+            <div class="mb-3">
+              <label class="form-label">Destinatario</label>
+              <input type="text" name="recipient" class="form-control" placeholder="Nombre o entidad">
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Asunto</label>
+              <input type="text" name="subject" class="form-control" placeholder="Asunto de la carta">
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Cuerpo</label>
+              <textarea name="body" rows="8" class="form-control" placeholder="Escribe el texto de la carta..."></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary">Generar PDF</button>
+            <a href="{% url 'generate_documents' %}" class="btn btn-link">Volver</a>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

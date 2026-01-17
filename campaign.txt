@@ -1,0 +1,172 @@
+Project: Finko — Property Management System (Marketing / Content Campaign Brief)
+
+Overview
+--------
+Finko is a property management web app that helps owners and property managers manage leases, tenants, payments, and documents. It centralizes rent collection, payment reporting, receipt generation, property and lease management, and owner/tenant communications — all in a modern, easy-to-use interface.
+
+Objective
+---------
+- Grow signups among small to mid-size property owners and professional property managers.
+- Position Finko as the easiest way to stop scrambling for payments, stay compliant, and automate receipts and tenant communications.
+- Drive traffic to `/generate-documents/`, `/properties`, and the registration/signup flows.
+-
+Primary Audience
+----------------
+- Independent landlords with 2–50 units looking to professionalize operations.
+- Small property management companies and managers responsible for multiple owners.
+- Owners who want simple, reliable rent collection + documentation and fewer phone calls from tenants.
+
+Key Benefits / Value Propositions (short)
+----------------------------------------
+- Save time: automate receipts, payment confirmations and reporting.
+- Improve cashflow visibility: accurate payment history and easy-to-generate PDFs you can send or archive.
+- Reduce disputes: clear receipts and document history for owners and tenants.
+- Simple UX: focused tools for landlords and tenants — no bloated features.
+
+Core Features to Highlight
+--------------------------
+- Payment reporting & owner confirmation workflow
+- Automatic PDF receipt generation and email sending
+- Tenant and owner portals (role-specific views)
+- Lease management + renewals reminders
+- Property-level financial snapshots and exportable reports
+
+Messaging Pillars (for copy)
+---------------------------
+1. Reliability: "Receipts and records you can trust"
+2. Time Savings: "Less admin, more time for your properties"
+3. Professionalism: "Make your owners and tenants feel taken care of"
+4. Compliance & Traceability: "Documented payments and easy exports"
+
+Tone & Voice
+------------
+- Professional but friendly and direct.
+- Practical, not flashy — speak to the daily problems landlords and managers face.
+- Use Spanish copy variants where appropriate (the product has Spanish UI). Keep bilingual options for marketing.
+
+High-level Content Types
+------------------------
+- Blog posts / long-form articles (SEO): how-to guides, checklists, case studies
+- Short social posts (LinkedIn, Facebook, Instagram) summarizing tips or quick wins
+- Email sequences: onboarding, nurture, re-engagement
+- Paid ads (Google/Search + Meta): problem/solution snippets with CTA to demo or signup
+- Landing page copy variations: owner-focused & manager-focused
+- Templates & downloads: receipt samples, tenant communication templates
+
+Content Ideas (detailed)
+------------------------
+Blogs / SEO topics
+- "How to stop chasing rent: 7 processes that actually work"
+- "What every landlord should track monthly (template + downloadable PDF)"
+- "How to document tenant payments and avoid disputes"
+- "How to scale from 1 to 20 units without losing control"
+
+Social Post Ideas
+- Quick tip: "Set a single inbox for payment confirmations — saves time and paperwork." + CTA
+- Before / After carousel: manual spreadsheets → Finko dashboards
+- Short video demo (30–60s) showing ‘Generate Documents’ flow
+
+Email Sequences
+- Welcome / onboarding: highlight dashboard, payment reporting, and PDF receipt generation
+- Nurture: 3-email series — time saved, trust & compliance, case study of a landlord
+- Reactivation: show new features (e.g., preview and PDF filters), limited-time offer
+
+Ad Copy (short)
+- Headline: "Stop Chasing Rent — Automate Receipts & Reports"
+- Body: "Collect payments, confirm with owners, and send receipts automatically. Try Finko free." 
+- CTA: "Start a free trial" or "See a demo"
+
+Landing Page Sections / Snippets
+--------------------------------
+Hero: "Manage payments, receipts and leases — without the noise"
+Sub-hero: "Finko helps small owners and managers automate receipts, confirm payments, and keep clean financial records. Generate PDFs and reports in seconds."
+Features blocks: Payment Reporting | PDF Receipts | Tenant + Owner Portal | Lease Renewals
+Trust block: Short case study or testimonial from a landlord
+CTA: "Create account" / "Schedule demo"
+
+SEO Keywords
+------------
+rent collection software, property management for landlords, landlord receipt generator, rent receipts PDF, property manager tools, automate rent receipts, landlord software Puerto Rico (or localize by territory)
+
+Assets & Visual Guidance
+-----------------------
+- Screenshots: dashboard, generate documents, sample receipt PDF
+- Short screencast (30–60s) of generating a payment history PDF and printing
+- Owner-facing hero image: clean workspace, tablet with dashboard visible
+- Icons: receipts, calendar (due dates), shield (security/compliance)
+
+Analytics & Metrics (to track effectiveness)
+------------------------------------------
+- Conversion rate on `/generate-documents/` and `register_user`
+- Demo requests / contact form submissions
+- Open & CTR for emails in nurture sequences
+- Engagement on social (views, link clicks)
+
+Campaign Calendar (30 days minimal)
+----------------------------------
+Week 1 — Awareness
+- Blog: "How to stop chasing rent" (SEO)
+- Social: 3 posts highlighting problem + solution
+- Ad: small budget targeting local landlords
+
+Week 2 — Consideration
+- Email: onboarding sequence to trial users
+- Blog: manager case study
+- Social: video demo of PDF generation
+
+Week 3 — Conversion
+- Promote limited-time onboarding support or discount
+- Retargeting ads for site visitors who viewed features pages
+
+Week 4 — Retention & Scale
+- Release tips: "5 ways to use payment reports"
+- Webinar/demo invite for managers
+
+Ready-to-use AI prompts
+-----------------------
+1) Blog outline and draft
+Prompt: "Write a 1,000–1,200 word blog post for small property owners titled 'How to stop chasing rent: 7 processes that actually work'. Use a practical tone, include an intro, 7 numbered steps with examples, a short case study and a CTA to try Finko. Include an SEO meta description (max 155 characters) and 5 suggested internal headings."
+
+2) Social announcement + variations
+Prompt: "Create 5 variations of a LinkedIn post (120–200 words each) announcing a 60-second demo of Finko's 'Generate Documents' feature. Emphasize saving time, automated PDF receipts, and owner confirmation workflow. End with a CTA link placeholder [LINK]."
+
+3) Email nurture sequence (3 emails)
+Prompt: "Write a 3-email sequence for new trial signups to Finko: Email 1 (welcome + quick start guide), Email 2 (feature spotlight: receipts & confirm payment flow), Email 3 (case study + CTA to upgrade or schedule demo). Each email should be ~150–200 words and include one clear CTA."
+
+4) Short ad copy variants (Google responsive or Meta)
+Prompt: "Generate 6 short ad headlines (max 30 characters) and 6 descriptions (max 90 characters) for Finko focused on landlords who need reliable rent receipts and automated reporting. Include one CTA suggestion."
+
+5) Landing page hero tests
+Prompt: "Provide 3 alternative hero headlines and subheads for an owner-focused landing page. Each should be concise, highlight automation or reliability, and include a short supporting bullet list of benefits."
+
+Sample micro-copy & CTAs
+------------------------
+- Primary CTA: "Try Finko — Start Free"
+- Secondary CTA: "See a Quick Demo"
+- Microcopy under signup: "No credit card required — set up in under 5 minutes."
+
+Hashtags & Short Tags (social)
+--------------------------------
+#PropertyManagement #LandlordLife #RentReceipts #PropTech #PropertyManager #RentalIncome
+
+Implementation notes for the AI tool
+-----------------------------------
+- Provide the AI with product screenshots and at least one case note (e.g., "landlord with 12 units saved 5 hours/month") for realistic case studies.
+- For Spanish audiences, provide localized prompts (Spanish language) and translate keywords/SEO to the target country.
+- Use the blog outline prompt first and then request section-by-section expansion to control tone and accuracy.
+
+Appendix — Example short pieces (ready to use)
+---------------------------------------------
+Ad headline: "Stop Chasing Rent — Automate Receipts"
+Ad description: "Generate receipts and confirm payments with owners in seconds. Try Finko free."
+
+LinkedIn short post (example):
+"As a landlord, you shouldn't spend evenings reconciling payments. With Finko you can generate official PDF receipts, notify owners, and keep a searchable history of every payment. Save time and avoid disputes — see a 60s demo: [LINK] #LandlordLife #PropTech"
+
+---
+This brief is intentionally actionable and includes direct AI prompts so you can feed it straight into content-generation tools. If you'd like, I can:
+- Generate the first blog draft using the blog prompt above.
+- Produce the 3-email nurture sequence and the 5 LinkedIn post variations.
+- Create a 30-day content calendar in CSV format with publish dates and channels.
+
+End of brief

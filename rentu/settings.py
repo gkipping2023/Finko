@@ -31,6 +31,7 @@ SECRET_KEY = os.environ.get('SECRET_KEY', '')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
+#ALLOWED_HOSTS = ['192.168.0.118'] # Local network IP for development on devices
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost').split(',')
 
 
@@ -197,13 +198,7 @@ STATICFILES_DIRS = [
 MEDIA_ROOT = BASE_DIR / 'media'
 
 # Default primary key field type
-# https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
-
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
-# Email configuration
-
-# Mailgun Configuration
+# https:/# Mailgun Configuration
 MAILGUN_API_KEY = os.environ.get('MAILGUN_API_KEY')
 MAILGUN_DOMAIN = os.environ.get('MAILGUN_DOMAIN')
 MAILGUN_REGION = os.environ.get('MAILGUN_REGION', 'US')
@@ -215,4 +210,7 @@ EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD')
-DEFAULT_FROM_EMAIL = 'Finko <noreply@finkoapp.com>'
+DEFAULT_FROM_EMAIL = 'Finko <noreply@finkoapp.com>'  # not used here
+
+MAILGUN_API_KEY = os.environ.get("MAILGUN_API_KEY")
+MAILGUN_DOMAIN = os.environ.get("MAILGUN_DOMAIN")

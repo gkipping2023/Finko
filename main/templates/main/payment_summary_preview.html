@@ -1,0 +1,75 @@
+{% extends "index.html" %}
+
+{% block content %}
+<div class="container-fluid py-4">
+  <div class="row">
+    <div class="col-md-10 offset-md-1">
+      <div class="card">
+        <div class="card-body">
+          <h4 class="font-weight-bolder">Vista Previa - Resumen de Pagos</h4>
+          <p class="text-muted">Revisa el total recolectado y los pagos incluidos en el rango seleccionado.</p>
+
+          <div class="row mb-3">
+            <div class="col-md-4">
+              <strong>Desde:</strong> {{ start_date|default:'—' }}
+            </div>
+            <div class="col-md-4">
+              <strong>Hasta:</strong> {{ end_date|default:'—' }}
+            </div>
+            <div class="col-md-4">
+              <strong>Propiedades:</strong>
+              {% if selected_props %}
+                {% for p in selected_props %}{{ p.alias }}{% if not forloop.last %}, {% endif %}{% endfor %}
+              {% else %}
+                Todas
+              {% endif %}
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <h5>Total Recolectado: <span class="text-success">${{ total }}</span></h5>
+          </div>
+
+          <div class="table-responsive">
+            <table class="table align-middle mb-0">
+              <thead>
+                <tr>
+                  <th>Número</th>
+                  <th>Fecha</th>
+                  <th>Propiedad</th>
+                  <th>Método</th>
+                  <th>Monto</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for t in transactions %}
+                <tr>
+                  <td>{{ t.transaction_number }}</td>
+                  <td>{{ t.transaction_date|date:"d M Y" }}</td>
+                  <td>{% if t.property %}{{ t.property.alias }}{% else %}-{% endif %}</td>
+                  <td>{{ t.get_payment_method_display }}</td>
+                  <td>${{ t.amount }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="5" class="text-muted">No hay transacciones para mostrar.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+
+          <div class="mt-4 d-flex justify-content-between">
+            <div>
+              <a href="javascript:window.print()" class="btn btn-secondary">Imprimir / Guardar como PDF</a>
+            </div>
+            <div>
+              <a href="{% url 'generate_documents' %}?action=payment_history{% if start_date %}&start_date={{ start_date }}{% endif %}{% if end_date %}&end_date={{ end_date }}{% endif %}{% for pid in prop_ids %}&properties={{ pid }}{% endfor %}" class="btn btn-info">Descargar PDF</a>
+              <a href="{% url 'generate_documents' %}" class="btn btn-link">Volver</a>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

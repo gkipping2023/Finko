@@ -1,0 +1,29 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>{{ subject }}</title>
+    <style>
+      body { font-family: 'Montserrat', Arial, sans-serif; color:#344767; margin:40px; }
+      .header { text-align:center; color:#17c1e8; margin-bottom:20px }
+      .footer { color:#8392ab; font-size:12px; margin-top:30px; text-align:center }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <h2>{{ subject }}</h2>
+      <div>{{ date }}</div>
+    </div>
+
+    <p>Para: <strong>{{ recipient }}</strong></p>
+
+    <div style="margin-top:20px; line-height:1.5">{{ body|linebreaks }}</div>
+
+    <div style="margin-top:40px">
+      <p>Atentamente,</p>
+      <p><strong>{{ user.full_name }}</strong></p>
+    </div>
+
+    <div class="footer">Finko - Property Management System</div>
+  </body>
+</html>

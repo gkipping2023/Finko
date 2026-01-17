@@ -1,4 +1,5 @@
 from django.views.decorators.http import require_POST
+from django.views.decorators.clickjacking import xframe_options_sameorigin
 from django.shortcuts import render, get_object_or_404, redirect
 from django.http import JsonResponse
 import re
@@ -36,11 +37,18 @@ def render_transaction_pdf(transaction):
 
 #Download Pdf Function
 @login_required(login_url='log_in')
+@xframe_options_sameorigin
 def transaction_pdf(request, transaction_id):
     transaction = get_object_or_404(Transaction, id=transaction_id)
     pdf = render_transaction_pdf(transaction)
     response = HttpResponse(pdf, content_type='application/pdf')
-    response['Content-Disposition'] = f'attachment; filename="Transaccion_{transaction.transaction_number}.pdf"'
+    # If preview query param is provided, show inline in browser for previewing.
+    preview = request.GET.get('preview')
+    if preview in ['1', 'true', 'yes']:
+      disposition = f'inline; filename="Transaccion_{transaction.transaction_number}.pdf"'
+    else:
+      disposition = f'attachment; filename="Transaccion_{transaction.transaction_number}.pdf"'
+      response['Content-Disposition'] = disposition
     return response
 
 # Modal role selection view
@@ -794,22 +802,61 @@ def dashboard(request):
     leases_expiring_soon = Rent.objects.filter(owner=user, end_date__gte=datetime.now(), end_date__lte=datetime.now() + timedelta(days=30)).count()
     pending_maintenance_requests = Properties.objects.filter(owner=user, maint_status='requested').count()
 
+    # Add role-specific context to avoid extra queries in template
     context = {
-        'last_payment': last_payment,
-        'total_properties': total_properties,
-        'occupancy_rate': occupancy_rate,
-        'collected_income': collected_income,
-        'pending_income': pending_income,
-        'upcoming_renewals': upcoming_renewals,
-        'rent_collected': rent_collected,
-        'rent_outstanding': rent_outstanding,
-        'recent_payments': recent_payments,
-        'expense_summary': expense_summary,
-        'net_cash_flow': net_cash_flow,
-        'overdue_rent_alerts': overdue_rent_alerts,
-        'leases_expiring_soon': leases_expiring_soon,
-        'pending_maintenance_requests': pending_maintenance_requests,
+      'last_payment': last_payment,
+      'total_properties': total_properties,
+      'occupancy_rate': occupancy_rate,
+      'collected_income': collected_income,
+      'pending_income': pending_income,
+      'upcoming_renewals': upcoming_renewals,
+      'rent_collected': rent_collected,
+      'rent_outstanding': rent_outstanding,
+      'recent_payments': recent_payments,
+      'expense_summary': expense_summary,
+      'net_cash_flow': net_cash_flow,
+      'overdue_rent_alerts': overdue_rent_alerts,
+      'leases_expiring_soon': leases_expiring_soon,
+      'pending_maintenance_requests': pending_maintenance_requests,
     }
+
+    # Tenant-specific context
+    if user.role == 'T':
+      tenant_rents = Rent.objects.filter(tenant=user, is_active=True)
+      tenant_next_rent = tenant_rents.order_by('end_date').first() if tenant_rents.exists() else None
+      # compute days past due if available
+      if tenant_next_rent:
+        try:
+          tenant_next_rent.days_past_due = get_days_past_due(tenant_next_rent)
+        except Exception:
+          tenant_next_rent.days_past_due = 0
+      tenant_total_paid = Transaction.objects.filter(tenant=user, type='receipt', status='confirmed').aggregate(total=models.Sum('amount'))['total'] or 0
+      tenant_recent_payments = Transaction.objects.filter(tenant=user, type='receipt', status='confirmed').order_by('-transaction_date')[:5]
+
+      context.update({
+        'tenant_rents': tenant_rents,
+        'tenant_next_rent': tenant_next_rent,
+        'tenant_total_paid': tenant_total_paid,
+        'tenant_recent_payments': tenant_recent_payments,
+      })
+
+    # Owner-specific context
+    if user.role == 'O':
+      owner_properties = Properties.objects.filter(owner=user)
+      # annotate each property with last payment info to avoid template queries
+      props_with_last = []
+      for p in owner_properties:
+        last_payment = Transaction.objects.filter(property=p, type='receipt', status='confirmed').order_by('-transaction_date').first()
+        p.last_payment_amount = last_payment.amount if last_payment else None
+        p.last_payment_date = last_payment.transaction_date if last_payment else None
+        props_with_last.append(p)
+
+      pending_confirmations = Transaction.objects.filter(owner=user, status='pending').count()
+      context.update({
+        'owner_properties': props_with_last,
+        'pending_confirmations': pending_confirmations,
+      })
+
     return render(request, 'main/dashboard.html', context)
 
 from django.core.files.base import ContentFile
@@ -1073,13 +1120,17 @@ def properties(request):
     rents = []
     payments = []
     if request.user.role == 'O':
-        # If the user is an owner, filter rents by owner
-        rents = Rent.objects.filter(owner=request.user,is_active=True)
-        payments = Transaction.objects.filter(owner=request.user, type='receipt').order_by('-transaction_date')[:10]
+      # If the user is an owner, filter rents by owner
+      rents = Rent.objects.filter(owner=request.user,is_active=True)
+      payments_qs = Transaction.objects.filter(owner=request.user, type='receipt').order_by('-transaction_date')
     elif request.user.role == 'T':
-        # If the user is a tenant, filter rents by tenant
-        rents = Rent.objects.filter(tenant=request.user, is_active=True)
-        payments = Transaction.objects.filter(tenant=request.user, type='receipt').order_by('-created_at')[:10]
+      # If the user is a tenant, filter rents by tenant
+      rents = Rent.objects.filter(tenant=request.user, is_active=True)
+      payments_qs = Transaction.objects.filter(tenant=request.user, type='receipt').order_by('-created_at')
+
+    # show latest 10 payments for summary view, and provide pending approvals separately
+    payments = payments_qs[:10]
+    pending_payments = payments_qs.filter(status='pending')
 
     for rent in rents:
         last_payment = Transaction.objects.filter(rent=rent, type='receipt',status='confirmed').order_by('-created_at').first()
@@ -1088,9 +1139,10 @@ def properties(request):
         rent.days_past_due = get_days_past_due(rent)
 
     context = {
-        'rents': rents,
-        'properties':properties,
-        'payments':payments,
+      'rents': rents,
+      'properties':properties,
+      'payments':payments,
+      'pending_payments': pending_payments,
     }
     return render(request,'main/properties.html',context)
 
@@ -1194,6 +1246,145 @@ def reports(request):
 
     }
     return render(request,'main/reports.html',context)
+
+
+@login_required(login_url='log_in')
+def generate_documents(request):
+  """Generate letters, reports, and payment history PDFs for users.
+
+  - GET without action: show UI to choose generation options
+  - GET?action=payment_history: returns a PDF with the user's confirmed receipts
+  - GET?action=letter or POST?action=letter: show form / generate letter PDF
+  """
+  action = request.GET.get('action')
+
+  if action == 'payment_history':
+    # Filters: start/end date and properties
+    start_date = request.GET.get('start_date')
+    end_date = request.GET.get('end_date')
+    prop_ids = request.GET.getlist('properties')
+
+    qs = Transaction.objects.filter(type='receipt', status='confirmed')
+    if request.user.role == 'O':
+      qs = qs.filter(owner=request.user)
+    else:
+      qs = qs.filter(tenant=request.user)
+
+    if start_date:
+      try:
+        sd = datetime.strptime(start_date, '%Y-%m-%d').date()
+        qs = qs.filter(transaction_date__gte=sd)
+      except Exception:
+        sd = None
+    else:
+      sd = None
+
+    if end_date:
+      try:
+        ed = datetime.strptime(end_date, '%Y-%m-%d').date()
+        qs = qs.filter(transaction_date__lte=ed)
+      except Exception:
+        ed = None
+    else:
+      ed = None
+
+    if prop_ids:
+      try:
+        ids = [int(x) for x in prop_ids]
+        qs = qs.filter(property__id__in=ids)
+      except Exception:
+        pass
+
+    transactions = qs.order_by('-transaction_date')
+
+    html_string = render_to_string('main/payment_history_pdf.html', {
+      'transactions': transactions,
+      'user': request.user,
+      'now': date.today(),
+      'start_date': sd,
+      'end_date': ed,
+    })
+    pdf = HTML(string=html_string).write_pdf()
+    response = HttpResponse(pdf, content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="payment_history_{request.user.id}.pdf"'
+    return response
+
+  if action == 'letter':
+    if request.method == 'POST':
+      recipient = request.POST.get('recipient', '')
+      subject = request.POST.get('subject', 'Carta')
+      body = request.POST.get('body', '')
+      html_string = render_to_string('main/letter_pdf.html', {
+        'recipient': recipient,
+        'subject': subject,
+        'body': body,
+        'user': request.user,
+        'date': date.today()
+      })
+      pdf = HTML(string=html_string).write_pdf()
+      response = HttpResponse(pdf, content_type='application/pdf')
+      response['Content-Disposition'] = f'attachment; filename="letter_{request.user.id}.pdf"'
+      return response
+    else:
+      return render(request, 'main/letter_form.html', {})
+
+  # Default: render the generation UI (pass available properties)
+  if request.user.role == 'O':
+    props = Properties.objects.filter(owner=request.user)
+  else:
+    # For tenants, show properties they rent
+    props = Properties.objects.filter(rent__tenant=request.user).distinct()
+
+  # If preview requested via action=preview
+  if action == 'preview':
+    start_date = request.GET.get('start_date')
+    end_date = request.GET.get('end_date')
+    prop_ids = request.GET.getlist('properties')
+
+    qs = Transaction.objects.filter(type='receipt', status='confirmed')
+    if request.user.role == 'O':
+      qs = qs.filter(owner=request.user)
+    else:
+      qs = qs.filter(tenant=request.user)
+
+    sd = None
+    ed = None
+    if start_date:
+      try:
+        sd = datetime.strptime(start_date, '%Y-%m-%d').date()
+        qs = qs.filter(transaction_date__gte=sd)
+      except Exception:
+        sd = None
+    if end_date:
+      try:
+        ed = datetime.strptime(end_date, '%Y-%m-%d').date()
+        qs = qs.filter(transaction_date__lte=ed)
+      except Exception:
+        ed = None
+
+    if prop_ids:
+      try:
+        ids = [int(x) for x in prop_ids]
+        qs = qs.filter(property__id__in=ids)
+      except Exception:
+        pass
+
+    transactions = qs.order_by('-transaction_date')
+    total = transactions.aggregate(total=models.Sum('amount'))['total'] or 0
+
+    selected_props = Properties.objects.filter(id__in=[int(x) for x in prop_ids]) if prop_ids else None
+
+    return render(request, 'main/payment_summary_preview.html', {
+      'transactions': transactions,
+      'total': total,
+      'start_date': sd,
+      'end_date': ed,
+      'properties': props,
+      'selected_props': selected_props,
+      'prop_ids': prop_ids,
+    })
+
+  return render(request, 'main/generate_documents.html', {'properties': props})
 
 @login_required(login_url='log_in')
 def tenant_portal(request):

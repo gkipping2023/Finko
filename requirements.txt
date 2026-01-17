@@ -23,6 +23,7 @@ django-widget-tweaks==1.5.0
 fonttools==4.58.4
 idna==3.10
 kombu==5.5.3
+mysqlclient==2.2.4
 pillow==11.2.1
 prompt_toolkit==3.0.51
 pycparser==2.22

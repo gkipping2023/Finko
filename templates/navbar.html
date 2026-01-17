@@ -206,7 +206,7 @@
 <nav class="navbar navbar-expand-lg bg-body-tertiary">
   <div class="container-fluid">
     <i class="fas fa-times p-3 cursor-pointer text-secondary opacity-5 position-absolute end-0 top-0 d-none d-xl-none" aria-hidden="true" id="iconSidenav"></i>
-    <a class="navbar-brand m-0" href="{% url 'home' %}">
+    <a class="navbar-brand m-0" href="{% url 'dashboard' %}">
       <img src="{% static 'assets/img/finko_logo.png' %}" class="navbar-brand-img" style="height: 40px;" alt="Finko Logo">
     </a>
     
@@ -347,4 +347,26 @@
       </div>
     {% endfor %}
   </div>
+{% endif %}
+
+{# Mobile bottom quick-access for phones/tablets (authenticated users only) #}
+{% if request.user.is_authenticated %}
+<div class="d-lg-none fixed-bottom bg-white border-top" style="z-index: 1050;">
+  <div class="container">
+    <div class="d-flex justify-content-between py-2">
+      <a href="{% url 'dashboard' %}" class="text-center text-dark small" style="width:33%; text-decoration:none;">
+        <div><i class="fa fa-tachometer-alt fa-lg" aria-hidden="true"></i></div>
+        <div style="font-size:12px; line-height:1;">Dashboard</div>
+      </a>
+      <a href="{% url 'properties' %}" class="text-center text-dark small" style="width:33%; text-decoration:none;">
+        <div><i class="fa fa-building fa-lg" aria-hidden="true"></i></div>
+        <div style="font-size:12px; line-height:1;">Properties</div>
+      </a>
+      <a href="{% url 'payments' %}" class="text-center text-dark small" style="width:33%; text-decoration:none;">
+        <div><i class="fa fa-money-bill-wave fa-lg" aria-hidden="true"></i></div>
+        <div style="font-size:12px; line-height:1;">Transactions</div>
+      </a>
+    </div>
+  </div>
+</div>
 {% endif %}

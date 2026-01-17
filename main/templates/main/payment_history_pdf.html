@@ -1,0 +1,57 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Historial de Pagos</title>
+    <style>
+      body { font-family: 'Montserrat', Arial, sans-serif; color:#344767; margin:24px; }
+      table { width:100%; border-collapse: collapse; margin-top:10px }
+      th, td { padding:8px 6px; border:1px solid #e9ecef; text-align:left }
+      th { background:#f8f9fa }
+      .header { text-align:center; color:#17c1e8 }
+      .footer { color:#8392ab; font-size:12px; margin-top:20px; text-align:center }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <h2>Historial de Pagos</h2>
+      <div>Usuario: {{ user.full_name }} &nbsp; | &nbsp; Fecha: {{ now|date:"d M Y" }}</div>
+      {% if start_date or end_date %}
+        <div class="text-muted small">
+          Período:
+          {% if start_date %} Desde {{ start_date|date:"d M Y" }}{% endif %}
+          {% if end_date %} Hasta {{ end_date|date:"d M Y" }}{% endif %}
+        </div>
+      {% endif %}
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Número</th>
+          <th>Fecha</th>
+          <th>Propiedad</th>
+          <th>Método</th>
+          <th>Monto</th>
+          <th>Estado</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for t in transactions %}
+        <tr>
+          <td>{{ t.transaction_number }}</td>
+          <td>{{ t.transaction_date|date:"d M Y" }}</td>
+          <td>{% if t.property %}{{ t.property.alias }}{% else %}-{% endif %}</td>
+          <td>{{ t.get_payment_method_display }}</td>
+          <td>${{ t.amount }}</td>
+          <td>{{ t.status }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6" class="text-muted">No hay transacciones para mostrar.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <div class="footer">Finko - Property Management System</div>
+  </body>
+</html>

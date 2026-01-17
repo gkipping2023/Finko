@@ -81,8 +81,8 @@
               </td>
               <td class="text-sm text-center">{{ transaction.description }}</td>
               <td class="text-center">
-                <a href="{% url 'transaction_pdf' transaction.id %}" title="Download PDF">
-                  <i class="bi bi-filetype-pdf fs-3"></i>
+                <a href="#" class="pdf-preview-link" data-bs-toggle="modal" data-bs-target="#pdfPreviewModal" data-pdf-url="{% url 'transaction_pdf' transaction.id %}">
+                  <i class="bi bi-file-earmark-pdf-fill text-danger fs-4" title="Preview PDF"></i>
                 </a>
               </td>
             </tr>
@@ -97,6 +97,71 @@
     </div>
   </div>
 </div>
+
+      <!-- PDF Preview Modal -->
+      <div class="modal fade" id="pdfPreviewModal" tabindex="-1" aria-labelledby="pdfPreviewModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-centered" style="max-width:90%;">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title" id="pdfPreviewModalLabel">Vista previa del PDF</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-0" style="height:80vh; position:relative;">
+              <div id="pdfLoadingSpinner" style="position:absolute; inset:0; background:rgba(255,255,255,0.85); z-index:1050; display:none; align-items:center; justify-content:center;">
+                <div class="text-center">
+                  <div class="spinner-border text-primary" role="status" style="width:3rem; height:3rem;"></div>
+                  <div class="mt-2">Cargando PDF...</div>
+                </div>
+              </div>
+              <iframe id="pdfPreviewIframe" src="" style="width:100%; height:100%; border:0;" allowfullscreen></iframe>
+            </div>
+            <div class="modal-footer">
+              <a id="pdfDownloadBtn" class="btn btn-primary" href="#" target="_blank" rel="noopener">Descargar PDF</a>
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <script>
+      document.addEventListener('DOMContentLoaded', function() {
+        var modalEl = document.getElementById('pdfPreviewModal');
+        var iframe = document.getElementById('pdfPreviewIframe');
+        var downloadBtn = document.getElementById('pdfDownloadBtn');
+        var modalInstance = bootstrap.Modal.getOrCreateInstance(modalEl);
+
+        // Use click handler to set iframe src before showing modal to avoid timing issues.
+        var spinner = document.getElementById('pdfLoadingSpinner');
+        function showSpinner() { spinner.style.display = 'flex'; }
+        function hideSpinner() { spinner.style.display = 'none'; }
+
+        document.querySelectorAll('.pdf-preview-link').forEach(function(link) {
+          link.addEventListener('click', function(e) {
+            e.preventDefault();
+            var pdfUrl = this.getAttribute('data-pdf-url');
+            if (!pdfUrl) return;
+            var previewUrl = pdfUrl + (pdfUrl.indexOf('?') === -1 ? '?preview=1' : '&preview=1');
+            // show spinner immediately
+            showSpinner();
+            iframe.src = previewUrl;
+            downloadBtn.href = pdfUrl;
+            modalInstance.show();
+          });
+        });
+
+        // Hide spinner when iframe finishes loading
+        iframe.addEventListener('load', function() {
+          // small delay to ensure PDF rendering begins
+          setTimeout(hideSpinner, 250);
+        });
+
+        // Clear iframe and hide spinner when modal hidden to stop PDF streaming
+        modalEl.addEventListener('hidden.bs.modal', function () {
+          iframe.src = '';
+          hideSpinner();
+        });
+      });
+      </script>
 
 <!-- jQuery and Date Range Picker JS (CDN) -->
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
