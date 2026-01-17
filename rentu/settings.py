@@ -59,6 +59,8 @@ INSTALLED_APPS = [
 
 SITE_ID = 1
 
+SOCIALACCOUNT_ADAPTER = 'main.adapters.CustomSocialAccountAdapter'
+
 SOCIALACCOUNT_PROVIDERS = {
     'google': {
         'SCOPE': [
