@@ -70,3 +70,4 @@ finko_pythonanywhere_com_wsgi
 
 # Environment variables
 .env
+__pycache__/

@@ -10,7 +10,7 @@ CELERY_ACCEPT_CONTENT = None
 CELERY_TASK_SERIALIZER = None
 
 # PythonAnywhere specific configurations
-ALLOWED_HOSTS = ['yourusername.pythonanywhere.com', 'localhost', '127.0.0.1']
+ALLOWED_HOSTS = ['finko.pythonanywhere.com', 'localhost', '127.0.0.1']
 
 # Use file-based cache instead of Redis
 CACHES = {
@@ -20,9 +20,27 @@ CACHES = {
     }
 }
 
+# MySQL configuration
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'finko$default',
+        'USER': 'finko',
+        'PASSWORD': os.environ.get('MYSQL_PASSWORD'),
+        'HOST': 'finko.mysql.pythonanywhere-services.com',
+        'PORT': '3306',
+        'OPTIONS': {
+            'charset': 'utf8mb4',
+            'sql_mode': 'STRICT_TRANS_TABLES',
+        },
+    }
+}
+
 # Static files configuration for PythonAnywhere
 STATIC_URL = '/static/'
-STATIC_ROOT = '/home/yourusername/mysite/static'
+STATIC_ROOT = '/home/finko/Finko/static'
+# Clear STATICFILES_DIRS to avoid conflict with STATIC_ROOT
+STATICFILES_DIRS = []
 
 MEDIA_URL = '/media/'
-MEDIA_ROOT = '/home/yourusername/mysite/media'
+MEDIA_ROOT = '/home/finko/Finko/media'
