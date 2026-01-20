@@ -1,10 +1,14 @@
 from allauth.socialaccount.adapter import DefaultSocialAccountAdapter
 from allauth.socialaccount.models import SocialApp
+from django.contrib.auth import get_user_model
+
+
+User = get_user_model()
 
 
 class CustomSocialAccountAdapter(DefaultSocialAccountAdapter):
     """
-    Minimal adapter to fix MultipleObjectsReturned error in get_app method.
+    Custom adapter to fix MultipleObjectsReturned error and auto-login users.
     """
     
     def get_app(self, request, provider, client_id=None):
@@ -27,3 +31,16 @@ class CustomSocialAccountAdapter(DefaultSocialAccountAdapter):
         
         # Fall back to parent implementation
         return super().get_app(request, provider, client_id=client_id)
+    
+    def pre_social_login(self, request, sociallogin):
+        """
+        Auto-connect user if email matches.
+        """
+        if sociallogin.is_existing:
+            return
+        
+        try:
+            user = User.objects.get(email=sociallogin.account.extra_data.get('email'))
+            sociallogin.connect(request, user)
+        except User.DoesNotExist:
+            pass

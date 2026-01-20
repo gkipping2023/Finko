@@ -74,9 +74,22 @@ SOCIALACCOUNT_PROVIDERS = {
             'client_id': os.environ.get('GOOGLE_CLIENT_ID', ''),
             'secret': os.environ.get('GOOGLE_CLIENT_SECRET', ''),
             'key': '',
-        }
+        },
+        'VERIFIED_EMAIL': True,
+        'VERSION': 'v2',
     }
 }
+
+# Allauth settings for social account
+SOCIALACCOUNT_ADAPTER = 'main.adapters.CustomSocialAccountAdapter'
+SOCIALACCOUNT_AUTO_SIGNUP = True
+SOCIALACCOUNT_EMAIL_VERIFICATION = 'optional'
+
+# Use email for username in social logins
+ACCOUNT_AUTHENTICATION_METHOD = 'email'
+ACCOUNT_EMAIL_REQUIRED = True
+ACCOUNT_UNIQUE_EMAIL = True
+ACCOUNT_USERNAME_REQUIRED = False
 
 LOGIN_REDIRECT_URL = 'dashboard'  # Redirect to the dashboard after login
 LOGOUT_REDIRECT_URL = 'home'  # Redirect to the home page after logout
