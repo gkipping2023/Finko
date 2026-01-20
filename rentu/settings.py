@@ -86,10 +86,9 @@ SOCIALACCOUNT_AUTO_SIGNUP = True
 SOCIALACCOUNT_EMAIL_VERIFICATION = 'optional'
 
 # Use email for username in social logins
-ACCOUNT_AUTHENTICATION_METHOD = 'email'
-ACCOUNT_EMAIL_REQUIRED = True
+ACCOUNT_LOGIN_METHODS = {'email'}
+ACCOUNT_SIGNUP_FIELDS = ['email*', 'password1*', 'password2*']
 ACCOUNT_UNIQUE_EMAIL = True
-ACCOUNT_USERNAME_REQUIRED = False
 
 LOGIN_REDIRECT_URL = 'dashboard'  # Redirect to the dashboard after login
 LOGOUT_REDIRECT_URL = 'home'  # Redirect to the home page after logout
