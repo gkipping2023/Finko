@@ -1249,6 +1249,7 @@ def reports(request):
 
 
 @login_required(login_url='log_in')
+@xframe_options_sameorigin
 def generate_documents(request):
   """Generate letters, reports, and payment history PDFs for users.
 
@@ -1308,6 +1309,102 @@ def generate_documents(request):
     response = HttpResponse(pdf, content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename="payment_history_{request.user.id}.pdf"'
     return response
+
+  if action == 'income_letter':
+    # Get available years for dropdown
+    if request.user.role == 'O':
+      transactions = Transaction.objects.filter(owner=request.user, type='receipt', status='confirmed')
+    else:
+      transactions = Transaction.objects.filter(tenant=request.user, type='receipt', status='confirmed')
+    
+    available_years = sorted(set(
+      t.transaction_date.year for t in transactions 
+      if t.transaction_date
+    ), reverse=True)
+    
+    # If no transactions, add current year
+    if not available_years:
+      available_years = [date.today().year]
+    
+    # Handle both GET with preview param and POST for generation
+    if request.method == 'POST' or request.GET.get('recipient'):
+      recipient = request.POST.get('recipient') or request.GET.get('recipient', '')
+      year = request.POST.get('year') or request.GET.get('year', str(date.today().year))
+      
+      try:
+        year = int(year)
+      except (ValueError, TypeError):
+        year = date.today().year
+      
+      # Fetch all confirmed receipts for the selected year
+      if request.user.role == 'O':
+        qs = Transaction.objects.filter(
+          owner=request.user,
+          type='receipt',
+          status='confirmed',
+          transaction_date__year=year
+        )
+      else:
+        qs = Transaction.objects.filter(
+          tenant=request.user,
+          type='receipt',
+          status='confirmed',
+          transaction_date__year=year
+        )
+      
+      # Group income by property
+      property_income_dict = {}
+      for transaction in qs:
+        if transaction.property:
+          prop_name = transaction.property.alias or f"Propiedad {transaction.property.id}"
+          if prop_name not in property_income_dict:
+            property_income_dict[prop_name] = 0
+          property_income_dict[prop_name] += float(transaction.amount)
+      
+      # Convert to list of dicts, sorted by property name
+      property_incomes = [
+        {'property_name': prop_name, 'total': amount}
+        for prop_name, amount in sorted(property_income_dict.items())
+      ]
+      
+      total_income = sum(t.amount for t in qs)
+      
+      # Format date
+      from datetime import datetime as dt
+      today = date.today()
+      months_es = {
+        1: 'enero', 2: 'febrero', 3: 'marzo', 4: 'abril',
+        5: 'mayo', 6: 'junio', 7: 'julio', 8: 'agosto',
+        9: 'septiembre', 10: 'octubre', 11: 'noviembre', 12: 'diciembre'
+      }
+      date_formatted = f"{today.day} de {months_es[today.month]} de {today.year}"
+      
+      # Get user location (using nationality or default)
+      location = request.user.nac.name if request.user.nac else "Panama"
+      
+      html_string = render_to_string('main/income_letter_pdf.html', {
+        'recipient': recipient,
+        'year': year,
+        'user': request.user,
+        'date_formatted': date_formatted,
+        'location': location,
+        'property_incomes': property_incomes,
+        'total_income': total_income,
+      })
+      pdf = HTML(string=html_string).write_pdf()
+      response = HttpResponse(pdf, content_type='application/pdf')
+      
+      # Check if preview mode
+      preview = request.GET.get('preview')
+      if preview in ['1', 'true', 'yes']:
+        response['Content-Disposition'] = 'inline; filename="carta_ingresos_preview.pdf"'
+      else:
+        response['Content-Disposition'] = f'attachment; filename="carta_ingresos_{year}_{request.user.id}.pdf"'
+      return response
+    else:
+      return render(request, 'main/income_letter_form.html', {
+        'available_years': available_years
+      })
 
   if action == 'letter':
     if request.method == 'POST':

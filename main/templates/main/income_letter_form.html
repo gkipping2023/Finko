@@ -1,0 +1,172 @@
+{% extends "index.html" %}
+
+{% block content %}
+<div class="container-fluid py-4">
+  <div class="row">
+    <div class="col-md-8 offset-md-2">
+      <div class="card">
+        <div class="card-body">
+          <h4 class="font-weight-bolder">Carta de Ingresos Anuales</h4>
+          <p class="text-muted">Complete los campos para generar una carta de ingresos certificada.</p>
+
+          <form method="post" action="?action=income_letter">
+            {% csrf_token %}
+            
+            <div class="mb-3">
+              <label class="form-label">Para (Destinatario) <span class="text-danger">*</span></label>
+              <input 
+                type="text" 
+                name="recipient" 
+                class="form-control" 
+                placeholder="Ej: Dirección General de Impuestos Internos"
+                required
+              >
+              <div class="form-text">Nombre de la entidad o personas a quienes va dirigida la carta.</div>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">Año para Reportar <span class="text-danger">*</span></label>
+              <select name="year" class="form-select" required>
+                <option value="">-- Selecciona un año --</option>
+                {% for year in available_years %}
+                <option value="{{ year }}">{{ year }}</option>
+                {% endfor %}
+              </select>
+              <div class="form-text">Selecciona el año fiscal para el cual deseas generar el reporte de ingresos.</div>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">Asunto</label>
+              <input 
+                type="text" 
+                name="subject" 
+                class="form-control" 
+                value="Carta de Ingresos"
+                disabled
+              >
+              <div class="form-text">El asunto se establece automáticamente como "Carta de Ingresos".</div>
+            </div>
+
+            <div class="alert alert-info">
+              <strong>Nota:</strong> La carta incluirá automáticamente:
+              <ul class="mb-0 mt-2">
+                <li>Un cuerpo de carta profesional en español</li>
+                <li>Una tabla detallada de ingresos por propiedad</li>
+                <li>El total de ingresos confirmados para el año seleccionado</li>
+              </ul>
+            </div>
+
+            <div class="d-flex gap-2">
+              <button type="button" class="btn btn-info" id="previewBtn">Vista Previa</button>
+              <button type="submit" class="btn btn-primary">Generar y Descargar PDF</button>
+              <a href="{% url 'generate_documents' %}" class="btn btn-secondary">Cancelar</a>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PDF Preview Modal -->
+<div class="modal fade" id="pdfPreviewModal" tabindex="-1" aria-labelledby="pdfPreviewModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-centered" style="max-width:90%;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="pdfPreviewModalLabel">Vista Previa - Carta de Ingresos</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-0" style="height:80vh; position:relative;">
+        <div id="pdfLoadingSpinner" style="position:absolute; inset:0; background:rgba(255,255,255,0.85); z-index:1050; display:none; align-items:center; justify-content:center;">
+          <div class="text-center">
+            <div class="spinner-border text-primary" role="status" style="width:3rem; height:3rem;"></div>
+            <div class="mt-2">Generando vista previa...</div>
+          </div>
+        </div>
+        <iframe id="pdfPreviewIframe" src="" style="width:100%; height:100%; border:0;" allowfullscreen></iframe>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" id="downloadFromPreview">Descargar PDF</button>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  var form = document.querySelector('form');
+  var previewBtn = document.getElementById('previewBtn');
+  var modalEl = document.getElementById('pdfPreviewModal');
+  var iframe = document.getElementById('pdfPreviewIframe');
+  var spinner = document.getElementById('pdfLoadingSpinner');
+  var downloadBtn = document.getElementById('downloadFromPreview');
+  var modalInstance = bootstrap.Modal.getOrCreateInstance(modalEl);
+
+  function showSpinner() { spinner.style.display = 'flex'; }
+  function hideSpinner() { spinner.style.display = 'none'; }
+
+  function validateForm() {
+    var recipient = form.querySelector('[name="recipient"]').value.trim();
+    var year = form.querySelector('[name="year"]').value;
+    
+    if (!recipient) {
+      alert('Por favor, ingresa el destinatario.');
+      return false;
+    }
+    if (!year) {
+      alert('Por favor, selecciona un año.');
+      return false;
+    }
+    return true;
+  }
+
+  function buildUrl(isPreview) {
+    var baseUrl = '{% url "generate_documents" %}';
+    var recipient = encodeURIComponent(form.querySelector('[name="recipient"]').value);
+    var year = form.querySelector('[name="year"]').value;
+    var url = baseUrl + '?action=income_letter&recipient=' + recipient + '&year=' + year;
+    if (isPreview) {
+      url += '&preview=1#zoom=150';
+    }
+    return url;
+  }
+
+  // Preview button handler
+  previewBtn.addEventListener('click', function(e) {
+    e.preventDefault();
+    if (!validateForm()) return;
+    
+    showSpinner();
+    var previewUrl = buildUrl(true);
+    iframe.src = previewUrl;
+    modalInstance.show();
+  });
+
+  // Download from preview button
+  downloadBtn.addEventListener('click', function() {
+    if (!validateForm()) return;
+    var downloadUrl = buildUrl(false);
+    window.location.href = downloadUrl;
+  });
+
+  // Hide spinner when iframe loads
+  iframe.addEventListener('load', function() {
+    setTimeout(hideSpinner, 250);
+  });
+
+  // Handle iframe errors
+  iframe.addEventListener('error', function() {
+    console.error('Error loading PDF preview');
+    hideSpinner();
+    alert('Error al cargar la vista previa. Por favor, intenta nuevamente.');
+  });
+
+  // Clear iframe when modal is hidden
+  modalEl.addEventListener('hidden.bs.modal', function () {
+    iframe.src = '';
+    hideSpinner();
+  });
+});
+</script>
+{% endblock %}

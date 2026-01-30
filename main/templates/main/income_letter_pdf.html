@@ -1,0 +1,181 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Carta de Ingresos</title>
+    <style>
+      @page {
+        size: letter;
+        margin: 0.5in 0.75in;
+      }
+      body { 
+        font-family: 'Montserrat', Arial, sans-serif; 
+        color: #344767; 
+        margin: 0;
+        padding: 0;
+        line-height: 1.4;
+        font-size: 11pt;
+      }
+      .header { 
+        text-align: center; 
+        color: #17c1e8; 
+        margin-bottom: 20px;
+      }
+      .header h2 {
+        margin: 0 0 5px 0;
+        font-size: 18pt;
+      }
+      .date-location {
+        text-align: right;
+        margin-bottom: 15px;
+        color: #666;
+        font-size: 10pt;
+      }
+      .recipient {
+        margin-bottom: 15px;
+      }
+      .recipient-line {
+        margin: 3px 0;
+      }
+      .letter-body {
+        margin-top: 15px;
+        margin-bottom: 15px;
+        text-align: justify;
+      }
+      .letter-body p {
+        margin: 10px 0;
+        font-size: 10pt;
+      }
+      .table-section {
+        margin-top: 20px;
+        margin-bottom: 20px;
+      }
+      .table-title {
+        font-weight: bold;
+        font-size: 11pt;
+        margin-bottom: 10px;
+        color: #344767;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 15px;
+      }
+      th {
+        background-color: #17c1e8;
+        color: white;
+        padding: 8px 10px;
+        text-align: left;
+        font-weight: bold;
+        font-size: 10pt;
+      }
+      td {
+        padding: 6px 10px;
+        border-bottom: 1px solid #ddd;
+        font-size: 10pt;
+      }
+      tr:nth-child(even) {
+        background-color: #f9f9f9;
+      }
+      .total-row {
+        background-color: #e8f4f8;
+        font-weight: bold;
+        color: #17c1e8;
+      }
+      .closing {
+        margin-top: 20px;
+      }
+      .closing p {
+        margin: 5px 0;
+        font-size: 10pt;
+      }
+      .signature-space {
+        margin-top: 30px;
+      }
+      .signature-space p {
+        margin: 3px 0;
+        font-size: 10pt;
+      }
+      .footer { 
+        color: #8392ab; 
+        font-size: 9pt; 
+        margin-top: 30px; 
+        text-align: center;
+        border-top: 1px solid #ddd;
+        padding-top: 10px;
+      }
+      .footer p {
+        margin: 2px 0;
+      }
+      .amount-right {
+        text-align: right;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <h2>Carta de Ingresos</h2>
+    </div>
+
+    <div class="date-location">
+      <strong>{{ location }}, {{ date_formatted }}</strong>
+    </div>
+
+    <div class="recipient">
+      <div class="recipient-line">Para: <strong>{{ recipient }}</strong></div>
+    </div>
+
+    <div class="letter-body">
+      <p>Estimado(a) {{ recipient }},</p>
+
+      <p>Por este medio, le remito la presente certificación de ingresos correspondientes al año fiscal {{ year }}, derivados de la actividad de alquiler de inmuebles.</p>
+
+      <p>Conforme a lo dispuesto en la legislación fiscal vigente, certifico que los ingresos registrados en la presente corresponden a pagos efectivamente recibidos por concepto de arrendamiento de propiedades durante el período indicado. Estos ingresos se encuentran debidamente registrados en nuestros sistemas contables y han sido reportados conforme a las obligaciones tributarias establecidas.</p>
+
+      <p>A continuación se detalla el desglose de ingresos confirmados por cada propiedad:</p>
+    </div>
+
+    <div class="table-section">
+      <div class="table-title">Detalle de Ingresos por Propiedad - Año {{ year }}</div>
+      <table>
+        <thead>
+          <tr>
+            <th>Propiedad</th>
+            <th class="amount-right">Ingresos Confirmados</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for property_income in property_incomes %}
+          <tr>
+            <td>{{ property_income.property_name }}</td>
+            <td class="amount-right">${{ property_income.total|floatformat:2 }}</td>
+          </tr>
+          {% endfor %}
+          <tr class="total-row">
+            <td>TOTAL INGRESOS {{ year }}</td>
+            <td class="amount-right">${{ total_income|floatformat:2 }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="letter-body">
+      <p>Esta certificación se emite a solicitud del interesado para los fines que estime conveniente, en particular para presentación ante autoridades fiscales, contables o cualquier otra entidad que la requiera.</p>
+
+      <p>Los montos detallados corresponden exclusivamente a ingresos confirmados y pagados durante el ejercicio fiscal indicado, excluyendo cualquier transacción pendiente, rechazada o anulada.</p>
+    </div>
+
+    <div class="closing">
+      <p>Atentamente,</p>
+      <div class="signature-space">
+        <p><strong>{{ user.full_name }}</strong></p>
+        {% if user.email %}<p>{{ user.email }}</p>{% endif %}
+      </div>
+    </div>
+
+    <div class="footer">
+      <p>Finko - Property Management System</p>
+      <p>Certificado generado el {{ date_formatted }}</p>
+    </div>
+  </body>
+</html>
