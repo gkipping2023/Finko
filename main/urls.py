@@ -55,8 +55,10 @@ urlpatterns = [
     path('my-data/', views.my_data, name='my_data'),
     path('export-my-data/', views.export_my_data, name='export_my_data'),
     path('delete-account/', views.delete_my_account, name='delete_account'),
-
     
+    # Feedback & Support
+    path('feedback/', views.feedback_form, name='feedback_form'),
+    path('feedback/success/', views.feedback_success, name='feedback_success'),
 
 
     

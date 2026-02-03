@@ -2132,3 +2132,151 @@ def delete_my_account(request):
         return redirect('home')
     
     return render(request, 'main/delete_account.html')
+
+
+@login_required(login_url='log_in')
+def feedback_form(request):
+    """Display feedback form for authenticated users"""
+    from .forms import FeedbackForm
+    
+    if request.method == 'POST':
+        form = FeedbackForm(request.POST)
+        if form.is_valid():
+            feedback = form.save(commit=False)
+            feedback.user = request.user
+            feedback.save()
+            
+            # Send email to superusers
+            send_feedback_to_superusers(feedback)
+            
+            messages.success(request, "¡Gracias por tu feedback! Lo hemos recibido y pronto nos comunicaremos contigo si es necesario.")
+            return redirect('feedback_success')
+    else:
+        form = FeedbackForm()
+    
+    return render(request, 'main/feedback_form.html', {'form': form})
+
+
+def feedback_success(request):
+    """Success page after feedback submission"""
+    return render(request, 'main/feedback_success.html')
+
+
+def send_feedback_to_superusers(feedback):
+    """Send feedback notification to all superusers"""
+    from django.contrib.auth import get_user_model
+    from .mailgun_utils import send_mailgun_simple
+    
+    User = get_user_model()
+    superusers = User.objects.filter(is_superuser=True)
+    
+    if not superusers.exists():
+        return
+    
+    superuser_emails = [user.email for user in superusers]
+    
+    feedback_type_display = feedback.get_feedback_type_display()
+    
+    email_html = f"""
+        <html>
+          <head>
+            <style>
+              body {{
+                font-family: 'Montserrat', Arial, sans-serif;
+                background: #f8f9fa;
+                color: #344767;
+                margin: 0;
+                padding: 0;
+              }}
+              .container {{
+                max-width: 600px;
+                margin: 40px auto;
+                background: #fff;
+                border-radius: 12px;
+                box-shadow: 0 2px 8px rgba(44,62,80,0.08);
+                padding: 32px 24px;
+              }}
+              .header {{
+                border-bottom: 3px solid #17c1e8;
+                padding-bottom: 16px;
+                margin-bottom: 24px;
+              }}
+              .header h2 {{
+                color: #17c1e8;
+                margin: 0;
+              }}
+              .feedback-type {{
+                display: inline-block;
+                background: #e3f2fd;
+                color: #1976d2;
+                padding: 4px 12px;
+                border-radius: 20px;
+                font-size: 12px;
+                font-weight: bold;
+                margin-bottom: 16px;
+              }}
+              .user-info {{
+                background: #f5f5f5;
+                padding: 12px 16px;
+                border-radius: 8px;
+                margin-bottom: 16px;
+              }}
+              .user-info p {{
+                margin: 4px 0;
+                font-size: 14px;
+              }}
+              .message-body {{
+                background: #f9f9f9;
+                border-left: 4px solid #17c1e8;
+                padding: 16px;
+                margin: 16px 0;
+                border-radius: 4px;
+              }}
+              .footer {{
+                color: #8392ab;
+                font-size: 13px;
+                margin-top: 24px;
+                text-align: center;
+                border-top: 1px solid #e0e0e0;
+                padding-top: 16px;
+              }}
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <div class="header">
+                <h2>Nuevo Feedback Recibido</h2>
+              </div>
+              <div class="feedback-type">{feedback_type_display}</div>
+              
+              <div class="user-info">
+                <p><strong>De:</strong> {feedback.user.first_name} {feedback.user.last_name}</p>
+                <p><strong>Email:</strong> {feedback.user.email}</p>
+                <p><strong>Fecha:</strong> {feedback.created_at.strftime('%d/%m/%Y %H:%M')}</p>
+                <p><strong>Asunto:</strong> {feedback.subject}</p>
+              </div>
+              
+              <div class="message-body">
+                <strong>Mensaje:</strong>
+                <p>{feedback.message.replace(chr(10), '<br>')}</p>
+              </div>
+              
+              <div class="footer">
+                Accede al panel de administración para ver todos los feedbacks y responder si es necesario.
+              </div>
+            </div>
+          </body>
+        </html>
+        """
+    
+    try:
+        send_mailgun_simple(
+            subject=f"[Feedback] {feedback_type_display} - {feedback.subject}",
+            html=email_html,
+            to_emails=superuser_emails,
+            from_email=settings.DEFAULT_FROM_EMAIL
+        )
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Failed to send feedback email to superusers: {e}")

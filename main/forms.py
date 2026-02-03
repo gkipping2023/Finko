@@ -1,5 +1,5 @@
 from django.forms import ModelForm, ModelChoiceField
-from .models import PLAN_CHOICES, User,Properties,Transaction, Rent, ID_Type, Sex, payment_method
+from .models import PLAN_CHOICES, User, Properties, Transaction, Rent, ID_Type, Sex, payment_method, Feedback
 from django.contrib.auth.forms import UserCreationForm
 from django import forms
 from django_countries.fields import CountryField
@@ -415,3 +415,32 @@ class PublicPaymentForm(forms.Form):
                 pass  # Already handled in clean_rent_number
         
         return cleaned_data
+
+
+class FeedbackForm(forms.ModelForm):
+    """Form for users to submit feedback, comments, issues, and suggestions"""
+    feedback_type = forms.ChoiceField(
+        choices=Feedback.FEEDBACK_TYPES,
+        widget=forms.RadioSelect(attrs={'class': 'form-check-input'}),
+        label='Tipo de mensaje'
+    )
+    subject = forms.CharField(
+        max_length=200,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Asunto del mensaje'
+        }),
+        label='Asunto'
+    )
+    message = forms.CharField(
+        widget=forms.Textarea(attrs={
+            'class': 'form-control',
+            'rows': 6,
+            'placeholder': 'Describe tu comentario, problema, feedback o sugerencia...'
+        }),
+        label='Mensaje'
+    )
+    
+    class Meta:
+        model = Feedback
+        fields = ['feedback_type', 'subject', 'message']

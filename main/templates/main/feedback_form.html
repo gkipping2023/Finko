@@ -1,0 +1,128 @@
+{% extends "index.html" %}
+{% load widget_tweaks %}
+{% block content %}
+
+<div class="container-fluid py-4">
+  <div class="card shadow border-0">
+    <div class="card-header bg-gradient-info pb-3">
+      <h4 class="text-white mb-0">
+        <i class="fas fa-comment-dots me-2"></i>Enviar Feedback
+      </h4>
+      <p class="text-white-50 mb-0 mt-2">Tu opinión es importante para nosotros. Comparte tus comentarios, reporta problemas o sugiere mejoras.</p>
+    </div>
+    <div class="card-body">
+      <form method="POST" class="row g-3">
+        {% csrf_token %}
+
+        <!-- Feedback Type -->
+        <div class="col-12">
+          <label class="form-label fw-bold mb-3">
+            <i class="fas fa-tags me-2"></i>Tipo de mensaje
+          </label>
+          <div class="row">
+            {% for value, label in form.feedback_type.field.choices %}
+              <div class="col-md-6 col-lg-3 mb-3">
+                <div class="form-check">
+                  <input class="form-check-input" type="radio" name="feedback_type" id="id_feedback_type_{{ forloop.counter }}" value="{{ value }}" {% if form.feedback_type.value == value %}checked{% endif %} required>
+                  <label class="form-check-label" for="id_feedback_type_{{ forloop.counter }}">
+                    {% if value == 'comment' %}
+                      <i class="fas fa-comment text-info me-2"></i>
+                    {% elif value == 'feedback' %}
+                      <i class="fas fa-star text-warning me-2"></i>
+                    {% elif value == 'issue' %}
+                      <i class="fas fa-exclamation-circle text-danger me-2"></i>
+                    {% elif value == 'suggestion' %}
+                      <i class="fas fa-lightbulb text-success me-2"></i>
+                    {% endif %}
+                    {{ label }}
+                  </label>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+          {% if form.feedback_type.errors %}
+            <div class="text-danger small mt-2">{{ form.feedback_type.errors.0 }}</div>
+          {% endif %}
+        </div>
+
+        <!-- Subject -->
+        <div class="col-12">
+          <label class="form-label fw-bold">Asunto</label>
+          {% render_field form.subject %}
+          {% if form.subject.errors %}
+            <div class="text-danger small">{{ form.subject.errors.0 }}</div>
+          {% endif %}
+        </div>
+
+        <!-- Message -->
+        <div class="col-12">
+          <label class="form-label fw-bold">Mensaje</label>
+          {% render_field form.message %}
+          <small class="text-muted d-block mt-2">
+            <i class="fas fa-info-circle me-1"></i>
+            Sé lo más detallado posible para que podamos entender mejor tu mensaje
+          </small>
+          {% if form.message.errors %}
+            <div class="text-danger small mt-2">{{ form.message.errors.0 }}</div>
+          {% endif %}
+        </div>
+
+        <!-- Buttons -->
+        <div class="col-12 d-flex gap-2 justify-content-end mt-4">
+          <a href="{% url 'dashboard' %}" class="btn btn-secondary">
+            <i class="fas fa-times me-2"></i>Cancelar
+          </a>
+          <button type="submit" class="btn btn-info">
+            <i class="fas fa-paper-plane me-2"></i>Enviar Feedback
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Info cards -->
+  <div class="row mt-4">
+    <div class="col-md-6">
+      <div class="card bg-light border-0 h-100">
+        <div class="card-body">
+          <h6 class="card-title text-info">
+            <i class="fas fa-comment text-info me-2"></i>Comentarios
+          </h6>
+          <p class="card-text small">Comparte tus pensamientos generales sobre la plataforma.</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="card bg-light border-0 h-100">
+        <div class="card-body">
+          <h6 class="card-title text-warning">
+            <i class="fas fa-star text-warning me-2"></i>Feedback
+          </h6>
+          <p class="card-text small">Danos tu opinión sobre características o experiencia del usuario.</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="card bg-light border-0 h-100">
+        <div class="card-body">
+          <h6 class="card-title text-danger">
+            <i class="fas fa-exclamation-circle text-danger me-2"></i>Reportar un problema
+          </h6>
+          <p class="card-text small">Cuéntanos si encontraste algún error o problema en la plataforma.</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="card bg-light border-0 h-100">
+        <div class="card-body">
+          <h6 class="card-title text-success">
+            <i class="fas fa-lightbulb text-success me-2"></i>Sugerencias
+          </h6>
+          <p class="card-text small">Sugiere nuevas características o mejoras que te gustaría ver.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

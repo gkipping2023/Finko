@@ -1,5 +1,6 @@
 from django.contrib import admin
-from .models import User, Properties, Transaction, Rent, PromoCode, AuditLog
+from django.utils import timezone
+from .models import User, Properties, Transaction, Rent, PromoCode, AuditLog, Feedback
 
 # Register your models here.
 
@@ -67,3 +68,26 @@ class AuditLogAdmin(admin.ModelAdmin):
             kwargs["queryset"] = User.objects.filter(role='T')  # Only Inquilinos
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
+
+@admin.register(Feedback)
+class FeedbackAdmin(admin.ModelAdmin):
+    list_display = ('subject', 'feedback_type', 'user', 'created_at', 'is_read', 'responded_at')
+    list_filter = ('feedback_type', 'is_read', 'created_at')
+    search_fields = ('subject', 'message', 'user__email', 'user__first_name', 'user__last_name')
+    readonly_fields = ('user', 'created_at', 'responded_at')
+    date_hierarchy = 'created_at'
+    
+    fieldsets = (
+        ('Información del Feedback', {
+            'fields': ('user', 'feedback_type', 'subject', 'message', 'created_at')
+        }),
+        ('Estado y Respuesta', {
+            'fields': ('is_read', 'response', 'responded_by', 'responded_at')
+        }),
+    )
+    
+    def save_model(self, request, obj, form, change):
+        if change and 'response' in form.changed_data and obj.response:
+            obj.responded_by = request.user
+            obj.responded_at = timezone.now()
+        super().save_model(request, obj, form, change)

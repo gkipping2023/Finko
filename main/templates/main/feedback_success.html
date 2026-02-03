@@ -1,0 +1,39 @@
+{% extends "index.html" %}
+{% block content %}
+
+<div class="container-fluid py-4">
+  <div class="row justify-content-center">
+    <div class="col-lg-6">
+      <div class="card shadow border-0 text-center">
+        <div class="card-body py-5">
+          <div class="mb-4">
+            <i class="fas fa-check-circle" style="font-size: 4rem; color: #28a745;"></i>
+          </div>
+          
+          <h3 class="card-title mb-3">¡Gracias por tu Feedback!</h3>
+          
+          <p class="card-text text-muted mb-4">
+            Hemos recibido tu mensaje exitosamente. Nuestro equipo revisará tu comentario, problema, feedback o sugerencia y nos comunicaremos contigo si es necesario.
+          </p>
+          
+          <div class="alert alert-info alert-dismissible fade show" role="alert">
+            <i class="fas fa-info-circle me-2"></i>
+            <strong>Nota:</strong> Tu identidad está asociada a este feedback, así el equipo sabe de quién proviene la información.
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+          </div>
+          
+          <div class="d-grid gap-2 d-sm-flex justify-content-sm-center mt-4">
+            <a href="{% url 'dashboard' %}" class="btn btn-primary">
+              <i class="fas fa-home me-2"></i>Volver al Dashboard
+            </a>
+            <a href="{% url 'feedback_form' %}" class="btn btn-outline-secondary">
+              <i class="fas fa-comment-dots me-2"></i>Enviar otro Feedback
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

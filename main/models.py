@@ -305,3 +305,29 @@ class AuditLog(models.Model):
     
     def __str__(self):
         return f"{self.user} - {self.action} - {self.timestamp}"
+
+
+class Feedback(models.Model):
+    """User feedback, comments, issues, and suggestions"""
+    FEEDBACK_TYPES = (
+        ('comment', 'Comentario'),
+        ('feedback', 'Feedback'),
+        ('issue', 'Reportar un problema'),
+        ('suggestion', 'Sugerencia'),
+    )
+    
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    feedback_type = models.CharField(max_length=20, choices=FEEDBACK_TYPES)
+    subject = models.CharField(max_length=200)
+    message = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    is_read = models.BooleanField(default=False)
+    response = models.TextField(blank=True, null=True)
+    responded_at = models.DateTimeField(blank=True, null=True)
+    responded_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='feedback_responses')
+    
+    class Meta:
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"{self.get_feedback_type_display()} - {self.subject} ({self.user.email})"
