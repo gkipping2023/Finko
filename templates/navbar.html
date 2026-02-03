@@ -233,6 +233,14 @@
         <li class="nav-item">
           <a class="nav-link fs-6" href="{% url 'payments' %}">Transactions</a>
         </li>
+        <li class="nav-item">
+          <a class="nav-link fs-6" href="{% url 'generate_documents' %}">Reportes</a>
+        </li>
+        {% else %}
+        <li class="nav-item">
+          <a class="nav-link fs-6" href="{% url 'generate_documents' %}?action=statement">Reportes</a>
+        </li>
+        {% endif %}
         <!-- <li class="nav-item">
           <a class="nav-link fs-6" href="{% url 'documents' %}">Documents</a>
         </li>
@@ -249,7 +257,6 @@
           <a class="nav-link dropdown-toggle fs-6" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
             Devs
           </a>
-          {% endif %}
           <ul class="dropdown-menu">
             <li><a class="dropdown-item" href="/admin">Admin Panel</a></li>
             <li><hr class="dropdown-divider"></li>
@@ -362,6 +369,7 @@
         <div><i class="fa fa-building fa-lg" aria-hidden="true"></i></div>
         <div style="font-size:12px; line-height:1;">Propiedades</div>
       </a>
+      {% if request.user.role == "O" %}
       <a href="{% url 'payments' %}" class="text-center text-dark small" style="width:33%; text-decoration:none;">
         <div><i class="fa fa-money-bill-wave fa-lg" aria-hidden="true"></i></div>
         <div style="font-size:12px; line-height:1;">Transacciones</div>
@@ -370,6 +378,12 @@
         <div><i class="fa fa-file-lines fa-lg" aria-hidden="true"></i></div>
         <div style="font-size:12px; line-height:1;">Reportes</div>
       </a>
+      {% else %}
+      <a href="{% url 'generate_documents' %}?action=statement" class="text-center text-dark small" style="width:33%; text-decoration:none;">
+        <div><i class="fa fa-file-lines fa-lg" aria-hidden="true"></i></div>
+        <div style="font-size:12px; line-height:1;">Reportes</div>
+      </a>
+      {% endif %}
     </div>
   </div>
 </div>

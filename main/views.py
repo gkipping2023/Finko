@@ -6,7 +6,7 @@ import re
 import stripe
 from datetime import date, datetime, timedelta
 from django.utils.timezone import now
-# import calendar
+from calendar import monthrange
 from django.urls import reverse
 from django.conf import settings
 from django.utils.http import urlsafe_base64_encode
@@ -1289,11 +1289,17 @@ def reports(request):
 def generate_documents(request):
   """Generate letters, reports, and payment history PDFs for users.
 
-  - GET without action: show UI to choose generation options
+  - GET without action: show UI to choose generation options (owners only)
+  - Tenants without action are redirected to statement form
   - GET?action=payment_history: returns a PDF with the user's confirmed receipts
   - GET?action=letter or POST?action=letter: show form / generate letter PDF
+  - GET?action=statement: statement/account statement generation (all users)
   """
   action = request.GET.get('action')
+
+  # Redirect tenants to statement form if no action specified
+  if not action and request.user.role == 'T':
+    return redirect(f"{reverse('generate_documents')}?action=statement")
 
   if action == 'payment_history':
     # Filters: start/end date and properties
@@ -1460,6 +1466,112 @@ def generate_documents(request):
       return response
     else:
       return render(request, 'main/letter_form.html', {})
+
+  if action == 'statement':
+    # Statement/Account statement generation by month
+    month_str = request.GET.get('month')  # Format: YYYY-MM
+    property_id = request.GET.get('property')
+    preview = request.GET.get('preview')
+    
+    # Determine the month range
+    property_obj = None
+    start_date = None
+    end_date = None
+    transactions = []
+    
+    if month_str:
+      try:
+        # Parse month string (YYYY-MM format)
+        month_parts = month_str.split('-')
+        year = int(month_parts[0])
+        month = int(month_parts[1])
+        
+        # Get first and last day of the month
+        from calendar import monthrange
+        last_day = monthrange(year, month)[1]
+        start_date = date(year, month, 1)
+        end_date = date(year, month, last_day)
+      except (ValueError, IndexError):
+        start_date = None
+        end_date = None
+    
+    if start_date and end_date:
+      qs = Transaction.objects.filter(
+        type='receipt', 
+        status='confirmed',
+        transaction_date__gte=start_date,
+        transaction_date__lte=end_date
+      )
+      
+      if request.user.role == 'O':
+        qs = qs.filter(owner=request.user)
+        # If property is specified, filter by it
+        if property_id:
+          try:
+            prop_id = int(property_id)
+            qs = qs.filter(property__id=prop_id)
+            property_obj = Properties.objects.get(id=prop_id, owner=request.user)
+          except (ValueError, Properties.DoesNotExist):
+            pass
+      else:
+        qs = qs.filter(tenant=request.user)
+      
+      transactions = qs.order_by('property__alias', '-transaction_date')
+    
+    # Calculate total amount
+    total_amount = sum(t.amount for t in transactions)
+    
+    months_es = {
+      1: 'enero', 2: 'febrero', 3: 'marzo', 4: 'abril',
+      5: 'mayo', 6: 'junio', 7: 'julio', 8: 'agosto',
+      9: 'septiembre', 10: 'octubre', 11: 'noviembre', 12: 'diciembre'
+    }
+    
+    # Format month display
+    month_display = ''
+    if start_date:
+      month_display = f"{months_es[start_date.month]} de {start_date.year}"
+    
+    # If request method is POST or if we need to generate PDF
+    if request.method == 'POST' or preview:
+      html_string = render_to_string('main/statement_pdf.html', {
+        'transactions': transactions,
+        'user': request.user,
+        'property': property_obj,
+        'month_display': month_display,
+        'total_amount': total_amount,
+        'now': date.today(),
+        'start_date': start_date,
+        'end_date': end_date,
+      })
+      pdf = HTML(string=html_string).write_pdf()
+      response = HttpResponse(pdf, content_type='application/pdf')
+      
+      # Check if preview mode
+      if preview in ['1', 'true', 'yes']:
+        response['Content-Disposition'] = 'inline; filename="estado_cuenta_preview.pdf"'
+      else:
+        if property_obj:
+          response['Content-Disposition'] = f'attachment; filename="estado_cuenta_{month_str}_{property_obj.id}_{request.user.id}.pdf"'
+        else:
+          response['Content-Disposition'] = f'attachment; filename="estado_cuenta_{month_str}_{request.user.id}.pdf"'
+      return response
+    else:
+      # Show form
+      if request.user.role == 'O':
+        props = Properties.objects.filter(owner=request.user)
+      else:
+        props = Properties.objects.filter(rent__tenant=request.user).distinct()
+      
+      # Set default month to current month
+      today = date.today()
+      current_month = f"{today.year}-{today.month:02d}"
+      
+      return render(request, 'main/statement_form.html', {
+        'properties': props,
+        'is_owner': request.user.role == 'O',
+        'current_month': current_month,
+      })
 
   # Default: render the generation UI (pass available properties)
   if request.user.role == 'O':

@@ -1,0 +1,125 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Estado de Cuenta</title>
+    <style>
+      body { font-family: 'Montserrat', Arial, sans-serif; color:#344767; margin:24px; }
+      table { width:100%; border-collapse: collapse; margin-top:10px }
+      th, td { padding:10px 8px; border:1px solid #e9ecef; text-align:left }
+      th { background:#f8f9fa; font-weight:bold; }
+      .header { text-align:center; color:#17c1e8; margin-bottom:20px; }
+      .header h2 { margin:0; color:#344767; }
+      .statement-period { font-size:14px; color:#666; margin-top:5px; }
+      .property-section { margin-top:20px; }
+      .property-name { font-size:16px; font-weight:bold; color:#344767; margin-bottom:10px; }
+      .summary { margin-top:15px; padding:10px; background:#f8f9fa; border-left:3px solid #17c1e8; }
+      .summary-row { display:flex; justify-content:space-between; margin:5px 0; }
+      .total { font-weight:bold; font-size:16px; color:#17c1e8; }
+      .footer { color:#8392ab; font-size:12px; margin-top:30px; text-align:center; border-top:1px solid #e9ecef; padding-top:10px; }
+      .no-data { text-align:center; color:#999; padding:20px; }
+      .amount { text-align:right; }
+      .date { text-align:center; }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <h2>Estado de Cuenta / Extracto de Pagos</h2>
+      <div class="statement-period">
+        Período: {{ month_display }}
+      </div>
+      <div>Usuario: {{ user.full_name }} &nbsp; | &nbsp; Fecha de Generación: {{ now|date:"d M Y" }}</div>
+      {% if property %}
+        <div style="margin-top:5px; font-size:14px;">Propiedad: {{ property.alias }}</div>
+      {% endif %}
+    </div>
+
+    {% if transactions %}
+      <div class="property-section">
+        {% if property %}
+          <!-- For owners viewing a single property -->
+          <table>
+            <thead>
+              <tr>
+                <th>Número de Transacción</th>
+                <th class="date">Fecha</th>
+                <th>Método de Pago</th>
+                <th class="amount">Monto</th>
+                <th>Estado</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for t in transactions %}
+              <tr>
+                <td>{{ t.transaction_number }}</td>
+                <td class="date">{{ t.transaction_date|date:"d M Y" }}</td>
+                <td>{{ t.get_payment_method_display }}</td>
+                <td class="amount">${{ t.amount }}</td>
+                <td>{{ t.get_status_display }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          
+          <div class="summary">
+            <div class="summary-row">
+              <span>Total de Pagos:</span>
+              <span class="total">${{ total_amount }}</span>
+            </div>
+          </div>
+        {% else %}
+          <!-- For tenants viewing multiple properties -->
+          {% regroup transactions by property.alias as prop_groups %}
+          {% for prop_group in prop_groups %}
+            <div class="property-name">{{ prop_group.grouper }}</div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Número de Transacción</th>
+                  <th class="date">Fecha</th>
+                  <th>Método de Pago</th>
+                  <th class="amount">Monto</th>
+                  <th>Estado</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for t in prop_group.list %}
+                <tr>
+                  <td>{{ t.transaction_number }}</td>
+                  <td class="date">{{ t.transaction_date|date:"d M Y" }}</td>
+                  <td>{{ t.get_payment_method_display }}</td>
+                  <td class="amount">${{ t.amount }}</td>
+                  <td>{{ t.get_status_display }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+            
+            <div class="summary">
+              <div class="summary-row">
+                <span>Subtotal {{ prop_group.grouper }}:</span>
+                <span class="total">${{ prop_group.list|length }}</span>
+              </div>
+            </div>
+          {% endfor %}
+        {% endif %}
+      </div>
+
+      <div class="summary" style="margin-top:30px; font-size:16px; background:#e8f4f8;">
+        <div class="summary-row">
+          <span style="font-weight:bold;">TOTAL GENERAL:</span>
+          <span class="total" style="font-size:18px;">${{ total_amount }}</span>
+        </div>
+      </div>
+    {% else %}
+      <div class="no-data">
+        <p>No hay transacciones para mostrar en el período seleccionado.</p>
+      </div>
+    {% endif %}
+
+    <div class="footer">
+      <p>Este es un documento de carácter informativo. Todos los datos mostrados corresponden a transacciones confirmadas en el sistema.</p>
+    </div>
+  </body>
+</html>
+

@@ -1,0 +1,199 @@
+{% extends "index.html" %}
+
+{% block content %}
+<div class="container-fluid py-4">
+  <div class="row">
+    <div class="col-md-8 offset-md-2">
+      <div class="card">
+        <div class="card-body">
+          <h4 class="font-weight-bolder">Estado de Cuenta / Extracto de Pagos</h4>
+          <p class="text-muted">Genera un estado de cuenta con el historial de pagos para un período específico.</p>
+
+          <form method="post" action="?action=statement">
+            {% csrf_token %}
+            
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Mes <span class="text-danger">*</span></label>
+                <select name="month_num" class="form-select" required>
+                  <option value="">-- Selecciona un mes --</option>
+                  <option value="01">Enero</option>
+                  <option value="02">Febrero</option>
+                  <option value="03">Marzo</option>
+                  <option value="04">Abril</option>
+                  <option value="05">Mayo</option>
+                  <option value="06">Junio</option>
+                  <option value="07">Julio</option>
+                  <option value="08">Agosto</option>
+                  <option value="09">Septiembre</option>
+                  <option value="10">Octubre</option>
+                  <option value="11">Noviembre</option>
+                  <option value="12">Diciembre</option>
+                </select>
+              </div>
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Año <span class="text-danger">*</span></label>
+                <select name="year_num" class="form-select" required>
+                  <option value="">-- Selecciona un año --</option>
+                  <option value="2024">2024</option>
+                  <option value="2025">2025</option>
+                  <option value="2026" selected>2026</option>
+                  <option value="2027">2027</option>
+                </select>
+              </div>
+            </div>
+
+            {% if is_owner %}
+            <div class="mb-3">
+              <label class="form-label">Propiedad <span class="text-danger">*</span></label>
+              <select name="property" class="form-select" required>
+                <option value="">-- Selecciona una propiedad --</option>
+                {% for prop in properties %}
+                <option value="{{ prop.id }}">{{ prop.alias }}</option>
+                {% endfor %}
+              </select>
+              <div class="form-text">Selecciona la propiedad para la cual deseas generar el estado de cuenta.</div>
+            </div>
+            {% else %}
+            <div class="alert alert-info">
+              <strong>Nota:</strong> Como inquilino, el estado de cuenta mostrará todos los pagos realizados en el período seleccionado.
+            </div>
+            {% endif %}
+
+            <div class="alert alert-info">
+              <strong>Información del Documento:</strong>
+              <ul class="mb-0 mt-2">
+                <li>Incluye todos los pagos confirmados en el mes seleccionado</li>
+                <li>Muestra detalles de cada transacción</li>
+                <li>Disponible para descargar en PDF</li>
+              </ul>
+            </div>
+
+            <div class="d-flex gap-2">
+              <button type="button" class="btn btn-info" id="previewBtn">Vista Previa</button>
+              <button type="submit" class="btn btn-primary">Generar y Descargar PDF</button>
+              <a href="{% url 'generate_documents' %}" class="btn btn-secondary">Cancelar</a>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PDF Preview Modal -->
+<div class="modal fade" id="pdfPreviewModal" tabindex="-1" aria-labelledby="pdfPreviewModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-centered" style="max-width:90%;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="pdfPreviewModalLabel">Vista Previa - Estado de Cuenta</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-0" style="height:80vh; position:relative;">
+        <div id="pdfLoadingSpinner" style="position:absolute; inset:0; background:rgba(255,255,255,0.85); z-index:1050; display:none; align-items:center; justify-content:center;">
+          <div class="text-center">
+            <div class="spinner-border text-primary" role="status" style="width:3rem; height:3rem;"></div>
+            <div class="mt-2">Generando vista previa...</div>
+          </div>
+        </div>
+        <iframe id="pdfPreviewIframe" src="" style="width:100%; height:100%; border:0;" allowfullscreen></iframe>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" id="printFromPreview">Imprimir</button>
+        <button type="button" class="btn btn-primary" id="downloadFromPreview">Descargar PDF</button>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  var form = document.querySelector('form');
+  var previewBtn = document.getElementById('previewBtn');
+  var modalEl = document.getElementById('pdfPreviewModal');
+  var iframe = document.getElementById('pdfPreviewIframe');
+  var spinner = document.getElementById('pdfLoadingSpinner');
+  var downloadBtn = document.getElementById('downloadFromPreview');
+  var printBtn = document.getElementById('printFromPreview');
+  var modalInstance = bootstrap.Modal.getOrCreateInstance(modalEl);
+
+  function showSpinner() { spinner.style.display = 'flex'; }
+  function hideSpinner() { spinner.style.display = 'none'; }
+
+  function validateForm() {
+    var month = form.querySelector('[name="month_num"]').value;
+    var year = form.querySelector('[name="year_num"]').value;
+    {% if is_owner %}
+    var property = form.querySelector('[name="property"]').value;
+    
+    if (!property) {
+      alert('Por favor, selecciona una propiedad.');
+      return false;
+    }
+    {% endif %}
+    
+    if (!month) {
+      alert('Por favor, selecciona un mes.');
+      return false;
+    }
+    if (!year) {
+      alert('Por favor, selecciona un año.');
+      return false;
+    }
+    return true;
+  }
+
+  function buildUrl(isPreview) {
+    var baseUrl = '{% url "generate_documents" %}';
+    var month = form.querySelector('[name="month_num"]').value;
+    var year = form.querySelector('[name="year_num"]').value;
+    var monthString = year + '-' + month;
+    {% if is_owner %}
+    var property = form.querySelector('[name="property"]').value;
+    var url = baseUrl + '?action=statement&month=' + encodeURIComponent(monthString) + '&property=' + property;
+    {% else %}
+    var url = baseUrl + '?action=statement&month=' + encodeURIComponent(monthString);
+    {% endif %}
+    if (isPreview) {
+      url += '&preview=1#zoom=150';
+    }
+    return url;
+  }
+
+  // Preview button handler
+  previewBtn.addEventListener('click', function(e) {
+    e.preventDefault();
+    if (!validateForm()) return;
+    
+    showSpinner();
+    iframe.src = buildUrl(true);
+    modalInstance.show();
+    
+    iframe.onload = function() {
+      hideSpinner();
+    };
+  });
+
+  // Download button handler (from modal)
+  downloadBtn.addEventListener('click', function(e) {
+    e.preventDefault();
+    window.location.href = buildUrl(false);
+  });
+
+  // Print button handler (from modal)
+  printBtn.addEventListener('click', function(e) {
+    e.preventDefault();
+    iframe.contentWindow.print();
+  });
+
+  // Form submit handler
+  form.addEventListener('submit', function(e) {
+    if (!validateForm()) {
+      e.preventDefault();
+    }
+  });
+});
+</script>
+
+{% endblock %}
