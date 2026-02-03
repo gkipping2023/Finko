@@ -20,7 +20,7 @@ FORM_LABELS = {
         'first_name': 'Nombre',
         'last_name': 'Apellido',
         'id_type': 'Tipo de Identificación',
-        'role': 'Rol',
+        'role': 'Inquilino o Propietario',
         'personal_id': 'Número de Identificación',
         'nac': 'Nacionalidad',
         'dob': 'Fecha de Nacimiento',

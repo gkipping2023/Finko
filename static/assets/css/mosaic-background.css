@@ -1,0 +1,28 @@
+/* Mosaic Background Style */
+body {
+  background-image: url('/static/assets/img/finko_background_4.png');
+  background-attachment: fixed;
+  background-position: center;
+  background-repeat: repeat;
+  background-size: 35%; /* Adjust size as needed */
+}
+
+/* Ensure proper styling for full coverage */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: url('/static/assets/img/finko_background_4.png');
+  background-attachment: fixed;
+  background-repeat: repeat;
+  background-size: 35%; /* Adjust size as needed */
+  z-index: -1;
+}
+
+/* Optional: Add a slight overlay for better readability if needed */
+body {
+  background-color: rgba(255, 255, 255, 0.95);
+}
