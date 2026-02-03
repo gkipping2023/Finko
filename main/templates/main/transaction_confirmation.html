@@ -55,8 +55,8 @@
         }
         
         .card-header {
-            background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
-            color: white;
+            background: linear-gradient(0deg, #ffffff 90%, #ea580c 10%);
+            color: #5e17eb;
             border-radius: 16px 16px 0 0;
             padding: 24px 20px;
             text-align: center;
@@ -68,6 +68,15 @@
             font-weight: 700;
             font-size: 24px;
             letter-spacing: -0.5px;
+        }
+        
+        .logo-img {
+            height: 60px;
+            width: auto;
+            margin-bottom: 12px;
+            display: block;
+            margin-left: auto;
+            margin-right: auto;
         }
         
         .card-body {
@@ -198,6 +207,9 @@
             <div class="col-md-8">
                 <div class="card">
                     <div class="card-header">
+                        {% if logo_base64 %}
+                            <img src="{{ logo_base64 }}" alt="Finko Logo" class="logo-img">
+                        {% endif %}
                         <h3>Recibo de Pago</h3>
                     </div>
                     <div class="card-body">

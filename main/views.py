@@ -26,11 +26,43 @@ from .filters import TransactionFilter
 from weasyprint import HTML
 from django.http import HttpResponse
 from main.mailgun_utils import send_mailgun_simple
+import base64
+from pathlib import Path
+
+
+# Utility function to get logo for PDF (base64 embedded)
+def get_logo_for_pdf(fallback_url=None):
+    """
+    Get Finko logo embedded as base64 for reliable PDF rendering.
+    Falls back to external URL if local file is unavailable.
+    
+    Args:
+        fallback_url: External URL to use if local file not found (optional)
+    
+    Returns:
+        Data URI string for img src or empty string if not found
+    """
+    logo_path = settings.BASE_DIR / 'static' / 'assets' / 'img' / 'finko_logo.png'
+    
+    try:
+        if logo_path.exists():
+            with open(logo_path, 'rb') as f:
+                b64 = base64.b64encode(f.read()).decode('utf-8')
+                return f'data:image/png;base64,{b64}'
+    except Exception as e:
+        print(f"Error loading logo for PDF: {e}")
+    
+    # Return fallback external URL if provided
+    return fallback_url or ''
 
 
 #PDF Generation Function
 def render_transaction_pdf(transaction):
-    html_string = render_to_string('main/transaction_confirmation.html', {'transaction': transaction})
+    context = {
+        'transaction': transaction,
+        'logo_base64': get_logo_for_pdf()
+    }
+    html_string = render_to_string('main/transaction_confirmation.html', context)
     html = HTML(string=html_string)
     pdf = html.write_pdf()
     return pdf
@@ -1042,7 +1074,11 @@ from django.template.loader import render_to_string
 from weasyprint import HTML
 
 def send_receipt_to_tenant(transaction):
-    html_string = render_to_string('main/transaction_confirmation.html', {'transaction': transaction})
+    context = {
+        'transaction': transaction,
+        'logo_base64': get_logo_for_pdf()
+    }
+    html_string = render_to_string('main/transaction_confirmation.html', context)
     pdf = HTML(string=html_string).write_pdf()
     tenant_email = transaction.tenant.email
     
@@ -1546,7 +1582,7 @@ def preview_transaction_confirmation(request):
     }
 
     # Render the template with the dummy data
-    return render(request, 'main/transaction_confirmation.html', {'transaction': dummy_transaction})
+    return render(request, 'main/transaction_confirmation.html', {'transaction': dummy_transaction, 'logo_base64': get_logo_for_pdf()})
 
 def public_payment_portal(request):
     """Public payment portal - no login required"""
