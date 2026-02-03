@@ -17,6 +17,7 @@
       <!-- Date Range Picker CSS (CDN) -->
       <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css" />
       <form method="get" class="row mb-3 align-items-end">
+        {% csrf_token %}
         {% for field in filter.form.visible_fields %}
           <div class="col-md-3 mb-2">
             <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
@@ -81,7 +82,7 @@
               </td>
               <td class="text-sm text-center">{{ transaction.description }}</td>
               <td class="text-center">
-                <a href="#" class="pdf-preview-link" data-bs-toggle="modal" data-bs-target="#pdfPreviewModal" data-pdf-url="{% url 'transaction_pdf' transaction.id %}">
+                <a href="#" class="pdf-preview-link" data-bs-toggle="modal" data-bs-target="#pdfPreviewModal" data-pdf-url="{% url 'transaction_pdf' transaction.id %}" data-transaction-id="{{ transaction.id }}">
                   <i class="bi bi-file-earmark-pdf-fill text-danger fs-4" title="Preview PDF"></i>
                 </a>
               </td>
@@ -116,6 +117,9 @@
               <iframe id="pdfPreviewIframe" src="" style="width:100%; height:100%; border:0;" allowfullscreen></iframe>
             </div>
             <div class="modal-footer">
+              <button type="button" class="btn btn-warning" id="resendConfirmationBtn" title="Reenviar confirmación al inquilino">
+                <i class="fas fa-envelope me-1"></i> Reenviar Confirmación
+              </button>
               <a id="pdfDownloadBtn" class="btn btn-primary" href="#" target="_blank" rel="noopener">Descargar PDF</a>
               <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
             </div>
@@ -128,6 +132,8 @@
         var modalEl = document.getElementById('pdfPreviewModal');
         var iframe = document.getElementById('pdfPreviewIframe');
         var downloadBtn = document.getElementById('pdfDownloadBtn');
+        var resendBtn = document.getElementById('resendConfirmationBtn');
+        var currentTransactionId = null;
         var modalInstance = bootstrap.Modal.getOrCreateInstance(modalEl);
 
         // Use click handler to set iframe src before showing modal to avoid timing issues.
@@ -139,6 +145,7 @@
           link.addEventListener('click', function(e) {
             e.preventDefault();
             var pdfUrl = this.getAttribute('data-pdf-url');
+            currentTransactionId = this.getAttribute('data-transaction-id');
             if (!pdfUrl) return;
             var previewUrl = pdfUrl + (pdfUrl.indexOf('?') === -1 ? '?preview=1' : '&preview=1');
             // show spinner immediately
@@ -146,6 +153,43 @@
             iframe.src = previewUrl;
             downloadBtn.href = pdfUrl;
             modalInstance.show();
+          });
+        });
+
+        // Handle resend confirmation button
+        resendBtn.addEventListener('click', function(e) {
+          e.preventDefault();
+          if (!currentTransactionId) {
+            alert('Error: No se pudo identificar la transacción.');
+            return;
+          }
+          
+          var originalText = resendBtn.innerHTML;
+          resendBtn.disabled = true;
+          resendBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Enviando...';
+          
+          fetch('{% url "confirm_payment" 0 %}'.replace('0', currentTransactionId), {
+            method: 'POST',
+            headers: {
+              'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || '',
+              'Content-Type': 'application/json',
+              'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify({ resend: true })
+          })
+          .then(response => {
+            if (response.ok) {
+              alert('¡Confirmación reenviada exitosamente!');
+              resendBtn.disabled = false;
+              resendBtn.innerHTML = originalText;
+            } else {
+              throw new Error('Error al reenviar');
+            }
+          })
+          .catch(error => {
+            alert('Error al reenviar la confirmación. Por favor, intenta de nuevo.');
+            resendBtn.disabled = false;
+            resendBtn.innerHTML = originalText;
           });
         });
 

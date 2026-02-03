@@ -1061,12 +1061,36 @@ def report_payments(request):
 def confirm_payment(request, transaction_id):
     transaction = get_object_or_404(Transaction, id=transaction_id)
     if request.method == 'POST':
-        transaction.status = 'confirmed'
-        transaction.type = 'receipt' #Cambia el tipo de pago a recibo al confirmar.
-        transaction.save()
-        # Generate PDF and send to tenant (see next step)
-        send_receipt_to_tenant(transaction)
-        messages.success(request, "Pago confirmado y recibo enviado al inquilino.")
+        # Check if this is a resend request
+        resend = request.POST.get('resend') or request.GET.get('resend')
+        
+        # If POST with JSON body (from AJAX), parse it
+        if request.content_type == 'application/json':
+            import json
+            try:
+                data = json.loads(request.body)
+                resend = data.get('resend', False)
+            except:
+                pass
+        
+        if resend:
+            # Just resend the email without changing status
+            send_receipt_to_tenant(transaction)
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                # Return JSON for AJAX requests
+                return JsonResponse({'success': True, 'message': 'Confirmación reenviada exitosamente'})
+            messages.success(request, "Confirmación reenviada al inquilino.")
+        else:
+            # Original confirm payment flow
+            transaction.status = 'confirmed'
+            transaction.type = 'receipt' #Cambia el tipo de pago a recibo al confirmar.
+            transaction.save()
+            # Generate PDF and send to tenant (see next step)
+            send_receipt_to_tenant(transaction)
+            messages.success(request, "Pago confirmado y recibo enviado al inquilino.")
+        
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({'success': True})
         return redirect('dashboard')
     return render(request, 'main/confirm_payment.html', {'transaction': transaction})
 
