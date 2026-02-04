@@ -263,9 +263,13 @@ def contact(request):
         subject = request.POST.get('subject')
         message = request.POST.get('message')
         
-        # Send email notification
-        email_subject = f"Nuevo mensaje de contacto: {subject}"
-        email_body = f"""
+        # Send email notification to all superusers
+        superusers = User.objects.filter(is_superuser=True)
+        superuser_emails = [user.email for user in superusers]
+        
+        if superuser_emails:
+            email_subject = f"Nuevo mensaje de contacto: {subject}"
+            email_body = f"""
         Nombre: {name}
         Email: {email}
         Teléfono: {phone}
@@ -274,16 +278,19 @@ def contact(request):
         Mensaje:
         {message}
         """
-        
-        try:
-            send_mailgun_simple(
-                to_email=settings.DEFAULT_FROM_EMAIL,
-                subject=email_subject,
-                body=email_body
-            )
-            messages.success(request, 'Tu mensaje ha sido enviado exitosamente. Te contactaremos pronto.')
-        except Exception as e:
-            messages.error(request, 'Hubo un error al enviar tu mensaje. Por favor intenta de nuevo.')
+            
+            try:
+                send_mailgun_simple(
+                    to_emails=superuser_emails,
+                    subject=email_subject,
+                    body=email_body,
+                    from_email=settings.DEFAULT_FROM_EMAIL
+                )
+                messages.success(request, 'Tu mensaje ha sido enviado exitosamente. Te contactaremos pronto.')
+            except Exception as e:
+                messages.error(request, 'Hubo un error al enviar tu mensaje. Por favor intenta de nuevo.')
+        else:
+            messages.warning(request, 'No hay administradores disponibles en este momento.')
         
         return redirect('contact')
     
