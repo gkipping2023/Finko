@@ -1,5 +1,5 @@
 from django.forms import ModelForm, ModelChoiceField
-from .models import PLAN_CHOICES, User, Properties, Transaction, Rent, ID_Type, Sex, payment_method, Feedback
+from .models import PLAN_CHOICES, User, Properties, Transaction, Rent, ID_Type, Sex, payment_method, Feedback, LATE_FEE_CHOICES
 from django.contrib.auth.forms import UserCreationForm
 from django import forms
 from django_countries.fields import CountryField
@@ -138,6 +138,19 @@ class NewRentForm(BaseCustomModelForm):
     start_date = forms.DateField(widget=forms.DateInput(attrs={'type':'date', 'class':'form-control'}))
     end_date = forms.DateField(widget=forms.DateInput(attrs={'type':'date', 'class':'form-control'}))
     next_invoice_date = forms.DateField(widget=forms.DateInput(attrs={'type':'date', 'class':'form-control'}), required=False)
+    late_fee_type = forms.ChoiceField(
+        choices=LATE_FEE_CHOICES,
+        widget=forms.HiddenInput(),
+        initial='none',
+        label='Late Fee Type'
+    )
+    late_fee_amount = forms.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        required=False,
+        widget=forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Ingresa la cantidad fija'}),
+        label='Fixed Late Fee Amount'
+    )
 
     # Unregistered tenant fields
     unregistered_tenant_name = forms.CharField(required=False, widget=forms.TextInput(attrs={'class': 'form-control'}))
@@ -154,6 +167,7 @@ class NewRentForm(BaseCustomModelForm):
         fields = [
             'tenant',  # Registered tenant (optional)
             'start_date', 'end_date', 'rent_amount', 'rent_due_date', 'next_invoice_date',
+            'late_fee_type', 'late_fee_amount',
             'unregistered_tenant_name', 'unregistered_tenant_email', 'unregistered_tenant_phone',
             'unregistered_tenant_id_type', 'unregistered_tenant_personal_id',
             'unregistered_tenant_dob', 'unregistered_tenant_nac', 'unregistered_tenant_sex',
@@ -163,15 +177,20 @@ class NewRentForm(BaseCustomModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['tenant'].required = False  # Make tenant optional for unregistered tenants
+        self.fields['late_fee_amount'].required = False  # Not required for percentage-based fees
         for field_name, field in self.fields.items():
-            if not hasattr(field.widget, 'input_type') or field.widget.input_type != 'hidden':
-                field.widget.attrs['class'] = 'form-control'
+            if field_name not in ['late_fee_type', 'late_fee_amount']:  # Don't apply form-control to radio buttons or hidden fields
+                if not hasattr(field.widget, 'input_type') or field.widget.input_type != 'hidden':
+                    if not isinstance(field.widget, forms.RadioSelect):
+                        field.widget.attrs['class'] = 'form-control'
 
     def clean(self):
         cleaned_data = super().clean()
         tenant = cleaned_data.get('tenant')
         name = cleaned_data.get('unregistered_tenant_name')
         email = cleaned_data.get('unregistered_tenant_email')
+        late_fee_type = cleaned_data.get('late_fee_type')
+        late_fee_amount = cleaned_data.get('late_fee_amount')
 
         # Check if EITHER registered tenant OR both unregistered fields are provided
         has_registered_tenant = tenant is not None
@@ -186,6 +205,12 @@ class NewRentForm(BaseCustomModelForm):
         if has_unregistered_tenant and has_registered_tenant:
             raise forms.ValidationError(
                 "Por favor selecciona solo una opción: inquilino registrado O inquilino no registrado."
+            )
+
+        # Validate late_fee_amount is provided when fixed_amount is selected
+        if late_fee_type == 'fixed_amount' and not late_fee_amount:
+            raise forms.ValidationError(
+                "Por favor ingresa una cantidad fija para la tarifa de mora."
             )
 
         # Set next_invoice_date if not provided

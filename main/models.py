@@ -60,6 +60,13 @@ Duration_of_Lease = (
     ('24','24 meses')
 )
 
+LATE_FEE_CHOICES = (
+    ('none', 'Ninguno'),
+    ('10_percent', '10%'),
+    ('20_percent', '20%'),
+    ('fixed_amount', 'Cantidad Fija'),
+)
+
 Status = (
     ('available','Disponible'),
     ('no_available','No Disponible')
@@ -199,6 +206,25 @@ class Rent(models.Model):
     unregistered_tenant_dob = models.DateField(blank=True, null=True)
     unregistered_tenant_nac = CountryField(blank=True, null=True)
     unregistered_tenant_sex = models.CharField(choices=Sex,max_length=100,null=True, blank=True)
+    late_fee_type = models.CharField(choices=LATE_FEE_CHOICES, max_length=20, default='none')
+    late_fee_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+
+    def get_late_fee(self):
+        """
+        Calculate the late fee based on the late_fee_type and rent_amount.
+        Returns the calculated or fixed late fee amount.
+        """
+        from decimal import Decimal
+        
+        if self.late_fee_type == 'none':
+            return Decimal('0.00')
+        elif self.late_fee_type == '10_percent':
+            return self.rent_amount * Decimal('0.10')
+        elif self.late_fee_type == '20_percent':
+            return self.rent_amount * Decimal('0.20')
+        elif self.late_fee_type == 'fixed_amount':
+            return self.late_fee_amount or Decimal('0.00')
+        return Decimal('0.00')
 
     def save(self, *args, **kwargs):
         if not self.pk and not self.rent_number:

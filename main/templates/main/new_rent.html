@@ -1,6 +1,35 @@
 {% extends "index.html" %}
 {% block content %}
 
+<style>
+  .late-fee-option {
+    background-color: transparent;
+    padding: 10px 12px;
+    border-radius: 4px;
+    transition: background-color 0.2s ease;
+  }
+
+  .late-fee-option:hover {
+    background-color: transparent;
+  }
+
+  .form-check-input {
+    cursor: pointer;
+    margin-right: 8px;
+  }
+
+  .form-check-label {
+    cursor: pointer;
+    margin-bottom: 0;
+    font-weight: 500;
+  }
+
+  .form-check-input:checked ~ .form-check-label {
+    color: #007bff;
+    font-weight: 600;
+  }
+</style>
+
 <div class="container-fluid py-4">
   <div class="row justify-content-center">
     <div class="col-lg-8 col-md-10 col-12">
@@ -68,7 +97,7 @@
                 <p class="fw-bold mb-2"><strong>Property:</strong> {{ selected_property.alias }}</p>
               </div>
             {% for field in form %}
-              {% if field.name not in "unregistered_tenant_name unregistered_tenant_email unregistered_tenant_phone unregistered_tenant_id_type unregistered_tenant_personal_id unregistered_tenant_dob unregistered_tenant_nac unregistered_tenant_sex" %}
+              {% if field.name not in "unregistered_tenant_name unregistered_tenant_email unregistered_tenant_phone unregistered_tenant_id_type unregistered_tenant_personal_id unregistered_tenant_dob unregistered_tenant_nac unregistered_tenant_sex late_fee_type late_fee_amount" %}
                 <div class="mb-3">
                   <label class="form-label font-weight-bold text-dark">{{ field.label }}</label>
                   {{ field }}
@@ -81,6 +110,42 @@
                 </div>
               {% endif %}
             {% endfor %}
+
+            <!-- Late Fee Type Field (Radio Buttons) -->
+            <div class="mb-3">
+              <label class="form-label font-weight-bold text-dark mb-3">Late Fee Type</label>
+              <div class="row">
+                <div class="col-md-8">
+                  {% for value, label in form.late_fee_type.field.choices %}
+                    <div class="form-check late-fee-option mb-2">
+                      <input 
+                        class="form-check-input" 
+                        type="radio" 
+                        name="late_fee_type" 
+                        id="id_late_fee_type_{{ forloop.counter0 }}" 
+                        value="{{ value }}"
+                        {% if form.late_fee_type.initial == value or form.late_fee_type.value == value %}checked{% endif %}>
+                      <label class="form-check-label" for="id_late_fee_type_{{ forloop.counter0 }}">
+                        {{ label }}
+                      </label>
+                    </div>
+                  {% endfor %}
+                </div>
+              </div>
+              {% for error in form.late_fee_type.errors %}
+                <div class="text-danger small">{{ error }}</div>
+              {% endfor %}
+            </div>
+
+            <!-- Late Fee Amount Field (Conditional) -->
+            <div class="mb-3" id="late_fee_amount_container" style="display: none;">
+              <label class="form-label font-weight-bold text-dark" for="id_late_fee_amount">Fixed Late Fee Amount</label>
+              {{ form.late_fee_amount }}
+              <small class="form-text text-muted d-block mt-1">Enter the fixed amount (e.g., 50.00)</small>
+              {% for error in form.late_fee_amount.errors %}
+                <div class="text-danger small">{{ error }}</div>
+              {% endfor %}
+            </div>
             
             <!-- Unregistered tenant fields (toggle visibility with JS) -->
             {% if not tenant and personal_id %}
@@ -135,4 +200,28 @@
   </div>
 </div>
 <script src="/static/assets/js/custom.js"></script>
+<script>
+  // Show/hide late fee amount field based on selection
+  document.addEventListener('DOMContentLoaded', function() {
+    const radioButtons = document.querySelectorAll('input[name="late_fee_type"]');
+    const amountContainer = document.getElementById('late_fee_amount_container');
+    
+    function toggleAmountField() {
+      const selectedValue = document.querySelector('input[name="late_fee_type"]:checked')?.value;
+      if (selectedValue === 'fixed_amount') {
+        amountContainer.style.display = 'block';
+      } else {
+        amountContainer.style.display = 'none';
+      }
+    }
+    
+    // Add event listeners to all radio buttons
+    radioButtons.forEach(radio => {
+      radio.addEventListener('change', toggleAmountField);
+    });
+    
+    // Initial check on page load
+    toggleAmountField();
+  });
+</script>
 {% endblock %}
