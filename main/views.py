@@ -824,8 +824,23 @@ def dashboard(request):
     total_properties = Properties.objects.filter(owner=user).count()
     rented_properties = Rent.objects.filter(owner=user, status=True).count()
     occupancy_rate = round((rented_properties / total_properties) * 100, 2) if total_properties > 0 else 0
-    collected_income = Transaction.objects.filter(owner=user, type='receipt', status='confirmed').aggregate(total=models.Sum('amount'))['total'] or 0
-    pending_income = Transaction.objects.filter(owner=user, type='receipt', status='pending').aggregate(total=models.Sum('amount'))['total'] or 0
+    
+    # Calculate collected_income: total expected monthly rent from all active rents
+    active_rents = Rent.objects.filter(owner=user, is_active=True)
+    collected_income = active_rents.aggregate(total=models.Sum('rent_amount'))['total'] or 0
+    
+    # Calculate pending_income: total unpaid rent (rent amount minus confirmed payments)
+    pending_income = 0
+    for rent in active_rents:
+        confirmed_payments = Transaction.objects.filter(
+            rent=rent,
+            type='receipt',
+            status='confirmed'
+        ).aggregate(total=models.Sum('amount'))['total'] or 0
+        unpaid_amount = rent.rent_amount - confirmed_payments
+        if unpaid_amount > 0:
+            pending_income += unpaid_amount
+    
     upcoming_renewals = Rent.objects.filter(owner=user, end_date__gte=datetime.now(), end_date__lte=datetime.now() + timedelta(days=30)).count()
 
     # Financial Snapshot
