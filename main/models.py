@@ -4,6 +4,7 @@ from django_countries.fields import CountryField
 from django_countries import countries
 from django.db.models import Max
 from datetime import datetime
+from decimal import Decimal
 
 # Create your models lists here.
 
@@ -65,6 +66,20 @@ LATE_FEE_CHOICES = (
     ('10_percent', '10%'),
     ('20_percent', '20%'),
     ('fixed_amount', 'Cantidad Fija'),
+)
+
+INVOICE_STATUS_CHOICES = (
+    ('pending', 'Pendiente'),
+    ('partial', 'Parcialmente Pagado'),
+    ('paid', 'Pagado'),
+    ('overdue', 'Vencido'),
+    ('overdue_with_fee', 'Vencido con Recargo'),
+)
+
+PAYMENT_STATUS_CHOICES = (
+    ('pending', 'Pendiente'),
+    ('confirmed', 'Confirmado'),
+    ('rejected', 'Rechazado'),
 )
 
 Status = (
@@ -275,6 +290,28 @@ class Transaction(models.Model):
     transaction_date = models.DateField(null=True, blank=False)  # Date when the transaction was created
     created_at = models.DateTimeField(null=True, blank=False, default=datetime.now)
     updated_at = models.DateTimeField(auto_now=True)
+    
+    # New fields for invoice/payment integration
+    is_legacy_only = models.BooleanField(
+        default=True,
+        help_text="True = old workflow only, False = integrated with new Invoice/Payment system"
+    )
+    invoice = models.ForeignKey(
+        'Invoice',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='legacy_transactions',
+        help_text="Invoice this transaction is linked to (new workflow)"
+    )
+    payment = models.OneToOneField(
+        'Payment',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='transaction_ref',
+        help_text="Links to new Payment model if created via new workflow"
+    )
 
     def save(self, *args, **kwargs):
         if not self.pk:
@@ -357,3 +394,223 @@ class Feedback(models.Model):
     
     def __str__(self):
         return f"{self.get_feedback_type_display()} - {self.subject} ({self.user.email})"
+
+
+class Invoice(models.Model):
+    """
+    Represents a single monthly rent invoice.
+    Each Rent generates one Invoice per month.
+    Tracks payment status, late fees, and payment history at the invoice level.
+    """
+    rent = models.ForeignKey(
+        Rent, 
+        on_delete=models.CASCADE, 
+        related_name='invoices'
+    )
+    
+    # Invoice identification
+    invoice_number = models.CharField(
+        max_length=100, 
+        unique=True, 
+        editable=False,
+        help_text="Auto-generated unique invoice identifier"
+    )
+    
+    # Dates
+    invoice_date = models.DateField(
+        help_text="Date when invoice was created"
+    )
+    due_date = models.DateField(
+        help_text="Date when payment is due"
+    )
+    
+    # Amount tracking
+    amount = models.DecimalField(
+        max_digits=10, 
+        decimal_places=2,
+        help_text="Original rent amount for this invoice"
+    )
+    paid_amount = models.DecimalField(
+        max_digits=10, 
+        decimal_places=2,
+        default=0,
+        help_text="Total amount paid against this invoice"
+    )
+    
+    # Late fee tracking
+    late_fee_amount = models.DecimalField(
+        max_digits=10, 
+        decimal_places=2,
+        default=0,
+        null=True,
+        blank=True,
+        help_text="Late fee amount (if applicable)"
+    )
+    late_fee_applied_date = models.DateField(
+        null=True, 
+        blank=True,
+        help_text="Date when late fee was applied"
+    )
+    
+    # Status
+    status = models.CharField(
+        max_length=20, 
+        choices=INVOICE_STATUS_CHOICES,
+        default='pending'
+    )
+    
+    # Metadata
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['-due_date']
+        indexes = [
+            models.Index(fields=['rent', 'due_date']),
+            models.Index(fields=['status']),
+            models.Index(fields=['invoice_date']),
+        ]
+    
+    def __str__(self):
+        return f"{self.invoice_number} - {self.rent.property.alias} - ${self.amount}"
+    
+    def get_balance_owed(self):
+        """Calculate total amount still owed (including late fee)"""
+        total_owed = (self.amount - self.paid_amount) + (self.late_fee_amount or Decimal('0.00'))
+        return max(total_owed, Decimal('0.00'))
+    
+    def get_days_overdue(self):
+        """Calculate days past due date"""
+        from datetime import date
+        today = date.today()
+        if today > self.due_date:
+            return (today - self.due_date).days
+        return 0
+    
+    def is_past_due(self):
+        """Check if invoice is past due"""
+        from datetime import date
+        return date.today() > self.due_date
+    
+    def mark_paid(self):
+        """Mark invoice as fully paid"""
+        self.paid_amount = self.amount
+        self.status = 'paid'
+        self.save()
+    
+    def save(self, *args, **kwargs):
+        """Generate invoice_number on creation"""
+        if not self.pk and not self.invoice_number:
+            from django.db import transaction
+            from django.db.models import Max
+            
+            with transaction.atomic():
+                # Format: INV-RENT_ID-YYYYMM-SEQUENCE
+                sequence = Invoice.objects.filter(
+                    rent=self.rent,
+                    invoice_date=self.invoice_date
+                ).count() + 1
+                
+                rent_id = self.rent.id
+                date_str = self.invoice_date.strftime('%Y%m')
+                padded_seq = str(sequence).zfill(2)
+                
+                self.invoice_number = f"INV-{rent_id}-{date_str}-{padded_seq}"
+                
+                # Check for duplicates
+                counter = 0
+                base = self.invoice_number
+                while Invoice.objects.filter(invoice_number=self.invoice_number).exists():
+                    counter += 1
+                    self.invoice_number = f"{base}-{counter}"
+        
+        super().save(*args, **kwargs)
+
+
+class Payment(models.Model):
+    """
+    Represents a single payment that applies to one or more invoices.
+    Links payments to specific invoices for accurate tracking.
+    """
+    invoice = models.ForeignKey(
+        Invoice, 
+        on_delete=models.CASCADE, 
+        related_name='payments'
+    )
+    
+    # Payment details
+    amount = models.DecimalField(
+        max_digits=10, 
+        decimal_places=2,
+        help_text="Amount paid"
+    )
+    
+    # Dates
+    payment_date = models.DateField(
+        help_text="Date when payment was made"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    # Payment method
+    payment_method = models.CharField(
+        max_length=100,
+        choices=payment_method,
+        help_text="How the payment was made"
+    )
+    
+    # Status and confirmation
+    status = models.CharField(
+        max_length=20,
+        choices=PAYMENT_STATUS_CHOICES,
+        default='pending'
+    )
+    
+    # Link to original Transaction (for backward compatibility)
+    transaction = models.OneToOneField(
+        'Transaction',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='payment_ref',
+        help_text="Original Transaction record for audit trail"
+    )
+    
+    # Metadata
+    description = models.TextField(
+        max_length=250,
+        blank=True,
+        null=True
+    )
+    
+    class Meta:
+        ordering = ['-payment_date']
+        indexes = [
+            models.Index(fields=['invoice', 'payment_date']),
+            models.Index(fields=['status']),
+        ]
+    
+    def __str__(self):
+        return f"Payment ${self.amount} for {self.invoice.invoice_number} on {self.payment_date}"
+    
+    def save(self, *args, **kwargs):
+        """Update invoice paid_amount when payment is confirmed"""
+        super().save(*args, **kwargs)
+        
+        # Recalculate invoice paid_amount
+        if self.status == 'confirmed':
+            total_paid = self.invoice.payments.filter(
+                status='confirmed'
+            ).aggregate(total=models.Sum('amount'))['total'] or 0
+            
+            self.invoice.paid_amount = total_paid
+            
+            # Update invoice status
+            if total_paid >= self.invoice.amount:
+                self.invoice.status = 'paid'
+            elif total_paid > 0:
+                self.invoice.status = 'partial'
+            elif self.invoice.is_past_due() and not self.invoice.late_fee_amount:
+                self.invoice.status = 'overdue'
+            
+            self.invoice.save()
+

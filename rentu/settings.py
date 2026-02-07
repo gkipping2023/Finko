@@ -105,6 +105,20 @@ CELERY_BROKER_URL = 'redis://localhost:6379/0'
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 
+# Celery Beat Schedule
+from celery.schedules import crontab
+
+CELERY_BEAT_SCHEDULE = {
+    'generate-invoices': {
+        'task': 'main.tasks.generate_invoices',
+        'schedule': crontab(hour=0, minute=1),  # Run at 12:01 AM daily
+    },
+    'apply-late-fees': {
+        'task': 'main.tasks.apply_late_fees',
+        'schedule': crontab(hour=0, minute=5),  # Run at 12:05 AM daily (after invoices)
+    },
+}
+
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',

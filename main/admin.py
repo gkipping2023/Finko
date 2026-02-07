@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.utils import timezone
-from .models import User, Properties, Transaction, Rent, PromoCode, AuditLog, Feedback
+from .models import User, Properties, Transaction, Rent, PromoCode, AuditLog, Feedback, Invoice, Payment
 
 # Register your models here.
 
@@ -91,3 +91,50 @@ class FeedbackAdmin(admin.ModelAdmin):
             obj.responded_by = request.user
             obj.responded_at = timezone.now()
         super().save_model(request, obj, form, change)
+
+
+@admin.register(Invoice)
+class InvoiceAdmin(admin.ModelAdmin):
+    list_display = ('invoice_number', 'rent', 'invoice_date', 'due_date', 'amount', 'paid_amount', 'status')
+    list_filter = ('status', 'invoice_date', 'due_date')
+    search_fields = ('invoice_number', 'rent__rent_number')
+    readonly_fields = ('invoice_number', 'created_at', 'updated_at')
+    
+    fieldsets = (
+        ('Invoice Information', {
+            'fields': ('invoice_number', 'rent', 'invoice_date', 'due_date')
+        }),
+        ('Payment Details', {
+            'fields': ('amount', 'paid_amount', 'status')
+        }),
+        ('Late Fee', {
+            'fields': ('late_fee_amount', 'late_fee_applied_date'),
+            'classes': ('collapse',)
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+
+
+@admin.register(Payment)
+class PaymentAdmin(admin.ModelAdmin):
+    list_display = ('id', 'invoice', 'amount', 'payment_date', 'payment_method', 'status')
+    list_filter = ('status', 'payment_date', 'payment_method')
+    search_fields = ('invoice__invoice_number', 'transaction__transaction_number')
+    readonly_fields = ('created_at', 'transaction')
+    
+    fieldsets = (
+        ('Payment Information', {
+            'fields': ('invoice', 'amount', 'payment_date', 'payment_method')
+        }),
+        ('Status', {
+            'fields': ('status', 'description')
+        }),
+        ('Audit', {
+            'fields': ('created_at', 'transaction'),
+            'classes': ('collapse',)
+        }),
+    )
+

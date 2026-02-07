@@ -1,0 +1,282 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nota de Crédito - Finko</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        @page {
+            size: letter;
+            margin: 0;
+        }
+        
+        body {
+            font-family: 'Montserrat', Arial, sans-serif;
+            background: linear-gradient(135deg, #f4f4f5 0%, #e3e3e7 100%);
+            color: #344767;
+            min-height: 100vh;
+            margin: 0;
+            padding: 0.5in;
+            width: 8.5in;
+        }
+        
+        .container {
+            margin: 0;
+            padding: 0;
+            max-width: 7.5in;
+            width: 100%;
+        }
+        
+        .row {
+            margin: 0;
+            padding: 0;
+        }
+        
+        .col-md-8 {
+            max-width: 100%;
+            padding: 0;
+        }
+        
+        .card {
+            border: none;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(44, 62, 80, 0.12);
+            overflow: hidden;
+            page-break-inside: avoid;
+        }
+        
+        .card-header {
+            background: linear-gradient(0deg, #ffffff 90%, #10b981 10%);
+            color: #10b981;
+            border-radius: 16px 16px 0 0;
+            padding: 24px 20px;
+            text-align: center;
+            border: none;
+        }
+        
+        .card-header h3 {
+            margin: 8px 0 0 0;
+            font-weight: 700;
+            font-size: 24px;
+            letter-spacing: -0.5px;
+        }
+        
+        .logo-img {
+            height: 60px;
+            width: auto;
+            margin-bottom: 12px;
+            display: block;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        .card-body {
+            padding: 24px;
+            background: white;
+        }
+        
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 14px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #e9ecef;
+            font-size: 0.95rem;
+        }
+        
+        .info-row:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+        
+        .info-label {
+            font-weight: 600;
+            color: #27272a;
+            min-width: 130px;
+        }
+        
+        .info-value {
+            color: #52525b;
+            flex: 1;
+            text-align: right;
+            font-weight: 500;
+        }
+        
+        .info-value small {
+            display: block;
+            color: #8392ab;
+            font-size: 0.8rem;
+            margin-top: 2px;
+            text-align: right;
+        }
+        
+        .amount-section {
+            background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            margin: 20px 0;
+            border-left: 4px solid #10b981;
+            page-break-inside: avoid;
+        }
+        
+        .amount-label {
+            color: #047857;
+            font-size: 0.85rem;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            font-weight: 600;
+        }
+        
+        .amount-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: #10b981;
+            letter-spacing: -1px;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin: 16px 0;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+        }
+        
+        .footer-text {
+            text-align: center;
+            color: #8392ab;
+            font-size: 0.8rem;
+            margin-top: 16px;
+            padding-top: 12px;
+            border-top: 1px solid #e9ecef;
+            page-break-inside: avoid;
+        }
+        
+        .footer-text a {
+            color: #10b981;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        
+        .footer-text a:hover {
+            text-decoration: underline;
+        }
+        
+        @media print {
+            body {
+                background: white;
+                padding: 0.4in;
+                margin: 0;
+                width: auto;
+            }
+            
+            .container {
+                margin: 0;
+                max-width: 100%;
+            }
+            
+            .card {
+                box-shadow: none;
+                border: 1px solid #e9ecef;
+            }
+            
+            .col-md-8 {
+                max-width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header">
+                        {% if logo_base64 %}
+                            <img src="{{ logo_base64 }}" alt="Finko Logo" class="logo-img">
+                        {% endif %}
+                        <h3>Nota de Crédito</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="info-row">
+                            <span class="info-label"><strong>Número:</strong></span>
+                            <span class="info-value">{{ transaction.transaction_number }}</span>
+                        </div>
+
+                        <div class="info-row">
+                            <span class="info-label"><strong>Fecha:</strong></span>
+                            <span class="info-value">{{ transaction.created_at|date:"d/m/Y H:i" }}</span>
+                        </div>
+
+                        <div class="info-row">
+                            <span class="info-label"><strong>Inquilino:</strong></span>
+                            <span class="info-value">
+                                {% if transaction.tenant %}
+                                    {{ transaction.tenant.first_name }} {{ transaction.tenant.last_name }}<br>
+                                    <small>{{ transaction.tenant.email }}</small>
+                                {% else %}
+                                    —
+                                {% endif %}
+                            </span>
+                        </div>
+
+                        <div class="info-row">
+                            <span class="info-label"><strong>Propiedad:</strong></span>
+                            <span class="info-value">
+                                {% if transaction.property %}
+                                    {{ transaction.property.alias }}<br>
+                                    <small>{{ transaction.property.address }}</small>
+                                {% else %}
+                                    —
+                                {% endif %}
+                            </span>
+                        </div>
+
+                        <div class="info-row">
+                            <span class="info-label"><strong>Concepto:</strong></span>
+                            <span class="info-value">{{ transaction.description|default:"—" }}</span>
+                        </div>
+
+                        <div class="info-row">
+                            <span class="info-label"><strong>Propietario:</strong></span>
+                            <span class="info-value">
+                                {{ transaction.owner.first_name }} {{ transaction.owner.last_name }}<br>
+                                <small>{{ transaction.owner.email }}</small>
+                            </span>
+                        </div>
+
+                        <div class="amount-section">
+                            <div class="amount-label">MONTO ACREDITADO</div>
+                            <div class="amount-value">${{ transaction.amount }}</div>
+                        </div>
+
+                        <div style="text-align: center;">
+                            <span class="status-badge">✓ Crédito Aplicado</span>
+                        </div>
+
+                        <div class="footer-text">
+                            Esta nota de crédito documenta el crédito aplicado a la cuenta.<br>
+                            Generado automáticamente por Finko - Property Management System
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

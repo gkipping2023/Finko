@@ -15,7 +15,7 @@ from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout, get_backends
 from django.contrib.auth.decorators import login_required
-from .models import Properties, Transaction,Rent,User, PromoCode, Roles
+from .models import Properties, Transaction, Rent, User, PromoCode, Roles, Invoice, Payment
 from .forms import AddPropertyForm, NewUserForm,NewTenantForm, NewRentForm, UpdateUserForm, TransactionForm, ReportPaymentForm, RenewLeaseForm, PublicPaymentForm
 from django_countries.fields import Country  # Add this import if using django-countries
 #from .filters import Reserves_DailyFilter, DogsFilter, Reserves_HotelFilter
@@ -26,8 +26,10 @@ from .filters import TransactionFilter
 from weasyprint import HTML
 from django.http import HttpResponse
 from main.mailgun_utils import send_mailgun_simple
+from .services import RentAccountStatus
 import base64
 from pathlib import Path
+
 
 
 # Utility function to get logo for PDF (base64 embedded)
@@ -58,11 +60,24 @@ def get_logo_for_pdf(fallback_url=None):
 
 #PDF Generation Function
 def render_transaction_pdf(transaction):
+    # Map transaction types to templates
+    template_map = {
+        'invoice': 'main/transaction_invoice.html',
+        'receipt': 'main/transaction_receipt.html',
+        'credit': 'main/transaction_credit.html',
+        'debit': 'main/transaction_debit.html',
+        'fee': 'main/transaction_fee.html',
+        'pago': 'main/transaction_pago.html',
+    }
+    
+    # Get template for this transaction type, fallback to receipt
+    template_name = template_map.get(transaction.type, 'main/transaction_receipt.html')
+    
     context = {
         'transaction': transaction,
         'logo_base64': get_logo_for_pdf()
     }
-    html_string = render_to_string('main/transaction_confirmation.html', context)
+    html_string = render_to_string(template_name, context)
     html = HTML(string=html_string)
     pdf = html.write_pdf()
     return pdf
@@ -1103,11 +1118,45 @@ def confirm_payment(request, transaction_id):
                 return JsonResponse({'success': True, 'message': 'Confirmación reenviada exitosamente'})
             messages.success(request, "Confirmación reenviada al inquilino.")
         else:
-            # Original confirm payment flow
+            # Confirm payment
             transaction.status = 'confirmed'
-            transaction.type = 'receipt' #Cambia el tipo de pago a recibo al confirmar.
+            transaction.type = 'receipt'  # Change type to receipt when confirming
+            transaction.is_legacy_only = True  # Mark as legacy
             transaction.save()
-            # Generate PDF and send to tenant (see next step)
+            
+            # NEW: If linked to rent/invoice, create Payment and update Invoice
+            if transaction.rent:
+                try:
+                    # Get most recent pending invoice for this rent
+                    invoice = Invoice.objects.filter(
+                        rent=transaction.rent,
+                        status__in=['pending', 'partial', 'overdue', 'overdue_with_fee']
+                    ).order_by('-due_date').first()
+                    
+                    if invoice:
+                        # Create Payment record
+                        payment = Payment.objects.create(
+                            invoice=invoice,
+                            amount=transaction.amount,
+                            payment_date=transaction.transaction_date or date.today(),
+                            payment_method=transaction.payment_method,
+                            status='confirmed',
+                            transaction=transaction,
+                            description=transaction.description
+                        )
+                        
+                        # payment.save() will auto-update invoice via signal
+                        
+                        # Update transaction reference
+                        transaction.payment = payment
+                        transaction.invoice = invoice
+                        transaction.save()
+                except Exception as e:
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.error(f"Failed to link payment to invoice: {e}")
+            
+            # Generate PDF and send to tenant
             send_receipt_to_tenant(transaction)
             messages.success(request, "Pago confirmado y recibo enviado al inquilino.")
         
@@ -1218,7 +1267,12 @@ def properties(request):
         last_payment = Transaction.objects.filter(rent=rent, type='receipt',status='confirmed').order_by('-created_at').first()
         rent.last_payment_date = last_payment.created_at if last_payment else None
         rent.last_payment_amount = last_payment.amount if last_payment else None
-        rent.days_past_due = get_days_past_due(rent)
+        
+        # NEW: Use comprehensive status
+        rent_status = get_rent_status(rent)
+        rent.days_past_due = rent_status['days_past_due']
+        rent.status_display = rent_status['status']
+        rent.balance_owed = rent_status['balance_owed']
 
     context = {
       'rents': rents,
@@ -1275,37 +1329,16 @@ def tenants(request):
 
 from datetime import date
 
+def get_rent_status(rent):
+    """NEW: Replace get_days_past_due with comprehensive status"""
+    status_service = RentAccountStatus(rent)
+    return status_service.get_status()
+
+
 def get_days_past_due(rent):
-    today = date.today()
-    # Calculate the due date for this month
-    due_day = rent.rent_due_date
-    try:
-        due_date = date(today.year, today.month, due_day)
-    except ValueError:
-        # Handles months with fewer days (e.g., Feb 30)
-        from calendar import monthrange
-        last_day = monthrange(today.year, today.month)[1]
-        due_date = date(today.year, today.month, last_day)
-
-    # Calculate total confirmed payments for current month
-    first_day_of_month = date(today.year, today.month, 1)
-    total_payments = Transaction.objects.filter(
-        rent=rent, 
-        type='receipt', 
-        status='confirmed',
-        transaction_date__gte=first_day_of_month
-    ).aggregate(total=models.Sum('amount'))['total'] or 0
-
-    # If confirmed payments cover the full rent amount, not past due
-    if total_payments >= rent.rent_amount:
-        return 0
-
-    # If today is before or on due date, not past due
-    if today <= due_date:
-        return 0
-
-    # Otherwise, calculate days past due
-    return (today - due_date).days
+    """LEGACY: Kept for backward compatibility, now uses new system"""
+    status = get_rent_status(rent)
+    return status['days_past_due']
 
 
 @login_required(login_url='log_in')
