@@ -13,30 +13,47 @@
       <a href="{% url 'add_transaction' %}" class="btn btn-light text-info fw-bold">Agregar Transacción</a>
     </div>
     <div class="card-body">
-      <!-- Django Filter Form -->
       <!-- Date Range Picker CSS (CDN) -->
       <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css" />
-      <form method="get" class="row mb-3 align-items-end">
-        {% csrf_token %}
-        {% for field in filter.form.visible_fields %}
-          <div class="col-md-3 mb-2">
-            <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
-            {% if field.name == 'date_range' %}
-              {% render_field field class="form-control" autocomplete="off" %}
-            {% elif field.field.widget.input_type == 'select' or field.field.widget.input_type == 'select-multiple' %}
-              {% render_field field class="form-select" %}
-            {% else %}
-              {% render_field field class="form-control" %}
-            {% endif %}
-            {% if field.errors %}
-              <div class="text-danger small">{{ field.errors|striptags }}</div>
-            {% endif %}
+      
+      <!-- Filter Accordion -->
+      <div class="accordion mb-4" id="filterAccordion">
+        <div class="accordion-item border-0 shadow-sm" style="border-radius: 12px;">
+          <h2 class="accordion-header" id="filterHeading">
+            <button class="accordion-button collapsed fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#filterCollapse" aria-expanded="false" aria-controls="filterCollapse" style="background: linear-gradient(135deg, #e3e3e7 0%, #f4f4f5 100%); color: #344767; border-radius: 12px;">
+              <i class="fas fa-sliders-h me-2" style="color: #17c1e8;"></i> Filtros Avanzados
+            </button>
+          </h2>
+          <div id="filterCollapse" class="accordion-collapse collapse" aria-labelledby="filterHeading" data-bs-parent="#filterAccordion">
+            <div class="accordion-body" style="background: #ffffff; border-radius: 0 0 12px 12px;">
+              <form method="get" class="row align-items-end">
+                {% csrf_token %}
+                {% for field in filter.form.visible_fields %}
+                  <div class="col-md-3 mb-3">
+                    <label for="{{ field.id_for_label }}" class="form-label fw-semibold text-dark">{{ field.label }}</label>
+                    {% if field.name == 'date_range' %}
+                      {% render_field field class="form-control" autocomplete="off" %}
+                    {% elif field.field.widget.input_type == 'select' or field.field.widget.input_type == 'select-multiple' %}
+                      {% render_field field class="form-select" %}
+                    {% else %}
+                      {% render_field field class="form-control" %}
+                    {% endif %}
+                    {% if field.errors %}
+                      <div class="text-danger small">{{ field.errors|striptags }}</div>
+                    {% endif %}
+                  </div>
+                {% endfor %}
+                <div class="col-md-3 mb-3">
+                  <button type="submit" class="btn btn-info w-100 fw-bold">
+                    <i class="fas fa-filter me-2"></i> Filtrar
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
-        {% endfor %}
-        <div class="col-md-2 mb-2">
-          <button type="submit" class="btn btn-info w-100">Filtrar</button>
         </div>
-      </form>
+      </div>
+      
       <!-- Transactions Table -->
       <div class="table-responsive">
         <table class="table align-middle mb-0" id="transactionsTable">

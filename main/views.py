@@ -970,19 +970,34 @@ def add_transaction(request):
     if request.method == 'POST':
         form = TransactionForm(request.POST, user=request.user)
         if form.is_valid():
-            transaction = form.save(commit=False)
-            transaction.owner = request.user  # Set the logged-in user as the owner
-            transaction.status = 'confirmed' 
-            transaction.save()
-            pdf = render_transaction_pdf(transaction)
-            messages.success(request, f"¡{transaction.get_type_display()} creado exitosamente!")
-            return redirect('transaction_pdf', transaction_id=transaction.id)  # Redirect to a transaction list or dashboard
+            # Check if this is a preview request
+            if request.POST.get('action') == 'preview':
+                # Create transaction object but don't save yet
+                transaction = form.save(commit=False)
+                transaction.owner = request.user
+                # Generate a temporary transaction number for preview
+                context = {
+                    'form': form,
+                    'transaction': transaction,
+                    'preview': True,
+                    'form_data': request.POST.dict()
+                }
+                return render(request, 'main/add_transaction.html', context)
+            else:
+                # This is a confirmation from preview, save the transaction
+                transaction = form.save(commit=False)
+                transaction.owner = request.user  # Set the logged-in user as the owner
+                transaction.status = 'confirmed' 
+                transaction.save()
+                messages.success(request, f"¡{transaction.get_type_display()} creado exitosamente!")
+                return redirect('transaction_pdf', transaction_id=transaction.id)
         else:
             messages.error(request, "Hubo un error al crear la transacción.")
     else:
         form = TransactionForm(user=request.user)
     context = {
         'form': form,
+        'preview': False,
     }
     return render(request, 'main/add_transaction.html', context)
 

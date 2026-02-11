@@ -76,6 +76,10 @@ class UpdateUserForm(BaseCustomModelForm):
         for field_name, field in self.fields.items():
             field.widget.attrs['class'] = 'form-control'  # Add the form-control class to all fields
 
+        # Hide the role field - users shouldn't change their role after sign up
+        self.fields['role'].widget = forms.HiddenInput()
+        self.fields['role'].required = False  # Make it not required since it's hidden
+
         # Disable the promo_code field if the user already has a promo code
         if user and user.promo_code:
             self.fields['promo_code'].widget = forms.HiddenInput()  # Hide the field
@@ -142,14 +146,14 @@ class NewRentForm(BaseCustomModelForm):
         choices=LATE_FEE_CHOICES,
         widget=forms.HiddenInput(),
         initial='none',
-        label='Late Fee Type'
+        label='Formato de Recargo por Mora'
     )
     late_fee_amount = forms.DecimalField(
         max_digits=10,
         decimal_places=2,
         required=False,
         widget=forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Ingresa la cantidad fija'}),
-        label='Fixed Late Fee Amount'
+        label='Cantidad Fija de Recargo por Mora'
     )
 
     # Unregistered tenant fields
