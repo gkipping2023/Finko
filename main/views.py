@@ -840,21 +840,42 @@ def dashboard(request):
     rented_properties = Rent.objects.filter(owner=user, status=True).count()
     occupancy_rate = round((rented_properties / total_properties) * 100, 2) if total_properties > 0 else 0
     
-    # Calculate collected_income: total expected monthly rent from all active rents
+    # Calculate collected_income & pending_income for CURRENT MONTH
     active_rents = Rent.objects.filter(owner=user, is_active=True)
-    collected_income = active_rents.aggregate(total=models.Sum('rent_amount'))['total'] or 0
     
-    # Calculate pending_income: total unpaid rent (rent amount minus confirmed payments)
+    # Get current month date range
+    today = datetime.now()
+    month_start = today.replace(day=1)
+    next_month = (month_start + timedelta(days=32)).replace(day=1)
+    month_end = next_month - timedelta(days=1)
+    
+    collected_income = 0
     pending_income = 0
+    total_outstanding_balance = 0
+    
     for rent in active_rents:
-        confirmed_payments = Transaction.objects.filter(
-            rent=rent,
-            type='receipt',
-            status='confirmed'
-        ).aggregate(total=models.Sum('amount'))['total'] or 0
-        unpaid_amount = rent.rent_amount - confirmed_payments
-        if unpaid_amount > 0:
-            pending_income += unpaid_amount
+        # Get invoices for current month
+        current_month_invoices = rent.invoices.filter(
+            invoice_date__gte=month_start,
+            invoice_date__lte=month_end
+        )
+        
+        if current_month_invoices.exists():
+            # Calculate collected and pending for current month
+            total_month_invoiced = current_month_invoices.aggregate(
+                total=models.Sum('amount')
+            )['total'] or 0
+            total_month_paid = current_month_invoices.aggregate(
+                total=models.Sum('paid_amount')
+            )['total'] or 0
+            
+            collected_income += total_month_paid
+            pending_income += (total_month_invoiced - total_month_paid)
+        
+        # Calculate outstanding balance using comprehensive status
+        from .services import RentAccountStatus
+        rent_status = RentAccountStatus(rent).get_status()
+        total_outstanding_balance += rent_status['balance_owed']
     
     upcoming_renewals = Rent.objects.filter(owner=user, end_date__gte=datetime.now(), end_date__lte=datetime.now() + timedelta(days=30)).count()
 
@@ -887,6 +908,7 @@ def dashboard(request):
       'overdue_rent_alerts': overdue_rent_alerts,
       'leases_expiring_soon': leases_expiring_soon,
       'pending_maintenance_requests': pending_maintenance_requests,
+      'total_outstanding_balance': total_outstanding_balance,
     }
 
     # Tenant-specific context
@@ -1262,21 +1284,26 @@ def pricing(request):
 
 @login_required(login_url='log_in')
 def properties(request):
+    from main.models import Payment
     properties = Properties.objects.filter(owner=request.user)
     rents = []
     payments = []
     if request.user.role == 'O':
       # If the user is an owner, filter rents by owner
       rents = Rent.objects.filter(owner=request.user,is_active=True)
-      payments_qs = Transaction.objects.filter(owner=request.user, type='receipt').order_by('-transaction_date')
+      # Get confirmed payments (last 10)
+      payments_qs = Payment.objects.filter(invoice__rent__owner=request.user, status='confirmed').order_by('-payment_date')
+      payments = payments_qs[:10]
+      # Get pending payments (awaiting confirmation)
+      pending_payments = Payment.objects.filter(invoice__rent__owner=request.user, status='pending').order_by('-payment_date')
     elif request.user.role == 'T':
       # If the user is a tenant, filter rents by tenant
       rents = Rent.objects.filter(tenant=request.user, is_active=True)
-      payments_qs = Transaction.objects.filter(tenant=request.user, type='receipt').order_by('-created_at')
-
-    # show latest 10 payments for summary view, and provide pending approvals separately
-    payments = payments_qs[:10]
-    pending_payments = payments_qs.filter(status='pending')
+      # Get confirmed payments (last 10)
+      payments_qs = Payment.objects.filter(invoice__rent__tenant=request.user, status='confirmed').order_by('-payment_date')
+      payments = payments_qs[:10]
+      # Tenants don't have pending approvals
+      pending_payments = Payment.objects.none()
 
     for rent in rents:
         last_payment = Transaction.objects.filter(rent=rent, type='receipt',status='confirmed').order_by('-created_at').first()

@@ -115,7 +115,7 @@
                             </div>
                             <div class="d-flex flex-column justify-content-center">
                               <h6 class="mb-0 text-sm">{{rent.property}}</h6>
-                              <p class="text-xs text-secondary mb-0">{{property.location}}</p>
+                              <p class="text-xs text-secondary mb-0">{{rent.rent_number}}</p>
                             </div>
                           </div>
                         </td>
@@ -139,13 +139,18 @@
                       <td class="align-middle text-center text-sm">
                           <span class="badge badge-sm bg-gradient-success">30</span>
                         </td> -->
-                         <!-- due Days -->
+                        <!-- due Days -->
                         <td class="align-middle text-center text-sm">
-                            {% if rent.days_past_due > 0 %}
-                                <span class="badge badge-sm bg-gradient-danger">{{ rent.days_past_due }} días</span>
-                            {% else %}
-                                <span class="badge badge-sm bg-gradient-success">0</span>
-                            {% endif %}
+                            <div class="mb-2">
+                                {% if rent.days_past_due > 0 %}
+                                    <span class="badge badge-sm bg-gradient-danger">{{ rent.days_past_due }} días vencido</span>
+                                {% else %}
+                                    <span class="badge badge-sm bg-gradient-success">Al día</span>
+                                {% endif %}
+                            </div>
+                            <div class="text-xs font-weight-bold">
+                                Adeudado: <span class="text-danger">${{ rent.balance_owed }}</span>
+                            </div>
                         </td>
                         {% if request.user.role == "O" %}
                         <td class="align-middle">
@@ -249,45 +254,50 @@
               <thead>
                 <tr>
                   <th>
-                    <p class="text-center font-weight-bold mb-0">Transaccion</p>
-                    <p class="text-center text-sm text-secondary mb-0">Fecha</p>
+                    <p class="text-uppercase text-xs font-weight-bold mb-0">Propiedad</p>
                   </th>
                   <th>
-                    <p class="text-center font-weight-bold mb-0">Monto</p>
-                    <p class="text-center text-sm text-secondary mb-0">Metodo</p>
+                    <p class="text-uppercase text-xs font-weight-bold mb-0">Factura</p>
+                    <p class="text-xs text-secondary mb-0">Vencimiento</p>
                   </th>
-                  <th class="text-center text-uppercase text-secondary font-weight-bolder opacity-7">Estado</th>
+                  <th>
+                    <p class="text-uppercase text-xs font-weight-bold mb-0">Monto</p>
+                    <p class="text-xs text-secondary mb-0">Pagado</p>
+                  </th>
+                  <th class="text-center text-uppercase text-xs font-weight-bolder opacity-7">Estado</th>
                 </tr>
               </thead>
               <tbody>
                 {% for payment in payments|slice:":10" %}
                 <tr>
                   <td>
-                    <p class="text-xs text-center font-weight-bold mb-0">{{ payment.transaction_number }}</p>
-                    <p class="text-xs text-center text-secondary mb-0">{{ payment.transaction_date|date:"d M Y" }}</p>
+                    <p class="text-xs font-weight-bold mb-0">{{ payment.invoice.rent.property.alias }}</p>
                   </td>
                   <td>
-                    <p class="text-xs text-center font-weight-bold mb-0">${{ payment.amount }}</p>
-                    <p class="text-xs text-center text-secondary mb-0">{{ payment.get_payment_method_display }}</p>
+                    <p class="text-xs font-weight-bold mb-0">#{{ payment.invoice.invoice_number }}</p>
+                    <p class="text-xs text-secondary mb-0">{{ payment.invoice.due_date|date:"d M Y" }}</p>
                   </td>
-                  {% if payment.status == 'confirmed' %}
+                  <td>
+                    <p class="text-xs font-weight-bold mb-0">${{ payment.invoice.amount }}</p>
+                    <p class="text-xs text-secondary mb-0">${{ payment.amount }}</p>
+                  </td>
                   <td class="align-middle text-center">
-                    <p class="ni ni-check-bold text-success align-middle text-sm mb-0"></p>
+                    {% if payment.invoice.status == 'paid' %}
+                      <span class="badge badge-sm bg-gradient-success">Pagada</span>
+                    {% elif payment.invoice.status == 'partial' %}
+                      <span class="badge badge-sm bg-gradient-warning">Parcial</span>
+                    {% elif payment.invoice.status == 'pending' %}
+                      <span class="badge badge-sm bg-gradient-secondary">Pendiente</span>
+                    {% elif payment.invoice.status == 'overdue' %}
+                      <span class="badge badge-sm bg-gradient-danger">Vencida</span>
+                    {% elif payment.invoice.status == 'overdue_with_fee' %}
+                      <span class="badge badge-sm bg-gradient-danger">Vencida + Mora</span>
+                    {% endif %}
                   </td>
-
-                  {% elif payment.status == 'pending' %}
-                  <td class="align-middle text-center">
-                    <p class="ni ni-fat-delete text-warning align-middle text-sm mb-0"></p>
-                  </td>
-                  {% elif payment.status == 'rejected' %}
-                  <td class="align-middle text-center">
-                    <p class="ni ni-fat-remove text-danger align-middle text-sm mb-0"></p>
-                  </td>
-                  {% endif %}
                 </tr>
                 {% empty %}
                 <tr>
-                  <td colspan="3" class="text-center">No payments found.</td>
+                  <td colspan="4" class="text-center text-xs text-secondary">Sin transacciones recientes</td>
                 </tr>
                 {% endfor %}
               </tbody>
@@ -308,14 +318,17 @@
               <thead>
                 <tr>
                   <th>
-                    <p class="text-center font-weight-bold mb-0">Transaccion</p>
-                    <p class="text-center text-sm text-secondary mb-0">Fecha</p>
+                    <p class="text-uppercase text-xs font-weight-bold mb-0">Propiedad</p>
                   </th>
                   <th>
-                    <p class="text-center font-weight-bold mb-0">Monto</p>
-                    <p class="text-center text-sm text-secondary mb-0">Metodo</p>
+                    <p class="text-uppercase text-xs font-weight-bold mb-0">Factura</p>
+                    <p class="text-xs text-secondary mb-0">Vencimiento</p>
                   </th>
-                  <th class="text-center text-uppercase text-secondary font-weight-bolder opacity-7">Acciones</th>
+                  <th>
+                    <p class="text-uppercase text-xs font-weight-bold mb-0">Monto</p>
+                    <p class="text-xs text-secondary mb-0">Pagado</p>
+                  </th>
+                  <th class="text-center text-uppercase text-xs font-weight-bolder opacity-7">Acciones</th>
                 </tr>
               </thead>
               <tbody>
@@ -323,12 +336,15 @@
                   {% for payment in pending_payments %}
                   <tr>
                     <td>
-                      <p class="text-xs text-center font-weight-bold mb-0">{{ payment.transaction_number }}</p>
-                      <p class="text-xs text-center text-secondary mb-0">{{ payment.transaction_date|date:"d M Y" }}</p>
+                      <p class="text-xs font-weight-bold mb-0">{{ payment.invoice.rent.property.alias }}</p>
                     </td>
                     <td>
-                      <p class="text-xs text-center font-weight-bold mb-0">${{ payment.amount }}</p>
-                      <p class="text-xs text-center text-secondary mb-0">{{ payment.get_payment_method_display }}</p>
+                      <p class="text-xs font-weight-bold mb-0">#{{ payment.invoice.invoice_number }}</p>
+                      <p class="text-xs text-secondary mb-0">{{ payment.invoice.due_date|date:"d M Y" }}</p>
+                    </td>
+                    <td>
+                      <p class="text-xs font-weight-bold mb-0">${{ payment.invoice.amount }}</p>
+                      <p class="text-xs text-secondary mb-0">${{ payment.amount }}</p>
                     </td>
                     <td class="align-middle text-center">
                       <a href="{% url 'confirm_payment' payment.id %}" class="btn btn-sm btn-success">Aprobar</a>
@@ -338,7 +354,7 @@
                   {% endfor %}
                 {% else %}
                   <tr>
-                    <td colspan="3" class="text-center">No hay aprobaciones pendientes</td>
+                    <td colspan="4" class="text-center text-xs text-secondary">No hay aprobaciones pendientes</td>
                   </tr>
                 {% endif %}
               </tbody>

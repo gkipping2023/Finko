@@ -132,4 +132,73 @@
     </div>
   </div>
 </div>
+
+<!-- Transacciones Recientes -->
+ <div class="container-fluid py-4">
+  <div class="row">
+    <div class="col-lg-6 col-12">
+      <div class="card mb-4">
+        <div class="card-header pb-0 d-flex justify-content-between align-items-center">
+          <h6>Transacciones Recientes</h6>
+          <a class="btn btn-outline-primary btn-sm mb-0 me-3" href="{% url 'report_payment' %}">Registrar Pago</a>
+        </div>
+        <div class="card-body px-0 pt-0 pb-2">
+          <div class="table-responsive p-0">
+            <table class="table align-items-center mb-0">
+              <thead>
+                <tr>
+                  <th>
+                    <p class="text-center font-weight-bold mb-0">Propiedad</p>
+                  </th>
+                  <th>
+                    <p class="text-center font-weight-bold mb-0">Transaccion</p>
+                    <p class="text-center text-sm text-secondary mb-0">Fecha</p>
+                  </th>
+                  <th>
+                    <p class="text-center font-weight-bold mb-0">Monto</p>
+                    <p class="text-center text-sm text-secondary mb-0">Metodo</p>
+                  </th>
+                  <th class="text-center text-uppercase text-secondary font-weight-bolder opacity-7">Estado</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for payment in payments|slice:":10" %}
+                <tr>
+                  <td>
+                    <p class="text-xs text-center font-weight-bold mb-0">{% if payment.property %}{{ payment.property.alias }}{% else %}-{% endif %}</p>
+                  </td>
+                  <td>
+                    <p class="text-xs text-center font-weight-bold mb-0">{{ payment.transaction_number }}</p>
+                    <p class="text-xs text-center text-secondary mb-0">{{ payment.transaction_date|date:"d M Y" }}</p>
+                  </td>
+                  <td>
+                    <p class="text-xs text-center font-weight-bold mb-0">${{ payment.amount }}</p>
+                    <p class="text-xs text-center text-secondary mb-0">{{ payment.get_payment_method_display }}</p>
+                  </td>
+                  {% if payment.status == 'confirmed' %}
+                  <td class="align-middle text-center">
+                    <p class="ni ni-check-bold text-success align-middle text-sm mb-0"></p>
+                  </td>
+
+                  {% elif payment.status == 'pending' %}
+                  <td class="align-middle text-center">
+                    <p class="ni ni-fat-delete text-warning align-middle text-sm mb-0"></p>
+                  </td>
+                  {% elif payment.status == 'rejected' %}
+                  <td class="align-middle text-center">
+                    <p class="ni ni-fat-remove text-danger align-middle text-sm mb-0"></p>
+                  </td>
+                  {% endif %}
+                </tr>
+                {% empty %}
+                <tr>
+                  <td colspan="4" class="text-center">No payments found.</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
 {% endblock %}
