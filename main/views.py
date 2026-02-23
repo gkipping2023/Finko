@@ -1134,6 +1134,18 @@ def report_payments(request):
 @login_required(login_url='log_in')
 def confirm_payment(request, transaction_id):
     transaction = get_object_or_404(Transaction, id=transaction_id)
+    
+    # Check if payment is already confirmed
+    if transaction.confirmed_at is not None:
+        if request.method == 'POST':
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'success': False, 'error': 'Este pago ya ha sido confirmado previamente.'})
+            messages.warning(request, "Este pago ya ha sido confirmado previamente. No se puede confirmar nuevamente.")
+            return render(request, 'main/confirm_payment.html', {'transaction': transaction, 'already_confirmed': True})
+        else:
+            # GET request - show template with confirmation info
+            return render(request, 'main/confirm_payment.html', {'transaction': transaction, 'already_confirmed': True})
+    
     if request.method == 'POST':
         # Check if this is a resend request
         resend = request.POST.get('resend') or request.GET.get('resend')
@@ -1155,10 +1167,12 @@ def confirm_payment(request, transaction_id):
                 return JsonResponse({'success': True, 'message': 'Confirmación reenviada exitosamente'})
             messages.success(request, "Confirmación reenviada al inquilino.")
         else:
-            # Confirm payment
+            # Confirm payment - set confirmed_at timestamp to prevent duplicate confirmations
+            from django.utils import timezone
             transaction.status = 'confirmed'
             transaction.type = 'receipt'  # Change type to receipt when confirming
             transaction.is_legacy_only = True  # Mark as legacy
+            transaction.confirmed_at = timezone.now()  # Record when confirmation happened
             transaction.save()
             
             # NEW: If linked to rent/invoice, create Payment and update Invoice
@@ -2032,6 +2046,85 @@ def public_payment_portal(request):
                     import logging
                     logger = logging.getLogger(__name__)
                     logger.error(f"Failed to send tenant confirmation email: {e}")
+                
+                # Send confirmation to actual tenant (if different from reporter email)
+                actual_tenant_email = rent.tenant.email if rent.tenant else rent.unregistered_tenant_email
+                if actual_tenant_email and actual_tenant_email != tenant_email:
+                    actual_tenant_html = f"""
+                    <html>
+                      <head>
+                        <style>
+                          body {{
+                            font-family: 'Montserrat', Arial, sans-serif;
+                            background: #f8f9fa;
+                            color: #344767;
+                            margin: 0;
+                            padding: 0;
+                          }}
+                          .container {{
+                            max-width: 600px;
+                            margin: 40px auto;
+                            background: #fff;
+                            border-radius: 12px;
+                            box-shadow: 0 2px 8px rgba(44,62,80,0.08);
+                            padding: 32px 24px;
+                          }}
+                          .success-icon {{
+                            text-align: center;
+                            font-size: 48px;
+                            color: #82d616;
+                            margin-bottom: 16px;
+                          }}
+                          .info-box {{
+                            background: #f8f9fa;
+                            border-left: 4px solid #82d616;
+                            padding: 16px;
+                            margin: 16px 0;
+                          }}
+                          .footer {{
+                            color: #8392ab;
+                            font-size: 13px;
+                            margin-top: 32px;
+                            text-align: center;
+                          }}
+                        </style>
+                      </head>
+                      <body>
+                        <div class="container">
+                          <div class="success-icon">✓</div>
+                          <h2 style="color:#82d616; text-align:center;">¡Pago Reportado Exitosamente!</h2>
+                          <p>Tu pago ha sido reportado correctamente y está pendiente de confirmación por el propietario.</p>
+                          
+                          <div class="info-box">
+                            <strong>Resumen del Pago:</strong><br>
+                            <strong>Contrato:</strong> {rent_number}<br>
+                            <strong>Propiedad:</strong> {rent.property.alias}<br>
+                            <strong>Monto:</strong> ${amount}<br>
+                            <strong>Fecha:</strong> {transaction_date}<br>
+                            <strong>Número de Transacción:</strong> {transaction.transaction_number}
+                          </div>
+                          
+                          <p>Recibirás una notificación cuando el propietario confirme el pago.</p>
+                          
+                          <div class="footer">
+                            Este es un mensaje automático de Finko - Property Management System.<br>
+                            Para consultas, contacta a tu propietario.
+                          </div>
+                        </div>
+                      </body>
+                    </html>
+                    """
+                    try:
+                        send_mailgun_simple(
+                            subject="Confirmación de Reporte de Pago",
+                            html=actual_tenant_html,
+                            to_emails=actual_tenant_email,
+                            from_email=settings.DEFAULT_FROM_EMAIL
+                        )
+                    except Exception as e:
+                        import logging
+                        logger = logging.getLogger(__name__)
+                        logger.error(f"Failed to send actual tenant confirmation email: {e}")
                 
                 messages.success(request, 
                     f'¡Pago reportado exitosamente! Número de transacción: {transaction.transaction_number}. '

@@ -122,6 +122,8 @@
         const form = document.getElementById('transaction-form');
         const actionField = document.getElementById('action-field');
         const cancelBtn = document.getElementById('cancel-btn');
+        const confirmForm = document.getElementById('confirm-form');
+        const confirmBtn = confirmForm ? confirmForm.querySelector('button[type="submit"]') : null;
 
         if (rentField) {
             rentField.addEventListener('change', function () {
@@ -157,12 +159,31 @@
             });
         }
 
-        // Show modal if preview is active
+        // Show modal if preview is active and handle confirm button
         {% if preview %}
         const modal = document.getElementById('transactionPreviewModal');
-        if (modal) {
-            modal.addEventListener('hidden.bs.modal', function () {
-                location.reload();
+        const bsModal = modal ? new bootstrap.Modal(modal) : null;
+        
+        if (bsModal) {
+            bsModal.show();
+        }
+
+        // Prevent double submission and close modal after form submission
+        if (confirmForm && confirmBtn) {
+            confirmForm.addEventListener('submit', function(e) {
+                // Disable button to prevent multiple submissions
+                confirmBtn.disabled = true;
+                confirmBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Procesando...';
+                
+                // Close modal immediately when form is submitted
+                if (bsModal) {
+                    bsModal.hide();
+                }
+                
+                // Wait 1 second for PDF to generate, then redirect to payments
+                setTimeout(function() {
+                    window.location.href = '{% url "payments" %}';
+                }, 1000);
             });
         }
         {% endif %}

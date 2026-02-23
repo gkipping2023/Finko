@@ -10,6 +10,14 @@
                     <h3 class="mb-0">Confirmar Pago</h3>
                 </div>
                 <div class="card-body">
+                    {% if already_confirmed %}
+                        <div class="alert alert-info" role="alert">
+                            <i class="fas fa-check-circle me-2"></i>
+                            <strong>Pago ya confirmado</strong>
+                            <p class="mb-0 mt-2">Este pago fue confirmado el <strong>{{ transaction.confirmed_at|date:"d/m/Y \a \l\a\s H:i" }}</strong> y no puede ser confirmado nuevamente.</p>
+                        </div>
+                    {% endif %}
+                    
                     <p><strong>Monto:</strong> ${{ transaction.amount }}</p>
                     <p><strong>Descripción:</strong> {{ transaction.description }}</p>
                     <p><strong>Inquilino:</strong> {{ transaction.tenant.first_name }} {{ transaction.tenant.last_name }}</p>
@@ -26,7 +34,7 @@
                     
                     <form method="post">
                         {% csrf_token %}
-                        <button type="submit" class="btn btn-success btn-lg">
+                        <button type="submit" class="btn btn-success btn-lg" {% if already_confirmed %}disabled{% endif %}>
                             <i class="fas fa-check"></i> Confirmar y enviar recibo
                         </button>
                     </form>

@@ -312,6 +312,11 @@ class Transaction(models.Model):
         related_name='transaction_ref',
         help_text="Links to new Payment model if created via new workflow"
     )
+    confirmed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Timestamp when payment was confirmed to prevent duplicate confirmations"
+    )
 
     def save(self, *args, **kwargs):
         if not self.pk:

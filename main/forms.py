@@ -370,7 +370,8 @@ class PublicPaymentForm(forms.Form):
             'class': 'form-control',
             'placeholder': 'correo@ejemplo.com'
         }),
-        label='Correo Electrónico'
+        label='Correo Electrónico para la Confirmación',
+        help_text='El correo donde se enviará la confirmación del pago reportado.'
     )
     transaction_date = forms.DateField(
         widget=forms.DateInput(attrs={
@@ -424,22 +425,11 @@ class PublicPaymentForm(forms.Form):
     def clean(self):
         cleaned_data = super().clean()
         rent_number = cleaned_data.get('rent_number')
-        tenant_email = cleaned_data.get('tenant_email')
         
-        if rent_number and tenant_email:
+        if rent_number:
             try:
                 rent = Rent.objects.get(rent_number=rent_number, is_active=True)
-                # Verify email matches tenant or unregistered tenant email
-                email_match = False
-                if rent.tenant and rent.tenant.email == tenant_email:
-                    email_match = True
-                elif rent.unregistered_tenant_email == tenant_email:
-                    email_match = True
-                
-                if not email_match:
-                    raise forms.ValidationError(
-                        'El correo electrónico no coincide con el inquilino de este contrato.'
-                    )
+                # Just verify rent exists and is active - email can be any valid address
             except Rent.DoesNotExist:
                 pass  # Already handled in clean_rent_number
         
