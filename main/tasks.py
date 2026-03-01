@@ -1,9 +1,13 @@
 from celery import shared_task
 from django.utils.timezone import now
 from .models import Rent, Transaction, Invoice
-from django.core.mail import send_mail
+from .mailgun_utils import send_mailgun_simple
 from datetime import timedelta, date
 from decimal import Decimal
+from django.conf import settings
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 @shared_task
@@ -60,13 +64,28 @@ def generate_invoices():
             # SKIP: No valid email found
             continue
         
-        # Send email to the tenant
-        send_mail(
-            subject=f"Invoice for {rent.property.alias}",
-            message=f"Dear {tenant_name},\n\nYour monthly rent of ${rent.rent_amount} is due on {due_date}. Please make your payment promptly.\n\nThank you.",
-            from_email='noreply@rentu.com',
-            recipient_list=[tenant_email],
-        )
+        # Send email to the tenant via Mailgun
+        try:
+            email_body = f"""Dear {tenant_name},
+
+Your monthly rent of ${rent.rent_amount} is due on {due_date}. Please make your payment promptly.
+
+Invoice Details:
+- Property: {rent.property.alias}
+- Amount: ${rent.rent_amount}
+- Due Date: {due_date}
+
+Thank you.
+Finko Team"""
+            
+            send_mailgun_simple(
+                subject=f"Invoice for {rent.property.alias}",
+                text=email_body,
+                to_emails=tenant_email,
+                from_email=settings.DEFAULT_FROM_EMAIL
+            )
+        except Exception as e:
+            logger.error(f"Failed to send invoice email to {tenant_email}: {e}")
 
         # Update the next invoice date properly
         next_month = today.replace(day=1) + timedelta(days=32)

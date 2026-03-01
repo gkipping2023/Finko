@@ -1146,6 +1146,20 @@ def confirm_payment(request, transaction_id):
             # GET request - show template with confirmation info
             return render(request, 'main/confirm_payment.html', {'transaction': transaction, 'already_confirmed': True})
     
+    # Handle rejection via query parameter
+    action = request.GET.get('action') or request.POST.get('action')
+    if action == 'reject':
+        if request.method == 'POST':
+            transaction.status = 'rejected'
+            transaction.save()
+            messages.success(request, "Pago rechazado.")
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'success': True})
+            return redirect('properties')
+        else:
+            # Show confirmation dialog for rejection
+            return render(request, 'main/confirm_payment.html', {'transaction': transaction, 'confirm_rejection': True})
+    
     if request.method == 'POST':
         # Check if this is a resend request
         resend = request.POST.get('resend') or request.GET.get('resend')
@@ -1302,14 +1316,19 @@ def properties(request):
     properties = Properties.objects.filter(owner=request.user)
     rents = []
     payments = []
+    pending_payments = []
+    pending_transactions = []
+    
     if request.user.role == 'O':
       # If the user is an owner, filter rents by owner
       rents = Rent.objects.filter(owner=request.user,is_active=True)
       # Get confirmed payments (last 10)
       payments_qs = Payment.objects.filter(invoice__rent__owner=request.user, status='confirmed').order_by('-payment_date')
       payments = payments_qs[:10]
-      # Get pending payments (awaiting confirmation)
+      # Get pending payments from Payment model (awaiting confirmation)
       pending_payments = Payment.objects.filter(invoice__rent__owner=request.user, status='pending').order_by('-payment_date')
+      # Get pending transactions (reported payments from public portal that need approval)
+      pending_transactions = Transaction.objects.filter(owner=request.user, status='pending').order_by('-created_at')
     elif request.user.role == 'T':
       # If the user is a tenant, filter rents by tenant
       rents = Rent.objects.filter(tenant=request.user, is_active=True)
@@ -1318,6 +1337,7 @@ def properties(request):
       payments = payments_qs[:10]
       # Tenants don't have pending approvals
       pending_payments = Payment.objects.none()
+      pending_transactions = Transaction.objects.none()
 
     for rent in rents:
         last_payment = Transaction.objects.filter(rent=rent, type='receipt',status='confirmed').order_by('-created_at').first()
@@ -1335,6 +1355,7 @@ def properties(request):
       'properties':properties,
       'payments':payments,
       'pending_payments': pending_payments,
+      'pending_transactions': pending_transactions,
     }
     return render(request,'main/properties.html',context)
 

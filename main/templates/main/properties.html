@@ -321,34 +321,44 @@
                     <p class="text-uppercase text-xs font-weight-bold mb-0">Propiedad</p>
                   </th>
                   <th>
-                    <p class="text-uppercase text-xs font-weight-bold mb-0">Factura</p>
-                    <p class="text-xs text-secondary mb-0">Vencimiento</p>
+                    <p class="text-uppercase text-xs font-weight-bold mb-0">Inquilino</p>
+                    <p class="text-xs text-secondary mb-0">Fecha</p>
                   </th>
                   <th>
                     <p class="text-uppercase text-xs font-weight-bold mb-0">Monto</p>
-                    <p class="text-xs text-secondary mb-0">Pagado</p>
+                    <p class="text-xs text-secondary mb-0">Método</p>
                   </th>
                   <th class="text-center text-uppercase text-xs font-weight-bolder opacity-7">Acciones</th>
                 </tr>
               </thead>
               <tbody>
-                {% if pending_payments and pending_payments.exists %}
-                  {% for payment in pending_payments %}
+                {% if pending_transactions and pending_transactions.exists %}
+                  {% for transaction in pending_transactions %}
                   <tr>
                     <td>
-                      <p class="text-xs font-weight-bold mb-0">{{ payment.invoice.rent.property.alias }}</p>
+                      <p class="text-xs font-weight-bold mb-0">{{ transaction.property.alias }}</p>
                     </td>
                     <td>
-                      <p class="text-xs font-weight-bold mb-0">#{{ payment.invoice.invoice_number }}</p>
-                      <p class="text-xs text-secondary mb-0">{{ payment.invoice.due_date|date:"d M Y" }}</p>
+                      <p class="text-xs font-weight-bold mb-0">{{ transaction.tenant.first_name }} {{ transaction.tenant.last_name }}</p>
+                      <p class="text-xs text-secondary mb-0">{{ transaction.created_at|date:"d M Y" }}</p>
                     </td>
                     <td>
-                      <p class="text-xs font-weight-bold mb-0">${{ payment.invoice.amount }}</p>
-                      <p class="text-xs text-secondary mb-0">${{ payment.amount }}</p>
+                      <p class="text-xs font-weight-bold mb-0">${{ transaction.amount }}</p>
+                      <p class="text-xs text-secondary mb-0">
+                        {% if transaction.payment_method == 'ach_yappy' %}
+                          ACH o Yappy
+                        {% elif transaction.payment_method == 'cash' %}
+                          Efectivo
+                        {% elif transaction.payment_method == 'other' %}
+                          Otros
+                        {% else %}
+                          {{ transaction.payment_method }}
+                        {% endif %}
+                      </p>
                     </td>
                     <td class="align-middle text-center">
-                      <a href="{% url 'confirm_payment' payment.id %}" class="btn btn-sm btn-success">Aprobar</a>
-                      <a href="{% url 'confirm_payment' payment.id %}?action=reject" class="btn btn-sm btn-danger ms-2">Rechazar</a>
+                      <a href="{% url 'confirm_payment' transaction.id %}" class="btn btn-sm btn-success">Aprobar</a>
+                      <a href="{% url 'confirm_payment' transaction.id %}?action=reject" class="btn btn-sm btn-danger ms-2">Rechazar</a>
                     </td>
                   </tr>
                   {% endfor %}
