@@ -142,9 +142,9 @@
                         <!-- due Days -->
                         <td class="align-middle text-center text-sm">
                             <div class="mb-2">
-                                {% if rent.days_past_due < -5 %}
+                                {% if rent.days_past_due < 1 %}
                                     <span class="badge badge-sm bg-gradient-success">Al día</span>
-                                {% elif rent.days_past_due <= 0 %}
+                                {% elif rent.days_past_due <= 5 %}
                                     <span class="badge badge-sm bg-gradient-warning">{{ rent.days_past_due }} días vencido</span>
                                 {% else %}
                                     <span class="badge badge-sm bg-gradient-danger">{{ rent.days_past_due }} días vencido</span>
