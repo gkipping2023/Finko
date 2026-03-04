@@ -142,9 +142,9 @@
                         <!-- due Days -->
                         <td class="align-middle text-center text-sm">
                             <div class="mb-2">
-                                {% if rent.days_past_due < 1 %}
+                                {% if rent.days_past_due < -5 %}
                                     <span class="badge badge-sm bg-gradient-success">Al día</span>
-                                {% elif rent.days_past_due <= 5 %}
+                                {% elif rent.days_past_due <= 0 %}
                                     <span class="badge badge-sm bg-gradient-warning">{{ rent.days_past_due }} días vencido</span>
                                 {% else %}
                                     <span class="badge badge-sm bg-gradient-danger">{{ rent.days_past_due }} días vencido</span>
@@ -270,37 +270,29 @@
                 </tr>
               </thead>
               <tbody>
-                {% for payment in payments %}
+                {% for payment in payments|slice:":10" %}
                 <tr>
                   <td>
-                    <p class="text-xs font-weight-bold mb-0">{{ payment.rent.property.alias }}</p>
+                    <p class="text-xs font-weight-bold mb-0">{{ payment.invoice.rent.property.alias }}</p>
                   </td>
                   <td>
-                    <p class="text-xs font-weight-bold mb-0">#{{ payment.invoice_number }}</p>
-                    <p class="text-xs text-secondary mb-0">{{ payment.due_date|date:"d M Y" }}</p>
+                    <p class="text-xs font-weight-bold mb-0">#{{ payment.invoice.invoice_number }}</p>
+                    <p class="text-xs text-secondary mb-0">{{ payment.invoice.due_date|date:"d M Y" }}</p>
                   </td>
                   <td>
-                    <p class="text-xs font-weight-bold mb-0">${{ payment.amount }}</p>
-                    <p class="text-xs text-secondary mb-0">
-                      {% with last_payment=payment.payment_set.all|dictsort:"payment_date"|last %}
-                        {% if last_payment %}
-                          ${{ last_payment.amount }}
-                        {% else %}
-                          $0
-                        {% endif %}
-                      {% endwith %}
-                    </p>
+                    <p class="text-xs font-weight-bold mb-0">${{ payment.invoice.amount }}</p>
+                    <p class="text-xs text-secondary mb-0">${{ payment.amount }}</p>
                   </td>
                   <td class="align-middle text-center">
-                    {% if payment.status == 'paid' %}
+                    {% if payment.invoice.status == 'paid' %}
                       <span class="badge badge-sm bg-gradient-success">Pagada</span>
-                    {% elif payment.status == 'partial' %}
+                    {% elif payment.invoice.status == 'partial' %}
                       <span class="badge badge-sm bg-gradient-warning">Parcial</span>
-                    {% elif payment.status == 'pending' %}
+                    {% elif payment.invoice.status == 'pending' %}
                       <span class="badge badge-sm bg-gradient-secondary">Pendiente</span>
-                    {% elif payment.status == 'overdue' %}
+                    {% elif payment.invoice.status == 'overdue' %}
                       <span class="badge badge-sm bg-gradient-danger">Vencida</span>
-                    {% elif payment.status == 'overdue_with_fee' %}
+                    {% elif payment.invoice.status == 'overdue_with_fee' %}
                       <span class="badge badge-sm bg-gradient-danger">Vencida + Mora</span>
                     {% endif %}
                   </td>
