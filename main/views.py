@@ -1328,7 +1328,7 @@ def properties(request):
       # Get pending payments from Payment model (awaiting confirmation)
       pending_payments = Payment.objects.filter(invoice__rent__owner=request.user, status='pending').order_by('-payment_date')
       # Get pending transactions (reported payments from public portal that need approval)
-      pending_transactions = Transaction.objects.filter(owner=request.user, status='pending').order_by('-created_at')
+      pending_transactions = Transaction.objects.filter(owner=request.user, type='pago', status='pending').order_by('-created_at')
     elif request.user.role == 'T':
       # If the user is a tenant, filter rents by tenant
       rents = Rent.objects.filter(tenant=request.user, is_active=True)

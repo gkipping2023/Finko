@@ -19,16 +19,19 @@ def generate_invoices():
         # Use a default due date if rent_due_date is None
         rent_due_day = int(rent.rent_due_date or 5)  # Default to the 5th day of the month
         
-        # Calculate due date
+        # Calculate due date - NEXT MONTH's due day
         try:
-            due_date = today.replace(day=rent_due_day)
+            # Move to next month first
+            next_month = today.replace(day=1) + timedelta(days=32)
+            due_date = next_month.replace(day=rent_due_day)
         except ValueError:
             # Handle months with fewer days (e.g., Feb 30)
             from calendar import monthrange
-            last_day = monthrange(today.year, today.month)[1]
-            due_date = today.replace(day=last_day)
+            next_month = today.replace(day=1) + timedelta(days=32)
+            last_day = monthrange(next_month.year, next_month.month)[1]
+            due_date = next_month.replace(day=min(rent_due_day, last_day))
         
-        # Create Invoice (NEW WORKFLOW) ← This was missing!
+        # Create Invoice (NEW WORKFLOW)
         invoice = Invoice.objects.create(
             rent=rent,
             invoice_date=today,
