@@ -405,7 +405,7 @@ class PublicPaymentForm(forms.Form):
         label='Descripción'
     )
     confirmation_file = forms.FileField(
-        required=False,
+        required=True,
         widget=forms.FileInput(attrs={
             'class': 'form-control',
             'accept': 'image/*,.pdf'

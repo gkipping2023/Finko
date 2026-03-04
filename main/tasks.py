@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 @shared_task
 def generate_invoices():
     today = now().date()
-    rents = Rent.objects.filter(next_invoice_date=today)
+    rents = Rent.objects.filter(next_invoice_date=today, is_active=True)
 
     for rent in rents:
         # Use a default due date if rent_due_date is None
