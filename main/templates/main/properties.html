@@ -270,29 +270,37 @@
                 </tr>
               </thead>
               <tbody>
-                {% for payment in payments|slice:":10" %}
+                {% for payment in payments %}
                 <tr>
                   <td>
-                    <p class="text-xs font-weight-bold mb-0">{{ payment.invoice.rent.property.alias }}</p>
+                    <p class="text-xs font-weight-bold mb-0">{{ payment.rent.property.alias }}</p>
                   </td>
                   <td>
-                    <p class="text-xs font-weight-bold mb-0">#{{ payment.invoice.invoice_number }}</p>
-                    <p class="text-xs text-secondary mb-0">{{ payment.invoice.due_date|date:"d M Y" }}</p>
+                    <p class="text-xs font-weight-bold mb-0">#{{ payment.invoice_number }}</p>
+                    <p class="text-xs text-secondary mb-0">{{ payment.due_date|date:"d M Y" }}</p>
                   </td>
                   <td>
-                    <p class="text-xs font-weight-bold mb-0">${{ payment.invoice.amount }}</p>
-                    <p class="text-xs text-secondary mb-0">${{ payment.amount }}</p>
+                    <p class="text-xs font-weight-bold mb-0">${{ payment.amount }}</p>
+                    <p class="text-xs text-secondary mb-0">
+                      {% with last_payment=payment.payment_set.all|dictsort:"payment_date"|last %}
+                        {% if last_payment %}
+                          ${{ last_payment.amount }}
+                        {% else %}
+                          $0
+                        {% endif %}
+                      {% endwith %}
+                    </p>
                   </td>
                   <td class="align-middle text-center">
-                    {% if payment.invoice.status == 'paid' %}
+                    {% if payment.status == 'paid' %}
                       <span class="badge badge-sm bg-gradient-success">Pagada</span>
-                    {% elif payment.invoice.status == 'partial' %}
+                    {% elif payment.status == 'partial' %}
                       <span class="badge badge-sm bg-gradient-warning">Parcial</span>
-                    {% elif payment.invoice.status == 'pending' %}
+                    {% elif payment.status == 'pending' %}
                       <span class="badge badge-sm bg-gradient-secondary">Pendiente</span>
-                    {% elif payment.invoice.status == 'overdue' %}
+                    {% elif payment.status == 'overdue' %}
                       <span class="badge badge-sm bg-gradient-danger">Vencida</span>
-                    {% elif payment.invoice.status == 'overdue_with_fee' %}
+                    {% elif payment.status == 'overdue_with_fee' %}
                       <span class="badge badge-sm bg-gradient-danger">Vencida + Mora</span>
                     {% endif %}
                   </td>
