@@ -1322,9 +1322,9 @@ def properties(request):
     if request.user.role == 'O':
       # If the user is an owner, filter rents by owner
       rents = Rent.objects.filter(owner=request.user,is_active=True)
-      # Get confirmed payments (last 10)
-      payments_qs = Payment.objects.filter(invoice__rent__owner=request.user, status='confirmed').order_by('-payment_date')
-      payments = payments_qs[:10]
+      # Get last 10 invoices
+      invoices_qs = Invoice.objects.filter(rent__owner=request.user).order_by('-due_date')
+      payments = invoices_qs[:10]
       # Get pending payments from Payment model (awaiting confirmation)
       pending_payments = Payment.objects.filter(invoice__rent__owner=request.user, status='pending').order_by('-payment_date')
       # Get pending transactions (reported payments from public portal that need approval)
