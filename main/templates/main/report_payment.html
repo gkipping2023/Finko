@@ -5,34 +5,236 @@
     <div class="col-lg-8 col-md-10 col-12">
       <div class="card shadow border-0 mb-4">
         <div class="card-header bg-gradient-primary pb-3 border-radius-lg">
-          <h4 class="text-white mb-0">Registrar Pago</h4>
-          <p class="text-white-50 mb-0">Agregar un nuevo pago</p>
+          {% if user_role == 'O' %}
+            <h4 class="text-white mb-0">Registrar Pago Recibido</h4>
+            <p class="text-white-50 mb-0">Agregar un nuevo pago de tu inquilino</p>
+          {% else %}
+            <h4 class="text-white mb-0">Registrar Pago</h4>
+            <p class="text-white-50 mb-0">Reportar un nuevo pago que realizaste</p>
+          {% endif %}
         </div>
         <div class="card-body">
-        <form method="post" enctype="multipart/form-data" id="transaction-form" autocomplete="off">
+          <form method="post" {% if user_role == 'T' %}enctype="multipart/form-data"{% endif %} id="payment-form" autocomplete="off">
             {% csrf_token %}
-            {% for field in form %}
+            
+            {% if user_role == 'O' %}
+              <!-- OWNER PAYMENT FORM -->
+              
+              <!-- Rent Selection -->
               <div class="mb-3">
-                <label class="form-label font-weight-bold text-dark">{{ field.label }}</label>
-                {{ field }}
-                {% if field.help_text %}
-                  <small class="form-text text-muted">{{ field.help_text }}</small>
-                {% endif %}
-                {% for error in field.errors %}
+                <label class="form-label font-weight-bold text-dark">
+                  {{ form.rent.label }}
+                </label>
+                {{ form.rent }}
+                {% for error in form.rent.errors %}
                   <div class="text-danger small">{{ error }}</div>
                 {% endfor %}
               </div>
-            {% endfor %}
-            <div class="text-center">
-              <button type="submit" class="btn btn-primary bg-gradient w-50 mt-3">Save Transaction</button>
-            </div>
-        </form>
+              
+              <!-- Invoice Balance Display -->
+              <div class="mb-3" id="invoice-balance-display" style="display: none;">
+                <div class="alert alert-info" role="alert">
+                  <strong>Saldo sin pagar: </strong>
+                  <span id="balance-amount">$0.00</span>
+                  <br>
+                  <small id="late-fee-display"></small>
+                </div>
+              </div>
+              
+              <!-- Invoice Selection -->
+              <div class="mb-3">
+                <label class="form-label font-weight-bold text-dark">
+                  {{ form.invoice.label }}
+                </label>
+                {{ form.invoice }}
+                <small class="form-text text-muted">{{ form.invoice.help_text }}</small>
+                {% for error in form.invoice.errors %}
+                  <div class="text-danger small">{{ error }}</div>
+                {% endfor %}
+              </div>
+              
+              <!-- Amount -->
+              <div class="mb-3">
+                <label class="form-label font-weight-bold text-dark">
+                  {{ form.amount.label }}
+                </label>
+                {{ form.amount }}
+                {% for error in form.amount.errors %}
+                  <div class="text-danger small">{{ error }}</div>
+                {% endfor %}
+              </div>
+              
+              <!-- Payment Date -->
+              <div class="mb-3">
+                <label class="form-label font-weight-bold text-dark">
+                  {{ form.payment_date.label }}
+                </label>
+                {{ form.payment_date }}
+                {% for error in form.payment_date.errors %}
+                  <div class="text-danger small">{{ error }}</div>
+                {% endfor %}
+              </div>
+              
+              <!-- Payment Method -->
+              <div class="mb-3">
+                <label class="form-label font-weight-bold text-dark">
+                  {{ form.payment_method.label }}
+                </label>
+                {{ form.payment_method }}
+                {% for error in form.payment_method.errors %}
+                  <div class="text-danger small">{{ error }}</div>
+                {% endfor %}
+              </div>
+              
+              <!-- Description -->
+              <div class="mb-3">
+                <label class="form-label font-weight-bold text-dark">
+                  {{ form.description.label }}
+                </label>
+                {{ form.description }}
+                {% for error in form.description.errors %}
+                  <div class="text-danger small">{{ error }}</div>
+                {% endfor %}
+              </div>
+              
+              <!-- Send Receipt Checkbox -->
+              <div class="mb-3">
+                <div class="form-check">
+                  {{ form.send_receipt }}
+                  <label class="form-check-label" for="{{ form.send_receipt.id_for_label }}">
+                    {{ form.send_receipt.label }}
+                  </label>
+                </div>
+                <small class="form-text text-muted d-block mt-2">
+                  {{ form.send_receipt.help_text }}
+                </small>
+              </div>
+              
+              <!-- Submit Button -->
+              <div class="text-center">
+                <button type="submit" class="btn btn-primary bg-gradient w-50 mt-3">
+                  Registrar Pago
+                </button>
+              </div>
+              
+            {% else %}
+              <!-- TENANT PAYMENT FORM (existing) -->
+              
+              {% for field in form %}
+                <div class="mb-3">
+                  <label class="form-label font-weight-bold text-dark">{{ field.label }}</label>
+                  {{ field }}
+                  {% if field.help_text %}
+                    <small class="form-text text-muted">{{ field.help_text }}</small>
+                  {% endif %}
+                  {% for error in field.errors %}
+                    <div class="text-danger small">{{ error }}</div>
+                  {% endfor %}
+                </div>
+              {% endfor %}
+              
+              <div class="text-center">
+                <button type="submit" class="btn btn-primary bg-gradient w-50 mt-3">Registrar Pago</button>
+              </div>
+              
+            {% endif %}
+          </form>
+          
           <div class="text-center mt-3">
-            <a href="{% url 'dashboard' %}" class="btn btn-secondary">Back to Dashboard</a>
+            {% if user_role == 'O' %}
+              <a href="{% url 'properties' %}" class="btn btn-secondary">Volver al Panel</a>
+            {% else %}
+              <a href="{% url 'dashboard' %}" class="btn btn-secondary">Back to Dashboard</a>
+            {% endif %}
           </div>
         </div>
       </div>
     </div>
   </div>
 </div>
+
+<!-- JavaScript for Owner Invoice Filtering -->
+{% if user_role == 'O' %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const rentSelect = document.getElementById('id_owner_rent');
+  const invoiceSelect = document.getElementById('id_owner_invoice');
+  const balanceDisplay = document.getElementById('invoice-balance-display');
+  const balanceAmount = document.getElementById('balance-amount');
+  const lateFeeDisplay = document.getElementById('late-fee-display');
+  const amountInput = document.getElementById('id_owner_amount');
+  
+  // Fetch invoices when rent changes
+  rentSelect.addEventListener('change', function() {
+    const rentId = this.value;
+    
+    if (!rentId) {
+      invoiceSelect.innerHTML = '<option value="">-- Seleccionar Factura --</option>';
+      balanceDisplay.style.display = 'none';
+      return;
+    }
+    
+    // AJAX request to get unpaid invoices
+    fetch('{% url "get_unpaid_invoices" %}', {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken': '{{ csrf_token }}',
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      body: 'rent_id=' + rentId
+    })
+    .then(response => response.json())
+    .then(data => {
+      invoiceSelect.innerHTML = '<option value="">-- Seleccionar Factura --</option>';
+      
+      if (data.invoices && data.invoices.length > 0) {
+        data.invoices.forEach(invoice => {
+          const option = document.createElement('option');
+          option.value = invoice.id;
+          option.textContent = invoice.display;
+          option.dataset.balanceOwed = invoice.balance_owed;
+          option.dataset.lateFee = invoice.late_fee_amount;
+          invoiceSelect.appendChild(option);
+        });
+      } else {
+        const option = document.createElement('option');
+        option.textContent = 'No hay facturas sin pagar';
+        option.disabled = true;
+        invoiceSelect.appendChild(option);
+      }
+    })
+    .catch(error => {
+      console.error('Error fetching invoices:', error);
+      invoiceSelect.innerHTML = '<option value="">Error al cargar facturas</option>';
+    });
+  });
+  
+  // Update balance display when invoice changes
+  invoiceSelect.addEventListener('change', function() {
+    const selectedOption = this.options[this.selectedIndex];
+    
+    if (this.value) {
+      const balanceOwed = parseFloat(selectedOption.dataset.balanceOwed);
+      const lateFee = parseFloat(selectedOption.dataset.lateFee);
+      
+      balanceAmount.textContent = '$' + balanceOwed.toFixed(2);
+      
+      if (lateFee > 0) {
+        lateFeeDisplay.innerHTML = `<strong>Recargo por atraso:</strong> $${lateFee.toFixed(2)}`;
+      } else {
+        lateFeeDisplay.innerHTML = '';
+      }
+      
+      balanceDisplay.style.display = 'block';
+      amountInput.max = balanceOwed;
+      amountInput.value = balanceOwed.toFixed(2);
+    } else {
+      balanceDisplay.style.display = 'none';
+      amountInput.value = '';
+    }
+  });
+});
+</script>
+{% endif %}
+
 {% endblock %}

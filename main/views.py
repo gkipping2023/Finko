@@ -1025,111 +1025,237 @@ def add_transaction(request):
 
 @login_required(login_url='log_in')
 def report_payments(request):
-    if request.method == 'POST':
-        form = ReportPaymentForm(request.POST, request.FILES, user=request.user)
-        if form.is_valid():
-            # Get the uploaded file before saving the transaction
-            confirmation_file = request.FILES.get('confirmation_file')
-            
-            transaction = form.save(commit=False)
-            # Set the owner and tenant BEFORE calling save() to ensure proper transaction number generation
-            transaction.owner = transaction.property.owner  # Set the owner as the property's owner
-            transaction.tenant = request.user  # Set the tenant as the logged-in user
-            transaction.status = 'pending'
-            # Don't save the confirmation_file to the model
-            transaction.confirmation_file = None
-            
-            # Ensure all required fields are set before saving
-            if not transaction.owner:
-                messages.error(request, "Error: No se pudo determinar el propietario de la propiedad.")
-                return render(request, 'main/report_payment.html', {'form': form})
-            
-            transaction.save()
-            
-            # Send email to owner
-            owner_email = transaction.property.owner.email
-            confirm_url = request.build_absolute_uri(
-                reverse('confirm_payment', args=[transaction.id])
-            )
-            # Example for report_payment (sending to owner)
-            owner_html = f"""
-                <html>
-                  <head>
-                    <style>
-                      body {{
-                        font-family: 'Montserrat', Arial, sans-serif;
-                        background: #f8f9fa;
-                        color: #344767;
-                        margin: 0;
-                        padding: 0;
-                      }}
-                      .container {{
-                        text-align: center;
-                        max-width: 600px;
-                        margin: 40px auto;
-                        background: #fff;
-                        border-radius: 12px;
-                        box-shadow: 0 2px 8px rgba(44,62,80,0.08);
-                        padding: 32px 24px;
-                      }}
-                      .btn {{
-                        display: inline-block;
-                        background: #17c1e8;
-                        color: #fff !important;
-                        padding: 12px 28px;
-                        border-radius: 6px;
-                        text-decoration: none;
-                        font-weight: 600;
-                        margin-top: 16px;
-                      }}
-                      .footer {{
-                        color: #8392ab;
-                        font-size: 13px;
-                        margin-top: 32px;
-                        text-align: center;
-                      }}
-                    </style>
-                  </head>
-                  <body>
-                    <div class="container">
-                      <h2 style="color:#17c1e8;">Nuevo pago registrado</h2>
-                      <p>Se ha registrado un nuevo pago por parte de tu inquilino.</p>
-                      <p style="color:#17c1e8;" class="fw-semibold">Una ves confirmes con tu banco, confirma el pago en el siguiente boton y se le enviara un recibo automaticamente a tu inquilino</p>
-                      <p>
-                        <a href="{confirm_url}" class="btn">Confirmar Pago</a>
-                      </p>
-                      <div class="footer">
-                        Este es un mensaje automático de Finko - Property Management System.
-                      </div>
-                    </div>
-                  </body>
-                </html>
-                """
-            
-            # Prepare attachments if confirmation file exists
-            attachments = []
-            if confirmation_file:
-                attachments.append((confirmation_file.name, confirmation_file.read()))
-            
-            try:
-                send_mailgun_simple(
-                    subject="Nuevo pago pendiente de confirmación",
-                    html=owner_html,
-                    to_emails=owner_email,
-                    from_email=settings.DEFAULT_FROM_EMAIL,
-                    attachments=attachments if attachments else None
+    """
+    Unified payment registration view that handles both roles:
+    - Tenant: Reports payment they made (pending confirmation by owner)
+    - Owner: Registers payment received (immediately confirmed)
+    """
+    from .forms import OwnerPaymentForm
+    
+    if request.user.role == 'O':  # Owner
+        # Owner payment registration flow
+        if request.method == 'POST':
+            form = OwnerPaymentForm(request.POST, user=request.user)
+            if form.is_valid():
+                try:
+                    invoice = form.cleaned_data['invoice']
+                    
+                    # Validate owner has access to this invoice
+                    if invoice.rent.owner != request.user:
+                        messages.error(request, "No tienes acceso a esta factura.")
+                        return render(request, 'main/report_payment.html', {'form': form, 'user_role': 'O'})
+                    
+                    # Create Payment record with confirmed status
+                    payment = Payment.objects.create(
+                        invoice=invoice,
+                        amount=form.cleaned_data['amount'],
+                        payment_date=form.cleaned_data['payment_date'],
+                        payment_method=form.cleaned_data['payment_method'],
+                        description=form.cleaned_data['description'],
+                        status='confirmed'  # Auto-confirm since owner registered it
+                    )
+                    
+                    # Signal handler will auto-update invoice
+                    
+                    # Create legacy Transaction record for audit trail
+                    transaction = Transaction.objects.create(
+                        owner=request.user,
+                        tenant=invoice.rent.tenant,
+                        property=invoice.rent.property,
+                        rent=invoice.rent,
+                        amount=form.cleaned_data['amount'],
+                        transaction_date=form.cleaned_data['payment_date'],
+                        payment_method=form.cleaned_data['payment_method'],
+                        type='pago',
+                        description=form.cleaned_data['description'],
+                        status='confirmed',
+                        is_legacy_only=True
+                    )
+                    
+                    # Link payment to transaction for audit trail
+                    payment.transaction = transaction
+                    payment.save()
+                    
+                    # Send receipt if requested
+                    if form.cleaned_data['send_receipt']:
+                        send_receipt_to_tenant(transaction)
+                        messages.success(
+                            request, 
+                            f"Pago registrado por ${form.cleaned_data['amount']:.2f}. "
+                            "Recibo enviado al inquilino."
+                        )
+                    else:
+                        messages.success(
+                            request, 
+                            f"Pago registrado por ${form.cleaned_data['amount']:.2f}."
+                        )
+                    
+                    return redirect('properties')
+                    
+                except Exception as e:
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.error(f"Error registering owner payment: {e}")
+                    messages.error(request, "Error al registrar el pago. Por favor intenta de nuevo.")
+                    return render(request, 'main/report_payment.html', {'form': form, 'user_role': 'O'})
+        
+        else:
+            form = OwnerPaymentForm(user=request.user)
+        
+        context = {'form': form, 'user_role': 'O'}
+        return render(request, 'main/report_payment.html', context)
+    
+    else:  # Tenant
+        # Tenant payment reporting flow (existing behavior)
+        if request.method == 'POST':
+            form = ReportPaymentForm(request.POST, request.FILES, user=request.user)
+            if form.is_valid():
+                # Get the uploaded file before saving the transaction
+                confirmation_file = request.FILES.get('confirmation_file')
+                
+                transaction = form.save(commit=False)
+                # Set the owner and tenant BEFORE calling save() to ensure proper transaction number generation
+                transaction.owner = transaction.property.owner  # Set the owner as the property's owner
+                transaction.tenant = request.user  # Set the tenant as the logged-in user
+                transaction.status = 'pending'
+                # Don't save the confirmation_file to the model
+                transaction.confirmation_file = None
+                
+                # Ensure all required fields are set before saving
+                if not transaction.owner:
+                    messages.error(request, "Error: No se pudo determinar el propietario de la propiedad.")
+                    return render(request, 'main/report_payment.html', {'form': form, 'user_role': 'T'})
+                
+                transaction.save()
+                
+                # Send email to owner
+                owner_email = transaction.property.owner.email
+                confirm_url = request.build_absolute_uri(
+                    reverse('confirm_payment', args=[transaction.id])
                 )
-            except Exception as e:
-                import logging
-                logger = logging.getLogger(__name__)
-                logger.error(f"Failed to send payment notification email: {e}")
-            messages.success(request, "Pago registrado. Esperando confirmación del propietario.")
-            return redirect('report_payment')
-    else:
-        form = ReportPaymentForm(user=request.user)
-    transactions = Transaction.objects.filter(owner=request.user).order_by('-created_at')
-    context = {'transactions': transactions, 'form': form}
-    return render(request, 'main/report_payment.html', context)
+                # Example for report_payment (sending to owner)
+                owner_html = f"""
+                    <html>
+                      <head>
+                        <style>
+                          body {{
+                            font-family: 'Montserrat', Arial, sans-serif;
+                            background: #f8f9fa;
+                            color: #344767;
+                            margin: 0;
+                            padding: 0;
+                          }}
+                          .container {{
+                            text-align: center;
+                            max-width: 600px;
+                            margin: 40px auto;
+                            background: #fff;
+                            border-radius: 12px;
+                            box-shadow: 0 2px 8px rgba(44,62,80,0.08);
+                            padding: 32px 24px;
+                          }}
+                          .btn {{
+                            display: inline-block;
+                            background: #17c1e8;
+                            color: #fff !important;
+                            padding: 12px 28px;
+                            border-radius: 6px;
+                            text-decoration: none;
+                            font-weight: 600;
+                            margin-top: 16px;
+                          }}
+                          .footer {{
+                            color: #8392ab;
+                            font-size: 13px;
+                            margin-top: 32px;
+                            text-align: center;
+                          }}
+                        </style>
+                      </head>
+                      <body>
+                        <div class="container">
+                          <h2 style="color:#17c1e8;">Nuevo pago registrado</h2>
+                          <p>Se ha registrado un nuevo pago por parte de tu inquilino.</p>
+                          <p style="color:#17c1e8;" class="fw-semibold">Una ves confirmes con tu banco, confirma el pago en el siguiente boton y se le enviara un recibo automaticamente a tu inquilino</p>
+                          <p>
+                            <a href="{confirm_url}" class="btn">Confirmar Pago</a>
+                          </p>
+                          <div class="footer">
+                            Este es un mensaje automático de Finko - Property Management System.
+                          </div>
+                        </div>
+                      </body>
+                    </html>
+                    """
+                
+                # Prepare attachments if confirmation file exists
+                attachments = []
+                if confirmation_file:
+                    attachments.append((confirmation_file.name, confirmation_file.read()))
+                
+                try:
+                    send_mailgun_simple(
+                        subject="Nuevo pago pendiente de confirmación",
+                        html=owner_html,
+                        to_emails=owner_email,
+                        from_email=settings.DEFAULT_FROM_EMAIL,
+                        attachments=attachments if attachments else None
+                    )
+                except Exception as e:
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.error(f"Failed to send payment notification email: {e}")
+                messages.success(request, "Pago registrado. Esperando confirmación del propietario.")
+                return redirect('report_payment')
+        else:
+            form = ReportPaymentForm(user=request.user)
+        
+        transactions = Transaction.objects.filter(owner=request.user).order_by('-created_at')
+        context = {'transactions': transactions, 'form': form, 'user_role': 'T'}
+        return render(request, 'main/report_payment.html', context)
+
+
+@login_required
+@require_POST
+def get_unpaid_invoices(request):
+    """
+    AJAX endpoint to fetch unpaid invoices for a selected rent.
+    Returns JSON list of invoices with balance information.
+    Only accessible to owners.
+    """
+    if request.user.role != 'O':
+        return JsonResponse({'invoices': [], 'error': 'Unauthorized'}, status=403)
+    
+    rent_id = request.POST.get('rent_id')
+    
+    if not rent_id:
+        return JsonResponse({'invoices': []})
+    
+    try:
+        rent = Rent.objects.get(id=rent_id, owner=request.user)
+        invoices = Invoice.objects.filter(
+            rent=rent,
+            status__in=['pending', 'partial', 'overdue', 'overdue_with_fee']
+        ).order_by('-due_date')
+        
+        invoice_list = [
+            {
+                'id': inv.id,
+                'invoice_number': inv.invoice_number,
+                'due_date': inv.due_date.strftime('%Y-%m-%d'),
+                'amount': str(inv.amount),
+                'paid_amount': str(inv.paid_amount),
+                'balance_owed': str(inv.get_balance_owed()),
+                'late_fee_amount': str(inv.late_fee_amount or 0),
+                'status': inv.status,
+                'display': f"{inv.invoice_number} - Vencimiento: {inv.due_date.strftime('%d/%m/%Y')} - Saldo: ${inv.get_balance_owed():.2f}"
+            }
+            for inv in invoices
+        ]
+        
+        return JsonResponse({'invoices': invoice_list})
+    except Rent.DoesNotExist:
+        return JsonResponse({'invoices': [], 'error': 'Rent not found'}, status=404)
 
 @login_required(login_url='log_in')
 def confirm_payment(request, transaction_id):

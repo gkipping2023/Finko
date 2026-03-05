@@ -37,6 +37,7 @@ urlpatterns = [
     path('rent/<int:rent_id>/finish/', views.finish_rent, name='finish_rent'),
     path('confirm-payment/<int:transaction_id>/', views.confirm_payment, name='confirm_payment'),
     path('report_payment',views.report_payments,name='report_payment'),
+    path('api/unpaid-invoices/', views.get_unpaid_invoices, name='get_unpaid_invoices'),
     path('preview-transaction-confirmation/', views.preview_transaction_confirmation, name='preview_transaction_confirmation'),
     path('account/', include('allauth.urls')),  # Add allauth URLs
     path('lease/<int:lease_id>/renew/', views.renew_lease, name='renew_lease'),

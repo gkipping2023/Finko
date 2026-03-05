@@ -1,10 +1,11 @@
 from django.forms import ModelForm, ModelChoiceField
-from .models import PLAN_CHOICES, User, Properties, Transaction, Rent, ID_Type, Sex, payment_method, Feedback, LATE_FEE_CHOICES
+from .models import PLAN_CHOICES, User, Properties, Transaction, Rent, ID_Type, Sex, payment_method, Feedback, LATE_FEE_CHOICES, Invoice, Payment
 from django.contrib.auth.forms import UserCreationForm
 from django import forms
 from django_countries.fields import CountryField
 from .form_mixins import CustomizableFormMixin, BaseCustomModelForm, BaseCustomUserCreationForm
 from datetime import timedelta
+from decimal import Decimal
 
 class NewUserForm(CustomizableFormMixin, UserCreationForm):
     first_name = forms.CharField(widget=forms.TextInput(attrs={'class': 'form-control'}))
@@ -354,6 +355,92 @@ class ReportPaymentForm(BaseCustomModelForm):
             cleaned_data['type'] = 'pago'
         
         return cleaned_data
+
+
+class OwnerPaymentForm(forms.Form):
+    """
+    Form for owners to register payments they've received.
+    Creates Payment records with 'confirmed' status immediately.
+    """
+    rent = forms.ModelChoiceField(
+        queryset=Rent.objects.none(),
+        widget=forms.Select(attrs={'class': 'form-control', 'id': 'id_owner_rent'}),
+        label='Seleccionar Contrato de Alquiler',
+        required=True
+    )
+    
+    invoice = forms.ModelChoiceField(
+        queryset=Invoice.objects.none(),
+        widget=forms.Select(attrs={'class': 'form-control', 'id': 'id_owner_invoice'}),
+        label='Factura sin Pagar',
+        required=True,
+        help_text='Solo se muestran facturas pendientes, parcialmente pagadas o vencidas'
+    )
+    
+    amount = forms.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        widget=forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'id': 'id_owner_amount'}),
+        label='Monto del Pago',
+        required=True
+    )
+    
+    payment_date = forms.DateField(
+        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control', 'id': 'id_owner_payment_date'}),
+        label='Fecha del Pago',
+        required=True
+    )
+    
+    payment_method = forms.ChoiceField(
+        choices=payment_method,
+        widget=forms.Select(attrs={'class': 'form-control', 'id': 'id_owner_payment_method'}),
+        label='Método de Pago',
+        required=True
+    )
+    
+    description = forms.CharField(
+        widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'id': 'id_owner_description'}),
+        label='Notas/Descripción',
+        required=False
+    )
+    
+    send_receipt = forms.BooleanField(
+        required=False,
+        initial=True,
+        label='Enviar Recibo al Inquilino',
+        help_text='Se enviará un recibo en PDF al inquilino automáticamente',
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input', 'id': 'id_owner_send_receipt'})
+    )
+    
+    def __init__(self, *args, **kwargs):
+        user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+        
+        if user and user.role == 'O':  # Owner
+            # Load owner's active rents
+            self.fields['rent'].queryset = Rent.objects.filter(
+                owner=user,
+                is_active=True
+            ).select_related('property', 'tenant').order_by('-start_date')
+            
+            # Load unpaid invoices (will be filtered via AJAX in template)
+            self.fields['invoice'].queryset = Invoice.objects.filter(
+                status__in=['pending', 'partial', 'overdue', 'overdue_with_fee']
+            ).select_related('rent').order_by('-due_date')
+    
+    def clean(self):
+        cleaned_data = super().clean()
+        invoice = cleaned_data.get('invoice')
+        amount = cleaned_data.get('amount')
+        
+        if invoice and amount:
+            # Validate amount doesn't exceed balance owed
+            balance_owed = invoice.get_balance_owed()
+            if amount > balance_owed:
+                self.add_error('amount', f'El monto no puede ser mayor a lo adeudado (${balance_owed:.2f})')
+        
+        return cleaned_data
+
 
 class PublicPaymentForm(forms.Form):
     """Form for public payment portal - no login required"""
