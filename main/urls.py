@@ -60,6 +60,7 @@ urlpatterns = [
     # Feedback & Support
     path('feedback/', views.feedback_form, name='feedback_form'),
     path('feedback/success/', views.feedback_success, name='feedback_success'),
+    path('subscribe-email/', views.subscribe_email, name='subscribe_email'),
 
 
     

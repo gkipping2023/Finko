@@ -1,5 +1,5 @@
 from django.forms import ModelForm, ModelChoiceField
-from .models import PLAN_CHOICES, User, Properties, Transaction, Rent, ID_Type, Sex, payment_method, Feedback, LATE_FEE_CHOICES, Invoice, Payment
+from .models import PLAN_CHOICES, User, Properties, Transaction, Rent, ID_Type, Sex, payment_method, Feedback, LATE_FEE_CHOICES, Invoice, Payment, EmailSubscription
 from django.contrib.auth.forms import UserCreationForm
 from django import forms
 from django_countries.fields import CountryField
@@ -520,3 +520,26 @@ class FeedbackForm(forms.ModelForm):
     class Meta:
         model = Feedback
         fields = ['feedback_type', 'subject', 'message']
+
+
+class EmailSubscriptionForm(forms.ModelForm):
+    """
+    Form for email subscription.
+    Accessible to both authenticated and non-authenticated users.
+    """
+    email = forms.EmailField(
+        widget=forms.EmailInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Tu correo electrónico',
+            'required': True
+        }),
+        label='Correo Electrónico',
+        error_messages={
+            'required': 'El correo es requerido',
+            'invalid': 'Ingresa un correo válido',
+        }
+    )
+    
+    class Meta:
+        model = EmailSubscription
+        fields = ['email']

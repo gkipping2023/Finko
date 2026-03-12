@@ -144,6 +144,45 @@
   </div>
 </section>
 
+<!-- Email Subscription Section -->
+<section class="py-5" style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);">
+  <div class="container">
+    <div class="row justify-content-center">
+      <div class="col-lg-6">
+        <div class="feature-card text-center">
+          <div class="feature-icon mx-auto mb-3">
+            <i class="fas fa-envelope" style="font-size: 48px; color: var(--finko-purple);"></i>
+          </div>
+          <h3 class="feature-title">Mantente Actualizado</h3>
+          <p class="feature-description mb-4">
+            Suscríbete a nuestro newsletter para recibir tips de gestión inmobiliaria, actualizaciones de nuevas funcionalidades y ofertas exclusivas.
+          </p>
+          
+          <form method="POST" action="{% url 'subscribe_email' %}" class="subscription-form" id="subscription-form-features">
+            {% csrf_token %}
+            
+            <div class="form-group mb-3">
+              <input type="email" 
+                     name="email" 
+                     class="form-control form-control-finko" 
+                     placeholder="tu@correo.com" 
+                     required
+                     aria-label="Correo electrónico"
+                     style="border: 2px solid var(--finko-purple);">
+            </div>
+            
+            <button type="submit" class="btn-finko-primary w-100" style="margin-top: 10px;">
+              Suscribirse
+            </button>
+          </form>
+          
+          <small class="text-muted mt-2 d-block">Respetamos tu privacidad. Puedes darte de baja en cualquier momento.</small>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- CTA Section -->
 <section class="finko-cta">
   <div class="container text-center">
@@ -152,7 +191,7 @@
       Comienza gratis hoy y descubre cómo puedes simplificar la gestión de tus propiedades.
     </p>
     {% if not request.user.is_authenticated %}
-      <a href="{% url 'register_user' %}" class="btn-finko-orange" style="background: white; color: var(--finko-purple);">
+      <a href="{% url 'contact' %}" class="btn-finko-orange" style="background: white; color: var(--finko-purple);">
         Comenzar Gratis Ahora
       </a>
     {% else %}

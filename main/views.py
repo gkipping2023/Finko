@@ -15,8 +15,8 @@ from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout, get_backends
 from django.contrib.auth.decorators import login_required
-from .models import Properties, Transaction, Rent, User, PromoCode, Roles, Invoice, Payment
-from .forms import AddPropertyForm, NewUserForm,NewTenantForm, NewRentForm, UpdateUserForm, TransactionForm, ReportPaymentForm, RenewLeaseForm, PublicPaymentForm
+from .models import Properties, Transaction, Rent, User, PromoCode, Roles, Invoice, Payment, EmailSubscription
+from .forms import AddPropertyForm, NewUserForm,NewTenantForm, NewRentForm, UpdateUserForm, TransactionForm, ReportPaymentForm, RenewLeaseForm, PublicPaymentForm, EmailSubscriptionForm
 from django_countries.fields import Country  # Add this import if using django-countries
 #from .filters import Reserves_DailyFilter, DogsFilter, Reserves_HotelFilter
 from django.db import models  # Import models for aggregate functions
@@ -258,16 +258,19 @@ def view_import(request):
 
 def home(request):
     #Stripe Public Key for JS
-    context= {'STRIPE_PUBLISHABLE_KEY': settings.STRIPE_PUBLISHABLE_KEY,
-
+    context= {
+        'STRIPE_PUBLISHABLE_KEY': settings.STRIPE_PUBLISHABLE_KEY,
+        'subscription_form': EmailSubscriptionForm()
     }
     return render(request,'main/landing.html',context)
 
 def features(request):
-    return render(request, 'main/features.html')
+    context = {'subscription_form': EmailSubscriptionForm()}
+    return render(request, 'main/features.html', context)
 
 def about(request):
-    return render(request, 'main/about.html')
+    context = {'subscription_form': EmailSubscriptionForm()}
+    return render(request, 'main/about.html', context)
 
 def contact(request):
     if request.method == 'POST':
@@ -310,6 +313,89 @@ def contact(request):
         return redirect('contact')
     
     return render(request, 'main/contact.html')
+
+def subscribe_email(request):
+    """
+    Handle email subscription.
+    Accepts both regular form submissions and AJAX requests.
+    """
+    if request.method == 'POST':
+        form = EmailSubscriptionForm(request.POST)
+        
+        if form.is_valid():
+            email = form.cleaned_data['email']
+            
+            try:
+                # Create or update subscription
+                subscription, created = EmailSubscription.objects.update_or_create(
+                    email=email,
+                    defaults={'is_active': True}
+                )
+                
+                # Send confirmation email
+                try:
+                    email_subject = 'Bienvenido a Finko - Suscripción Confirmada'
+                    email_body = f"""
+Hola,
+
+¡Gracias por suscribirte a Finko! Nos complace tenerte en nuestra comunidad.
+
+Recibirás actualizaciones y noticias relevantes en tu correo electrónico.
+
+Si deseas darte de baja, puedes hacerlo en cualquier momento.
+
+¡Bienvenido a bordo!
+
+Equipo de Finko
+"""
+                    send_mailgun_simple(
+                        to_emails=[email],
+                        subject=email_subject,
+                        body=email_body,
+                        from_email=settings.DEFAULT_FROM_EMAIL
+                    )
+                except Exception as e:
+                    print(f"Error sending confirmation email: {e}")
+                
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    # AJAX request
+                    return JsonResponse({
+                        'success': True,
+                        'message': '¡Gracias por suscribirte! Revisa tu correo para confirmar.',
+                        'created': created
+                    })
+                else:
+                    # Regular form submission
+                    messages.success(request, '¡Gracias por suscribirte! Revisa tu correo para confirmar.')
+                    # Redirect to the referer page or landing page
+                    return redirect(request.META.get('HTTP_REFERER', 'landing'))
+            
+            except Exception as e:
+                error_message = 'Hubo un error al procesar tu suscripción. Por favor intenta de nuevo.'
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return JsonResponse({
+                        'success': False,
+                        'message': error_message,
+                        'error': str(e)
+                    }, status=400)
+                else:
+                    messages.error(request, error_message)
+                    return redirect(request.META.get('HTTP_REFERER', 'landing'))
+        else:
+            errors = form.errors
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Validación fallida',
+                    'errors': errors
+                }, status=400)
+            else:
+                for field, error_list in errors.items():
+                    messages.error(request, f"{field}: {', '.join(error_list)}")
+                return redirect(request.META.get('HTTP_REFERER', 'landing'))
+    
+    # GET request - shouldn't happen normally, but just in case
+    return redirect('landing')
 
 def log_in(request):
     page = 'login'

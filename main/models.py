@@ -619,3 +619,22 @@ class Payment(models.Model):
             
             self.invoice.save()
 
+
+class EmailSubscription(models.Model):
+    """
+    Model for managing email subscriptions for waitlist and newsletter.
+    Allows any user (authenticated or not) to subscribe to updates.
+    """
+    email = models.EmailField(unique=True, max_length=254, db_index=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Email Subscription'
+        verbose_name_plural = 'Email Subscriptions'
+    
+    def __str__(self):
+        return self.email
+
