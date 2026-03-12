@@ -2,7 +2,6 @@
 
 document.addEventListener('DOMContentLoaded', function () {
     const startDateField = document.getElementById('id_start_date');
-    const nextInvoiceDateField = document.getElementById('id_next_invoice_date');
     const endDateField = document.getElementById('id_end_date');
 
     if (startDateField) {
@@ -10,10 +9,6 @@ document.addEventListener('DOMContentLoaded', function () {
             const startDateValue = startDateField.value;
             if (startDateValue) {
                 const startDate = new Date(startDateValue);
-
-                // Calculate next_invoice_date (30 days from start_date)
-                const nextInvoiceDate = new Date(startDate);
-                nextInvoiceDate.setDate(startDate.getDate() + 30);
 
                 // Calculate end_date (1 year from start_date)
                 const endDate = new Date(startDate);
@@ -27,10 +22,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     return `${year}-${month}-${day}`;
                 };
 
-                if (nextInvoiceDateField) nextInvoiceDateField.value = formatDate(nextInvoiceDate);
-                if (endDateField) nextInvoiceDateField.value = formatDate(endDate);
+                if (endDateField) endDateField.value = formatDate(endDate);
             } else {
-                if (nextInvoiceDateField) nextInvoiceDateField.value = '';
                 if (endDateField) endDateField.value = '';
             }
         });

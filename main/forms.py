@@ -105,43 +105,10 @@ class AddPropertyForm(BaseCustomModelForm):
             property_instance.save()
         return property_instance
 
-# class NewRentForm(forms.ModelForm):
-#     start_date = forms.DateField(widget=forms.DateInput(attrs={'type':'date','id':'id_start_date'}))
-#     end_date = forms.DateField(widget=forms.DateInput(attrs={'type':'date','id':'id_end_date'}))
-#     next_invoice_date = forms.DateField(widget=forms.DateInput(attrs={'type':'date','id':'id_next_invoice_date'}))
-    
-#     class Meta:
-#         model = Rent
-#         fields = '__all__'
-#         exclude = ['property','tenant','owner','status','is_active']
-
-#     def __init__(self, *args, **kwargs):
-#         super().__init__(*args, **kwargs)
-#         for field_name, field in self.fields.items():
-#             field.widget.attrs['class'] = 'form-control'  # Add the form-control class to all fields
-
-#     def clean(self):
-#         cleaned_data = super().clean()
-#         start_date = cleaned_data.get('start_date')
-#         next_invoice_date = cleaned_data.get('next_invoice_date')
-
-#         # If next_invoice_date is not provided, set it to 30 days from start_date
-#         if start_date and not next_invoice_date:
-#             cleaned_data['next_invoice_date'] = start_date + timedelta(days=30)
-
-#         return cleaned_data
-
-#     def save(self, commit=True, user=None):
-#         property_instance = super().save(commit=False)
-#         if user:  # Assign the current user as the owner
-#             property_instance.owner = user
-#         if commit:
-#             property_instance.save()
-#         return property_instance
 
 class NewRentForm(BaseCustomModelForm):
-    start_date = forms.DateField(widget=forms.DateInput(attrs={'type':'date', 'class':'form-control'}))
-    end_date = forms.DateField(widget=forms.DateInput(attrs={'type':'date', 'class':'form-control'}))
+    start_date = forms.DateField(widget=forms.DateInput(attrs={'type':'date', 'class':'form-control','id': 'id_start_date'}))
+    end_date = forms.DateField(widget=forms.DateInput(attrs={'type':'date', 'class':'form-control','id': 'id_end_date'}))
     next_invoice_date = forms.DateField(widget=forms.DateInput(attrs={'type':'date', 'class':'form-control'}), required=False)
     late_fee_type = forms.ChoiceField(
         choices=LATE_FEE_CHOICES,
@@ -196,6 +163,8 @@ class NewRentForm(BaseCustomModelForm):
         email = cleaned_data.get('unregistered_tenant_email')
         late_fee_type = cleaned_data.get('late_fee_type')
         late_fee_amount = cleaned_data.get('late_fee_amount')
+        start_date = cleaned_data.get('start_date')
+        end_date = cleaned_data.get('end_date')
 
         # Check if EITHER registered tenant OR both unregistered fields are provided
         has_registered_tenant = tenant is not None
@@ -218,12 +187,6 @@ class NewRentForm(BaseCustomModelForm):
                 "Por favor ingresa una cantidad fija para la tarifa de mora."
             )
 
-        # Set next_invoice_date if not provided
-        start_date = cleaned_data.get('start_date')
-        next_invoice_date = cleaned_data.get('next_invoice_date')
-        if start_date and not next_invoice_date:
-            cleaned_data['next_invoice_date'] = start_date + timedelta(days=365/12)
-
         return cleaned_data
 
     def save(self, commit=True, user=None, property_instance=None):
@@ -232,6 +195,13 @@ class NewRentForm(BaseCustomModelForm):
             rent.owner = user
         if property_instance:
             rent.property = property_instance
+        
+        # CRITICAL: Preserve user's manual entries without auto-calculation
+        # User must manually enter next_invoice_date
+        # Do NOT auto-populate from start_date
+        if not self.cleaned_data.get('next_invoice_date'):
+            rent.next_invoice_date = None
+        
         if commit:
             rent.save()
         return rent
