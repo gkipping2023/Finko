@@ -197,6 +197,7 @@
 </section>
 
 <!-- Testimonials Section -->
+<!--  
 <section class="finko-testimonials">
   <div class="container">
     <h2 class="section-title">Lo que Dicen Nuestros Usuarios</h2>
@@ -251,7 +252,7 @@
       </div>
     </div>
   </div>
-</section>
+</section> -->
 
 
 
@@ -266,9 +267,7 @@
           </div>
           <h3 class="feature-title">Mantente Actualizado</h3>
           <p class="feature-description mb-4">
-            Suscríbete a nuestro newsletter para recibir tips de gestión inmobiliaria, actualizaciones de nuevas funcionalidades y ofertas exclusivas.
-          </p>
-          
+          Sé de los primeros en probar Finko. Registra tu correo y recibe acceso anticipado.</p>          
           <form method="POST" action="{% url 'subscribe_email' %}" class="subscription-form" id="subscription-form-landing">
             {% csrf_token %}
             
