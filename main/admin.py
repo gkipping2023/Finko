@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.utils import timezone
-from .models import User, Properties, Transaction, Rent, PromoCode, AuditLog, Feedback, Invoice, Payment
+from .models import User, Properties, Transaction, Rent, PromoCode, AuditLog, Feedback, Invoice, Payment, EmailSubscription
 
 # Register your models here.
 
@@ -134,6 +134,24 @@ class PaymentAdmin(admin.ModelAdmin):
         }),
         ('Audit', {
             'fields': ('created_at', 'transaction'),
+            'classes': ('collapse',)
+        }),
+    )
+
+
+@admin.register(EmailSubscription)
+class EmailSubscriptionAdmin(admin.ModelAdmin):
+    list_display = ('email', 'is_active', 'created_at', 'updated_at')
+    list_filter = ('is_active', 'created_at')
+    search_fields = ('email',)
+    readonly_fields = ('created_at', 'updated_at')
+    
+    fieldsets = (
+        ('Subscription Information', {
+            'fields': ('email', 'is_active')
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at'),
             'classes': ('collapse',)
         }),
     )
