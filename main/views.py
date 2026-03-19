@@ -877,18 +877,78 @@ def dashboard(request):
         rent_status = RentAccountStatus(rent).get_status()
         total_outstanding_balance += rent_status['balance_owed']
     
-    upcoming_renewals = Rent.objects.filter(owner=user, end_date__gte=datetime.now(), end_date__lte=datetime.now() + timedelta(days=30)).count()
+    # Calculate expected monthly income (total rent amount for all active rents)
+    expected_monthly_income = active_rents.aggregate(
+        total=models.Sum('rent_amount')
+    )['total'] or 0
+    
+    # Count active rents with end date in next 30 days
+    upcoming_renewals = Rent.objects.filter(
+        owner=user, 
+        is_active=True,
+        end_date__gte=datetime.now(), 
+        end_date__lte=datetime.now() + timedelta(days=30)
+    ).count()
 
-    # Financial Snapshot
-    rent_collected = collected_income
-    rent_outstanding = pending_income
-    recent_payments = Transaction.objects.filter(owner=user, type='receipt').order_by('-transaction_date')[:5]
-    last_payment = Transaction.objects.filter(owner=user, type='receipt').order_by('-transaction_date')[:1] # Get the second most recent payment
-    expense_summary = Transaction.objects.filter(owner=user, type='debit').aggregate(total=models.Sum('amount'))['total'] or 0
-    net_cash_flow = collected_income - expense_summary
+    # Financial Snapshot - Calculate confirmed payments this month
+    # Confirmed Invoice payments
+    confirmed_invoice_payments = 0
+    for rent in active_rents:
+        current_month_invoices = rent.invoices.filter(
+            invoice_date__gte=month_start,
+            invoice_date__lte=month_end
+        )
+        confirmed_invoice_payments += current_month_invoices.aggregate(
+            total=models.Sum('paid_amount')
+        )['total'] or 0
+    
+    # Confirmed Transaction payments (receipt, credit, pago types)
+    confirmed_transaction_payments = Transaction.objects.filter(
+        owner=user,
+        type__in=['receipt', 'credit', 'pago'],
+        status='confirmed',
+        transaction_date__gte=month_start,
+        transaction_date__lte=month_end
+    ).aggregate(total=models.Sum('amount'))['total'] or 0
+    
+    # Total collected and outstanding
+    rent_collected = confirmed_invoice_payments + confirmed_transaction_payments
+    rent_outstanding = expected_monthly_income - rent_collected
+    
+    # Recent confirmed payments
+    recent_payments = Transaction.objects.filter(
+        owner=user, 
+        type__in=['receipt', 'credit', 'pago'],
+        status='confirmed'
+    ).order_by('-transaction_date')[:5]
+    
+    last_payment = Transaction.objects.filter(
+        owner=user, 
+        type__in=['receipt', 'credit', 'pago'],
+        status='confirmed'
+    ).order_by('-transaction_date').first()
+    
+    # Monthly expenses (this month only)
+    expense_summary = Transaction.objects.filter(
+        owner=user, 
+        type='debit',
+        transaction_date__gte=month_start,
+        transaction_date__lte=month_end
+    ).aggregate(total=models.Sum('amount'))['total'] or 0
+    
+    # Monthly net cash flow
+    net_cash_flow = rent_collected - expense_summary
 
     # Alerts / Notifications
-    overdue_rent_alerts = Rent.objects.filter(owner=user, status=True).count()  # Customize logic for overdue rents
+    # Count active rents with past due invoices
+    from datetime import date
+    overdue_rent_alerts = Rent.objects.filter(
+        owner=user, 
+        is_active=True,
+        invoices__due_date__lt=date.today(),
+        invoices__paid_amount__lt=models.F('invoices__amount')
+    ).distinct().count()
+    
     leases_expiring_soon = Rent.objects.filter(owner=user, end_date__gte=datetime.now(), end_date__lte=datetime.now() + timedelta(days=30)).count()
     pending_maintenance_requests = Properties.objects.filter(owner=user, maint_status='requested').count()
 
@@ -899,6 +959,7 @@ def dashboard(request):
       'occupancy_rate': occupancy_rate,
       'collected_income': collected_income,
       'pending_income': pending_income,
+      'expected_monthly_income': expected_monthly_income,
       'upcoming_renewals': upcoming_renewals,
       'rent_collected': rent_collected,
       'rent_outstanding': rent_outstanding,

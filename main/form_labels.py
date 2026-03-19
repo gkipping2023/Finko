@@ -130,7 +130,7 @@ FORM_HELP_TEXTS = {
     },
     
     'NewRentForm': {
-        'rent_due_date': 'Día del mes en que vence el alquiler (1-31).',
+        'rent_due_date': 'Día del mes en que vence el alquiler (1-31) Se le registrara recargo al siguiente dia, si no se registra el pago.',
         'next_invoice_date': 'Si no se especifica, se calculará automáticamente.',
         'unregistered_tenant_name': 'Complete solo si el inquilino no está registrado en el sistema.',
         'unregistered_tenant_email': 'Requerido para inquilinos no registrados.',

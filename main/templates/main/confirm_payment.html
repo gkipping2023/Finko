@@ -7,7 +7,11 @@
         <div class="col-md-6">
             <div class="card">
                 <div class="card-header">
-                    <h3 class="mb-0">Confirmar Pago</h3>
+                    {% if confirm_rejection %}
+                        <h3 class="mb-0">Rechazar Pago</h3>
+                    {% else %}
+                        <h3 class="mb-0">Confirmar Pago</h3>
+                    {% endif %}
                 </div>
                 <div class="card-body">
                     {% if already_confirmed %}
@@ -15,6 +19,14 @@
                             <i class="fas fa-check-circle me-2"></i>
                             <strong>Pago ya confirmado</strong>
                             <p class="mb-0 mt-2">Este pago fue confirmado el <strong>{{ transaction.confirmed_at|date:"d/m/Y \a \l\a\s H:i" }}</strong> y no puede ser confirmado nuevamente.</p>
+                        </div>
+                    {% endif %}
+                    
+                    {% if confirm_rejection %}
+                        <div class="alert alert-warning" role="alert">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            <strong>¿Rechazar este pago?</strong>
+                            <p class="mb-0 mt-2">Al rechazar este pago, se marcará como rechazado y el inquilino será notificado. Esta acción no se puede deshacer.</p>
                         </div>
                     {% endif %}
                     
@@ -34,89 +46,119 @@
                     
                     <form method="post">
                         {% csrf_token %}
-                        <button type="submit" class="btn btn-success btn-lg" {% if already_confirmed %}disabled{% endif %}>
-                            <i class="fas fa-check"></i> Confirmar y enviar recibo
-                        </button>
+                        {% if confirm_rejection %}
+                            <input type="hidden" name="action" value="reject">
+                            <button type="submit" class="btn btn-danger btn-lg">
+                                <i class="fas fa-times"></i> Confirmar Rechazo
+                            </button>
+                        {% else %}
+                            <button type="submit" class="btn btn-success btn-lg" {% if already_confirmed %}disabled{% endif %}>
+                                <i class="fas fa-check"></i> Confirmar y enviar recibo
+                            </button>
+                        {% endif %}
+                        <a href="{% url 'properties' %}" class="btn btn-secondary btn-lg ms-2">
+                            <i class="fas fa-arrow-left"></i> Cancelar
+                        </a>
                     </form>
                 </div>
             </div>
         </div>
         
         <div class="col-md-6">
-            <div class="card">
-                <div class="card-header">
-                    <h4 class="mb-0">Vista previa del recibo</h4>
-                    <small class="text-muted">Este será el PDF que se enviará al inquilino</small>
+            {% if confirm_rejection %}
+                <div class="card">
+                    <div class="card-header">
+                        <h4 class="mb-0">Razón del Rechazo</h4>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted">Al rechazar este pago:</p>
+                        <ul class="list-unstyled">
+                            <li><i class="fas fa-check text-success me-2"></i>El estado cambiará a "Rechazado"</li>
+                            <li><i class="fas fa-check text-success me-2"></i>El inquilino será notificado del rechazo</li>
+                            <li><i class="fas fa-check text-success me-2"></i>El pago no será contabilizado</li>
+                            <li><i class="fas fa-check text-success me-2"></i>El monto seguirá pendiente en la renta</li>
+                        </ul>
+                        <div class="alert alert-info mt-4" role="alert">
+                            <strong>Nota:</strong> Asegúrese de contactar al inquilino para aclarar el motivo del rechazo.
+                        </div>
+                    </div>
                 </div>
-                <div class="card-body">
-                    <div class="pdf-preview border p-3" style="background-color: #f8f9fa; min-height: 500px;">
-                        <div class="receipt-preview">
-                            <div class="text-center mb-4">
-                                <h4 class="text-primary">RECIBO DE PAGO</h4>
+            {% else %}
+                <div class="card">
+                    <div class="card-header">
+                        <h4 class="mb-0">Vista previa del recibo</h4>
+                        <small class="text-muted">Este será el PDF que se enviará al inquilino</small>
+                    </div>
+                    <div class="card-body">
+                        <div class="pdf-preview border p-3" style="background-color: #f8f9fa; min-height: 500px;">
+                            <div class="receipt-preview">
+                                <div class="text-center mb-4">
+                                    <h4 class="text-primary">RECIBO DE PAGO</h4>
+                                    <hr>
+                                </div>
+                                
+                                <div class="row mb-3">
+                                    <div class="col-6">
+                                        <strong>Número de transacción:</strong><br>
+                                        <span class="text-muted">{{ transaction.transaction_number }}</span>
+                                    </div>
+                                    <div class="col-6">
+                                        <strong>Fecha:</strong><br>
+                                        <span class="text-muted">{{ transaction.transaction_date|date:"d/m/Y" }}</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="row mb-3">
+                                    <div class="col-12">
+                                        <strong>Inquilino:</strong><br>
+                                        <span class="text-muted">{{ transaction.tenant.first_name }} {{ transaction.tenant.last_name }}</span><br>
+                                        <span class="text-muted">{{ transaction.tenant.email }}</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="row mb-3">
+                                    <div class="col-12">
+                                        <strong>Propiedad:</strong><br>
+                                        <span class="text-muted">{{ transaction.property.alias }}</span><br>
+                                        <span class="text-muted">{{ transaction.property.address }}</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="row mb-3">
+                                    <div class="col-12">
+                                        <strong>Concepto:</strong><br>
+                                        <span class="text-muted">{{ transaction.description }}</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="row mb-3">
+                                    <div class="col-6">
+                                        <strong>Método de pago:</strong><br>
+                                        <span class="text-muted">{{ transaction.get_payment_method_display }}</span>
+                                    </div>
+                                    <div class="col-6">
+                                        <strong>Estado:</strong><br>
+                                        <span class="badge badge-success">Confirmado</span>
+                                    </div>
+                                </div>
+                                
                                 <hr>
-                            </div>
-                            
-                            <div class="row mb-3">
-                                <div class="col-6">
-                                    <strong>Número de transacción:</strong><br>
-                                    <span class="text-muted">{{ transaction.transaction_number }}</span>
+                                <div class="text-center">
+                                    <h3 class="text-success">
+                                        <strong>Total: ${{ transaction.amount }}</strong>
+                                    </h3>
                                 </div>
-                                <div class="col-6">
-                                    <strong>Fecha:</strong><br>
-                                    <span class="text-muted">{{ transaction.transaction_date|date:"d/m/Y" }}</span>
+                                <hr>
+                                
+                                <div class="text-center text-muted small mt-4">
+                                    <p>Este recibo confirma el pago recibido.</p>
+                                    <p>Generado automáticamente por Finko</p>
                                 </div>
-                            </div>
-                            
-                            <div class="row mb-3">
-                                <div class="col-12">
-                                    <strong>Inquilino:</strong><br>
-                                    <span class="text-muted">{{ transaction.tenant.first_name }} {{ transaction.tenant.last_name }}</span><br>
-                                    <span class="text-muted">{{ transaction.tenant.email }}</span>
-                                </div>
-                            </div>
-                            
-                            <div class="row mb-3">
-                                <div class="col-12">
-                                    <strong>Propiedad:</strong><br>
-                                    <span class="text-muted">{{ transaction.property.alias }}</span><br>
-                                    <span class="text-muted">{{ transaction.property.address }}</span>
-                                </div>
-                            </div>
-                            
-                            <div class="row mb-3">
-                                <div class="col-12">
-                                    <strong>Concepto:</strong><br>
-                                    <span class="text-muted">{{ transaction.description }}</span>
-                                </div>
-                            </div>
-                            
-                            <div class="row mb-3">
-                                <div class="col-6">
-                                    <strong>Método de pago:</strong><br>
-                                    <span class="text-muted">{{ transaction.get_payment_method_display }}</span>
-                                </div>
-                                <div class="col-6">
-                                    <strong>Estado:</strong><br>
-                                    <span class="badge badge-success">Confirmado</span>
-                                </div>
-                            </div>
-                            
-                            <hr>
-                            <div class="text-center">
-                                <h3 class="text-success">
-                                    <strong>Total: ${{ transaction.amount }}</strong>
-                                </h3>
-                            </div>
-                            <hr>
-                            
-                            <div class="text-center text-muted small mt-4">
-                                <p>Este recibo confirma el pago recibido.</p>
-                                <p>Generado automáticamente por Finko</p>
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
+            {% endif %}
         </div>
     </div>
 </div>

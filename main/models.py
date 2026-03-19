@@ -207,7 +207,7 @@ class Rent(models.Model):
     start_date = models.DateField()
     end_date = models.DateField(null=True, blank=True)
     rent_amount = models.DecimalField(max_digits=10, decimal_places=2)
-    rent_due_date = models.IntegerField(choices=[(i, str(i)) for i in range(1, 32)],default=5)  # Date when the rent is due
+    rent_due_date = models.IntegerField(choices=[(i, str(i)) for i in range(1, 32)],default=1)  # Date when the rent is due
     next_invoice_date = models.DateField(null=True, blank=True)
     status = models.BooleanField(default=True) #MOROSIDAD cambiaremos a dias de morosidad.
     is_active = models.BooleanField(default=True) #Activo o inactivo
@@ -279,7 +279,7 @@ class Transaction(models.Model):
     owner = models.ForeignKey(User, on_delete=models.CASCADE,limit_choices_to={'role': 'O'},related_name='owner_transactions')  # The user who owns the transaction
     tenant = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True,limit_choices_to={'role': 'T'},related_name='tenant_transactions')  # Optional tenant
     property = models.ForeignKey(Properties, on_delete=models.CASCADE, null=True, blank=True)  # Optional property
-    rent = models.ForeignKey(Rent, on_delete=models.CASCADE, null=True, blank=True)  # Optional rent
+    rent = models.ForeignKey(Rent, on_delete=models.CASCADE, null=True, blank=True, related_name='transactions')  # Optional rent
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     description = models.TextField(max_length=250, blank=True, null=True)
     payment_method = models.CharField(choices=payment_method, max_length=100)
