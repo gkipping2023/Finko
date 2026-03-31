@@ -31,44 +31,59 @@
                   </tr>
                 </thead>
                 <tbody>
-                    {% for property in properties %}
-                  <tr>
-                    <td>
-                      <div class="d-flex px-2 py-1">
-                        <div>
-                          <i class="bi bi-houses me-2 px-2 text-lg font-weight-bold text-primary"></i>
-                        </div>
-                        <div class="d-flex flex-column justify-content-center">
-                          <h6 class="mb-0 text-sm">{{property.alias}}</h6>
-                          <p class="text-xs text-secondary mb-0">{{property.location}}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td>
-                      <p class="text-xs font-weight-bold mb-0">{{property.category}}</p>
-                      <p class="text-xs text-secondary mb-0">Organization</p>
-                    </td>
-                    <td class="align-middle text-center">
-                        <span class="text-secondary text-xs font-weight-bold">{{property.monthly_pmt}}</span>
-                      </td>
-                      <td class="align-middle text-center">
-                          <span class="text-secondary text-xs font-weight-bold">{{property.maint_fee}}</span>
+                    {% if properties %}
+                      {% for property in properties %}
+                      <tr>
+                        <td>
+                          <div class="d-flex px-2 py-1">
+                            <div>
+                              <i class="bi bi-houses me-2 px-2 text-lg font-weight-bold text-primary"></i>
+                            </div>
+                            <div class="d-flex flex-column justify-content-center">
+                              <h6 class="mb-0 text-sm">{{property.alias}}</h6>
+                              <p class="text-xs text-secondary mb-0">{{property.location}}</p>
+                            </div>
+                          </div>
                         </td>
-                    {% if property.available is False %}
-                  <td class="align-middle text-center text-sm">
-                      <span class="badge badge-sm bg-gradient-success">Alquilado</span>
-                    </td>
-                  {% else %}
-                  <td class="align-middle text-center text-sm">
-                    <span class="badge badge-sm bg-gradient-warning">Disponible</span>
-                  </td>
-                  {% endif %}
-                    
-                    <td class="align-middle text-center text-sm">
-                        <span class="badge badge-sm bg-gradient-success">{{property.maint_status}}</span>
+                        <td>
+                          <p class="text-xs font-weight-bold mb-0">{{property.category}}</p>
+                          <p class="text-xs text-secondary mb-0">Organization</p>
+                        </td>
+                        <td class="align-middle text-center">
+                            <span class="text-secondary text-xs font-weight-bold">{{property.monthly_pmt}}</span>
+                          </td>
+                          <td class="align-middle text-center">
+                              <span class="text-secondary text-xs font-weight-bold">{{property.maint_fee}}</span>
+                            </td>
+                        {% if property.available is False %}
+                      <td class="align-middle text-center text-sm">
+                          <span class="badge badge-sm bg-gradient-success">Alquilado</span>
+                        </td>
+                      {% else %}
+                      <td class="align-middle text-center text-sm">
+                        <span class="badge badge-sm bg-gradient-warning">Disponible</span>
                       </td>
-                  </tr>
-                  {% endfor %}
+                      {% endif %}
+                        
+                        <td class="align-middle text-center text-sm">
+                            <span class="badge badge-sm bg-gradient-success">{{property.maint_status}}</span>
+                          </td>
+                      </tr>
+                      {% endfor %}
+                    {% else %}
+                    <tr>
+                      <td colspan="6" class="text-center py-5">
+                        <div>
+                          <p class="text-secondary text-sm mb-3">No hay propiedades registradas.</p>
+                          {% if request.user.plan == "free" %}
+                          <a class="btn btn-outline-info btn-sm mb-0" href="{% url 'user_profile' %}">Upgrade Plan</a>
+                          {% else %}
+                          <a class="btn btn-outline-info btn-sm mb-0" href="{% url 'properties_form' %}">Agregar Propiedad</a>
+                          {% endif %}
+                        </div>
+                      </td>
+                    </tr>
+                    {% endif %}
                 </tbody>
               </table>
             </div>

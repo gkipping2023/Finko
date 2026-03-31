@@ -1421,6 +1421,13 @@ from django.template.loader import render_to_string
 from weasyprint import HTML
 
 def send_receipt_to_tenant(transaction):
+    # Skip email if tenant is not registered (non-registered user)
+    if not transaction.tenant or not transaction.tenant.email:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"Skipping receipt email for transaction {transaction.id}: tenant is not registered or has no email")
+        return
+    
     context = {
         'transaction': transaction,
         'logo_base64': get_logo_for_pdf()
