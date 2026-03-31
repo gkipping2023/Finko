@@ -75,12 +75,19 @@
                       <td colspan="6" class="text-center py-5">
                         <div>
                           <p class="text-secondary text-sm mb-3">No hay propiedades registradas.</p>
+
+
+                          <a class="btn btn-outline-info btn-sm mb-0" href="{% url 'properties_form' %}">Agregar Propiedad</a>
+
+                        </div>
+                        <!-- <div>
+                          <p class="text-secondary text-sm mb-3">No hay propiedades registradas.</p>
                           {% if request.user.plan == "free" %}
                           <a class="btn btn-outline-info btn-sm mb-0" href="{% url 'user_profile' %}">Upgrade Plan</a>
                           {% else %}
                           <a class="btn btn-outline-info btn-sm mb-0" href="{% url 'properties_form' %}">Agregar Propiedad</a>
                           {% endif %}
-                        </div>
+                        </div> -->
                       </td>
                     </tr>
                     {% endif %}

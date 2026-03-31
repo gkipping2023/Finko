@@ -1772,7 +1772,8 @@ def generate_documents(request):
       date_formatted = f"{today.day} de {months_es[today.month]} de {today.year}"
       
       # Get user location (using nationality or default)
-      location = request.user.nac.name if request.user.nac else "Panama"
+      #location = request.user.nac.name if request.user.nac else "Panama"
+      location = 'Panama'  # Default to Panama for simplicity
       
       html_string = render_to_string('main/income_letter_pdf.html', {
         'recipient': recipient,
@@ -1797,25 +1798,6 @@ def generate_documents(request):
       return render(request, 'main/income_letter_form.html', {
         'available_years': available_years
       })
-
-  if action == 'letter':
-    if request.method == 'POST':
-      recipient = request.POST.get('recipient', '')
-      subject = request.POST.get('subject', 'Carta')
-      body = request.POST.get('body', '')
-      html_string = render_to_string('main/letter_pdf.html', {
-        'recipient': recipient,
-        'subject': subject,
-        'body': body,
-        'user': request.user,
-        'date': date.today()
-      })
-      pdf = HTML(string=html_string).write_pdf()
-      response = HttpResponse(pdf, content_type='application/pdf')
-      response['Content-Disposition'] = f'attachment; filename="letter_{request.user.id}.pdf"'
-      return response
-    else:
-      return render(request, 'main/letter_form.html', {})
 
   if action == 'statement':
     # Statement/Account statement generation by month
