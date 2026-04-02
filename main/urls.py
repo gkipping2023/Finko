@@ -32,6 +32,7 @@ urlpatterns = [
     path('update_property',views.update_property,name='update_property'),
     path('user_profile',views.user_profile,name='user_profile'),
     path('transaction/<int:transaction_id>/pdf/', views.transaction_pdf, name='transaction_pdf'),
+    path('contract/<int:rent_id>/pdf/', views.contract_pdf, name='contract_pdf'),
     path('add_transaction',views.add_transaction,name='add_transaction'),
     path('pricing',views.pricing,name='pricing'),
     path('rent/<int:rent_id>/finish/', views.finish_rent, name='finish_rent'),

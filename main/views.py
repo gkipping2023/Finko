@@ -98,6 +98,86 @@ def transaction_pdf(request, transaction_id):
       response['Content-Disposition'] = disposition
     return response
 
+# Contract PDF Generation Function
+def render_contract_pdf(rent):
+    """
+    Generate a lease contract PDF for a specific rent.
+    """
+    from datetime import datetime
+    from dateutil.relativedelta import relativedelta
+    
+    # Calculate contract duration in months
+    duration_months = 0
+    if rent.end_date and rent.start_date:
+        delta = relativedelta(rent.end_date, rent.start_date)
+        duration_months = delta.years * 12 + delta.months
+    
+    # Get contract date (use start_date or today)
+    contract_date = rent.start_date if rent.start_date else datetime.now().date()
+    
+    # Convert amount to words (Spanish)
+    def number_to_words_spanish(amount):
+        """Simple number to words converter for amounts"""
+        # This is a simplified version - you may want to use a library like num2words
+        try:
+            amount_str = f"{float(amount):.2f}"
+            return f"{amount_str} BALBOAS"
+        except:
+            return f"{amount} BALBOAS"
+    
+    rent_amount_words = number_to_words_spanish(rent.rent_amount)
+    
+    # Get owner
+    owner = rent.owner
+    
+    context = {
+        'rent': rent,
+        'owner': owner,
+        'contract_day': contract_date.day,
+        'contract_month': contract_date.strftime('%B'),
+        'contract_year': contract_date.year,
+        'duration_months': duration_months,
+        'rent_amount_words': rent_amount_words,
+        'generation_date': datetime.now(),
+        'logo_base64': get_logo_for_pdf()
+    }
+    
+    html_string = render_to_string('main/documents.html', context)
+    html = HTML(string=html_string)
+    pdf = html.write_pdf()
+    return pdf
+
+# Download Contract PDF Function
+@login_required(login_url='log_in')
+@xframe_options_sameorigin
+def contract_pdf(request, rent_id):
+    """
+    View to download or preview the lease contract PDF.
+    """
+    rent = get_object_or_404(Rent, id=rent_id)
+    
+    # Check authorization - only owner or tenant can view
+    if request.user.role == 'O' and rent.owner != request.user:
+        messages.error(request, 'No tienes permiso para ver este contrato.')
+        return redirect('properties')
+    
+    if request.user.role == 'T' and rent.tenant != request.user:
+        messages.error(request, 'No tienes permiso para ver este contrato.')
+        return redirect('tenant_portal')
+    
+    pdf = render_contract_pdf(rent)
+    response = HttpResponse(pdf, content_type='application/pdf')
+    
+    # If preview query param is provided, show inline in browser
+    preview = request.GET.get('preview')
+    if preview in ['1', 'true', 'yes']:
+        disposition = f'inline; filename="Contrato_{rent.rent_number}.pdf"'
+    else:
+        disposition = f'attachment; filename="Contrato_{rent.rent_number}.pdf"'
+    
+    response['Content-Disposition'] = disposition
+    return response
+
 # Modal role selection view
 @login_required
 @require_POST
@@ -795,6 +875,8 @@ def new_rent(request):
                         logger.error(f"Failed to send tenant notification email: {e}")
 
                 messages.success(request, "Contrato de alquiler creado exitosamente y se ha notificado al inquilino.")
+                # Store rent ID in session to trigger contract PDF opening on next page
+                request.session['new_rent_contract_id'] = rent.id
                 return redirect('properties')
             else:
                 print(form.errors)
@@ -1544,12 +1626,16 @@ def properties(request):
         rent.status_display = rent_status['status']
         rent.balance_owed = rent_status['balance_owed']
 
+    # Check for newly created rent contract to auto-open
+    new_rent_contract_id = request.session.pop('new_rent_contract_id', None)
+
     context = {
       'rents': rents,
       'properties':properties,
       'payments':payments,
       'pending_payments': pending_payments,
       'pending_transactions': pending_transactions,
+      'new_rent_contract_id': new_rent_contract_id,
     }
     return render(request,'main/properties.html',context)
 

@@ -115,6 +115,7 @@
                         <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Mensualidad</th>
                         <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Ultimo Pago</th>
                         <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Morosidad</th>
+                        <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Contrato</th>
                         <th class="text-secondary opacity-7"></th>
                       </tr>
                     </thead>
@@ -169,6 +170,15 @@
                                 Adeudado: <span class="text-danger">${{ rent.balance_owed }}</span>
                             </div>
                         </td>
+                        <td class="align-middle text-center">
+                          <a href="{% url 'contract_pdf' rent.id %}?preview=1" target="_blank" 
+                             class="text-info font-weight-bold text-sm" 
+                             data-bs-toggle="tooltip" 
+                             data-bs-placement="top" 
+                             title="Ver/Descargar Contrato">
+                            <i class="fas fa-file-contract fa-lg"></i>
+                          </a>
+                        </td>
                         {% if request.user.role == "O" %}
                         <td class="align-middle">
   <div class="dropdown">
@@ -217,7 +227,7 @@
                       {% endfor %}
                       {% else %}
                       <tr>
-                        <td colspan="6" class="text-center">No hay alquileres activos.</td>
+                        <td colspan="7" class="text-center">No hay alquileres activos.</td>
                       </tr>
                       {% endif %}
                     </tbody>
@@ -402,6 +412,13 @@
 </div>
 
 <script>
+// Auto-open contract PDF in new tab after creating a new rent
+{% if new_rent_contract_id %}
+document.addEventListener('DOMContentLoaded', function() {
+  window.open("{% url 'contract_pdf' new_rent_contract_id %}?preview=1", '_blank');
+});
+{% endif %}
+
 document.addEventListener('DOMContentLoaded', function() {
   var tbody = document.querySelector('#pending-approvals-table tbody');
   if (!tbody) return;

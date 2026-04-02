@@ -96,6 +96,50 @@
               <div class="mb-3">
                 <p class="fw-bold mb-2"><strong>Property:</strong> {{ selected_property.alias }}</p>
               </div>
+
+            <!-- Unregistered tenant fields (toggle visibility with JS) -->
+            {% if not tenant and personal_id %}
+            <div id="unregistered-fields" style="display: block;">
+            {% else %}
+            <div id="unregistered-fields" style="display: none;">
+            {% endif %}
+              <div class="alert alert-info mb-3">
+                <strong>Información del Inquilino No Registrado</strong>
+              </div>
+              <div class="mb-3">
+                <label class="form-label font-weight-bold text-dark" for="id_unregistered_tenant_name">Tenant Name</label>
+                {{ form.unregistered_tenant_name }}
+              </div>
+              <div class="mb-3">
+                <label class="form-label font-weight-bold text-dark" for="id_unregistered_tenant_email">Tenant Email</label>
+                {{ form.unregistered_tenant_email }}
+              </div>
+              <div class="mb-3">
+                <label class="form-label font-weight-bold text-dark" for="id_unregistered_tenant_phone">Tenant Phone</label>
+                {{ form.unregistered_tenant_phone }}
+              </div>
+              <div class="mb-3">
+                <label class="form-label font-weight-bold text-dark" for="id_unregistered_tenant_id_type">ID Type</label>
+                {{ form.unregistered_tenant_id_type }}
+              </div>
+              <div class="mb-3">
+                <label class="form-label font-weight-bold text-dark" for="id_unregistered_tenant_personal_id">Personal ID</label>
+                {{ form.unregistered_tenant_personal_id }}
+              </div>
+              <div class="mb-3">
+                <label class="form-label font-weight-bold text-dark" for="id_unregistered_tenant_dob">Date of Birth</label>
+                {{ form.unregistered_tenant_dob }}
+              </div>
+              <div class="mb-3">
+                <label class="form-label font-weight-bold text-dark" for="id_unregistered_tenant_nac">Nationality</label>
+                {{ form.unregistered_tenant_nac }}
+              </div>
+              <div class="mb-3">
+                <label class="form-label font-weight-bold text-dark" for="id_unregistered_tenant_sex">Sex</label>
+                {{ form.unregistered_tenant_sex }}
+              </div>
+            </div>
+
             {% for field in form %}
               {% if field.name not in "unregistered_tenant_name unregistered_tenant_email unregistered_tenant_phone unregistered_tenant_id_type unregistered_tenant_personal_id unregistered_tenant_dob unregistered_tenant_nac unregistered_tenant_sex late_fee_type late_fee_amount" %}
                 <div class="mb-3">
@@ -147,45 +191,6 @@
               {% endfor %}
             </div>
             
-            <!-- Unregistered tenant fields (toggle visibility with JS) -->
-            {% if not tenant and personal_id %}
-            <div id="unregistered-fields" style="display: block;">
-            {% else %}
-            <div id="unregistered-fields" style="display: none;">
-            {% endif %}
-              <div class="mb-3">
-                <label class="form-label font-weight-bold text-dark" for="id_unregistered_tenant_name">Tenant Name</label>
-                {{ form.unregistered_tenant_name }}
-              </div>
-              <div class="mb-3">
-                <label class="form-label font-weight-bold text-dark" for="id_unregistered_tenant_email">Tenant Email</label>
-                {{ form.unregistered_tenant_email }}
-              </div>
-              <div class="mb-3">
-                <label class="form-label font-weight-bold text-dark" for="id_unregistered_tenant_phone">Tenant Phone</label>
-                {{ form.unregistered_tenant_phone }}
-              </div>
-              <div class="mb-3">
-                <label class="form-label font-weight-bold text-dark" for="id_unregistered_tenant_id_type">ID Type</label>
-                {{ form.unregistered_tenant_id_type }}
-              </div>
-              <div class="mb-3">
-                <label class="form-label font-weight-bold text-dark" for="id_unregistered_tenant_personal_id">Personal ID</label>
-                {{ form.unregistered_tenant_personal_id }}
-              </div>
-              <div class="mb-3">
-                <label class="form-label font-weight-bold text-dark" for="id_unregistered_tenant_dob">Date of Birth</label>
-                {{ form.unregistered_tenant_dob }}
-              </div>
-              <div class="mb-3">
-                <label class="form-label font-weight-bold text-dark" for="id_unregistered_tenant_nac">Nationality</label>
-                {{ form.unregistered_tenant_nac }}
-              </div>
-              <div class="mb-3">
-                <label class="form-label font-weight-bold text-dark" for="id_unregistered_tenant_sex">Sex</label>
-                {{ form.unregistered_tenant_sex }}
-              </div>
-            </div>
             <div class="text-center">
               <button type="submit" class="btn btn-info bg-gradient w-50 mt-3">Save Rent</button>
             </div>
