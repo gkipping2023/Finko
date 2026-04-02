@@ -9,11 +9,11 @@
         <div class="card mb-4">
           <div class="card-header pb-0">
             <h6>Propiedades</h6>
-            {% if request.user.plan == "free" %}
-            <a class="btn btn-outline-info btn-sm mb-0 me-3" href="{% url 'user_profile' %}">Upgrade Plan</a>
-            {% else %}
+
+            <!-- <a class="btn btn-outline-info btn-sm mb-0 me-3" href="{% url 'user_profile' %}">Upgrade Plan</a> -->
+
             <a class="btn btn-outline-info btn-sm mb-0 me-3" href="{% url 'properties_form' %}">Add Properties</a>
-            {% endif %}
+
             <a class="btn btn-outline-primary btn-sm mb-0 me-3" href="{% url 'update_property' %}">Update Properties</a>
           </div>
           <div class="card-body px-0 pt-0 pb-2">
@@ -26,8 +26,6 @@
                     <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Mensualidad</th>
                     <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Gastos Comunes</th>
                     <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Disponibilidad</th>
-                    <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Mantenimientos</th>
-
                   </tr>
                 </thead>
                 <tbody>
@@ -64,11 +62,6 @@
                         <span class="badge badge-sm bg-gradient-warning">Disponible</span>
                       </td>
                       {% endif %}
-                        
-                        <td class="align-middle text-center text-sm">
-                            <span class="badge badge-sm bg-gradient-success">{{property.maint_status}}</span>
-                          </td>
-                      </tr>
                       {% endfor %}
                     {% else %}
                     <tr>

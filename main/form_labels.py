@@ -38,7 +38,8 @@ FORM_LABELS = {
         'country': 'País',
         'category': 'Categoría',
         'description': 'Descripción',
-        'maint_fee': 'Cuota de Mantenimiento',
+        'monthly_pmt': 'Pago Mensual al Banco (Opcional)',
+        'maint_fee': 'Cuota de Mantenimiento (Opcional)',
         'pictures': 'Fotografías',
     },
     
@@ -126,7 +127,8 @@ FORM_HELP_TEXTS = {
     'AddPropertyForm': {
         'alias': 'Nombre identificativo de la propiedad (ej: Casa Principal, Apartamento 2B)',
         'description': 'Describa las características principales de la propiedad.',
-        'maint_fee': 'Cuota mensual de mantenimiento (opcional).',
+        'monthly_pmt': 'Pago mensual del banco/hipoteca (opcional, puede dejarse en blanco).',
+        'maint_fee': 'Cuota mensual de mantenimiento (opcional, puede dejarse en blanco).',
     },
     
     'NewRentForm': {
@@ -160,6 +162,8 @@ FORM_PLACEHOLDERS = {
         'city': 'Ej: Ciudad de Panamá',
         'zip_code': 'Ej: 0823',
         'description': 'Describa las características de la propiedad...',
+        'monthly_pmt': 'Ej: 1200.00 (dejar vacío si no aplica)',
+        'maint_fee': 'Ej: 150.00 (dejar vacío si no aplica)',
     },
     
     'NewRentForm': {

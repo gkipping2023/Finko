@@ -64,7 +64,7 @@ class NewUserForm(CustomizableFormMixin, UserCreationForm):
 
 
 class UpdateUserForm(BaseCustomModelForm):
-    dob = forms.DateField(widget=forms.DateInput(attrs={'type': 'date'}))
+    dob = forms.DateField(widget=forms.DateInput(attrs={'type': 'date', 'class':'form-control'}))
     promo_code = forms.CharField(max_length=20, required=False)
     
     class Meta:
@@ -94,6 +94,12 @@ class AddPropertyForm(BaseCustomModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        # Make monthly_pmt and maint_fee explicitly optional
+        if 'monthly_pmt' in self.fields:
+            self.fields['monthly_pmt'].required = False
+        if 'maint_fee' in self.fields:
+            self.fields['maint_fee'].required = False
+        
         for field_name, field in self.fields.items():
             field.widget.attrs['class'] = 'form-control'  # Add the form-control class to all fields
 

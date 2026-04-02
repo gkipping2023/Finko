@@ -13,17 +13,19 @@
           <form method="POST" enctype="multipart/form-data" autocomplete="off">
             {% csrf_token %}
             {% for field in form %}
-              {% if field.name != 'promo_code' or not user.promo_code %}
-                <div class="mb-3">
-                  <label class="form-label font-weight-bold text-dark">{{ field.label }}</label>
-                  {{ field }}
-                  {% if field.help_text %}
-                    <small class="form-text text-muted">{{ field.help_text }}</small>
-                  {% endif %}
-                  {% for error in field.errors %}
-                    <div class="text-danger small">{{ error }}</div>
-                  {% endfor %}
-                </div>
+              {% if field.name != 'role' %}
+                {% if field.name != 'promo_code' or not user.promo_code %}
+                  <div class="mb-3">
+                    <label class="form-label font-weight-bold text-dark">{{ field.label }}</label>
+                    {{ field }}
+                    {% if field.help_text %}
+                      <small class="form-text text-muted">{{ field.help_text }}</small>
+                    {% endif %}
+                    {% for error in field.errors %}
+                      <div class="text-danger small">{{ error }}</div>
+                    {% endfor %}
+                  </div>
+                {% endif %}
               {% endif %}
             {% endfor %}
             <div class="text-center">
