@@ -69,21 +69,68 @@ def generate_invoices():
         
         # Send email to the tenant via Mailgun
         try:
-            email_body = f"""Dear {tenant_name},
-
-Your monthly rent of ${rent.rent_amount} is due on {due_date}. Please make your payment promptly.
-
-Invoice Details:
-- Property: {rent.property.alias}
-- Amount: ${rent.rent_amount}
-- Due Date: {due_date}
-
-Thank you.
-Finko Team"""
+            email_html = f"""
+<html>
+  <head>
+    <style>
+      body {{
+        font-family: 'Montserrat', Arial, sans-serif;
+        background: #f8f9fa;
+        color: #344767;
+        margin: 0;
+        padding: 0;
+      }}
+      .container {{
+        text-align: center;
+        max-width: 600px;
+        margin: 40px auto;
+        background: #fff;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(44,62,80,0.08);
+        padding: 32px 24px;
+      }}
+      .invoice-details {{
+        background: #f8f9fa;
+        border-left: 4px solid #17c1e8;
+        padding: 16px;
+        margin: 16px 0;
+        border-radius: 4px;
+        text-align: left;
+      }}
+      .footer {{
+        color: #8392ab;
+        font-size: 13px;
+        margin-top: 32px;
+        text-align: center;
+      }}
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h2 style="color:#17c1e8;">Nueva Factura de Renta</h2>
+      <p>Estimado/a {tenant_name},</p>
+      <p>Se ha generado tu factura mensual de renta. Por favor, realiza tu pago antes de la fecha de vencimiento.</p>
+      
+      <div class="invoice-details">
+        <strong>Detalles de la Factura:</strong><br>
+        <strong>Propiedad:</strong> {rent.property.alias}<br>
+        <strong>Monto:</strong> ${rent.rent_amount}<br>
+        <strong>Fecha de Vencimiento:</strong> {due_date}
+      </div>
+      
+      <p>Gracias por tu puntualidad.</p>
+      
+      <div class="footer">
+        Este es un mensaje automático de Finko - Property Management System.
+      </div>
+    </div>
+  </body>
+</html>
+"""
             
             send_mailgun_simple(
-                subject=f"Invoice for {rent.property.alias}",
-                text=email_body,
+                subject=f"Nueva Factura - {rent.property.alias}",
+                html=email_html,
                 to_emails=tenant_email,
                 from_email=settings.DEFAULT_FROM_EMAIL
             )

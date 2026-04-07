@@ -138,7 +138,15 @@
                         <td>
                           <p class="text-xs font-weight-bold mb-0">{{rent.start_date}} - {{rent.end_date}}</p>
                         {% if request.user.role == "O" %}
-                          <p class="text-xs text-secondary mb-0">{{rent.tenant}}</p>
+                          <p class="text-xs text-secondary mb-0">
+                            {% if rent.tenant %}
+                              {{ rent.tenant.get_full_name }}
+                            {% elif rent.unregistered_tenant_name %}
+                              {{ rent.unregistered_tenant_name }}
+                            {% else %}
+                              N/A
+                            {% endif %}
+                          </p>
                         {% elif request.user.role == "T" %}
                           <p class="text-xs text-secondary mb-0">{{rent.owner}}</p>
                         {% endif %}
@@ -374,7 +382,15 @@
                       <p class="text-xs font-weight-bold mb-0">{{ transaction.property.alias }}</p>
                     </td>
                     <td>
-                      <p class="text-xs font-weight-bold mb-0">{{ transaction.tenant.first_name }} {{ transaction.tenant.last_name }}</p>
+                      <p class="text-xs font-weight-bold mb-0">
+                        {% if transaction.tenant %}
+                          {{ transaction.tenant.first_name }} {{ transaction.tenant.last_name }}
+                        {% elif transaction.rent and transaction.rent.unregistered_tenant_name %}
+                          {{ transaction.rent.unregistered_tenant_name }}
+                        {% else %}
+                          N/A
+                        {% endif %}
+                      </p>
                       <p class="text-xs text-secondary mb-0">{{ transaction.created_at|date:"d M Y" }}</p>
                     </td>
                     <td>

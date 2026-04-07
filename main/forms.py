@@ -251,31 +251,26 @@ class NewTenantForm(BaseCustomModelForm):
 class TransactionForm(BaseCustomModelForm):
     class Meta:
         model = Transaction
-        fields = ['transaction_date','type','rent','tenant', 'property', 'amount', 'description', 'payment_method','confirmation_file']
+        fields = ['transaction_date', 'type', 'rent', 'amount', 'description']
         widgets = {
             'transaction_date': forms.DateTimeInput(attrs={'type': 'date', 'class': 'form-control'}),
             'type': forms.Select(attrs={'class': 'form-control'}),
             'rent': forms.Select(attrs={'class': 'form-control'}),
-            'tenant': forms.Select(attrs={'class': 'form-control'}),
-            'property': forms.Select(attrs={'class': 'form-control'}),
             'amount': forms.NumberInput(attrs={'class': 'form-control'}),
             'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
-            'payment_method': forms.Select(attrs={'class': 'form-control'}),
-            'confirmation_file': forms.ClearableFileInput(attrs={'class': 'form-control-file'}),
         }
 
     def __init__(self, *args, **kwargs):
         user = kwargs.pop('user', None)  # Get the current user from the view
         super().__init__(*args, **kwargs)
         if user:
-            # Filter tenants associated with the current user
-            self.fields['tenant'].queryset = User.objects.filter(role='T', tenant_rents__owner=user).distinct()
-
-            # Filter properties owned by the current user
-            self.fields['property'].queryset = Properties.objects.filter(owner=user)
-
-            # Filter rents associated with the current user
-            self.fields['rent'].queryset = Rent.objects.filter(owner=user,is_active=True)
+            # Filter rents to only show active rents for this owner
+            self.fields['rent'].queryset = Rent.objects.filter(owner=user, is_active=True).select_related('property', 'tenant')
+            # Customize the display to show property and tenant info
+            self.fields['rent'].label_from_instance = lambda obj: (
+                f"{obj.rent_number} - {obj.property.alias} - "
+                f"{obj.tenant.get_full_name() if obj.tenant else obj.unregistered_tenant_name or 'N/A'}"
+            )
 
 class ReportPaymentForm(BaseCustomModelForm):
     # Add confirmation_file as a separate field that won't be saved to the model

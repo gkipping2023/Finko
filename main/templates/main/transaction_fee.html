@@ -229,6 +229,11 @@
                                 {% if transaction.tenant %}
                                     {{ transaction.tenant.first_name }} {{ transaction.tenant.last_name }}<br>
                                     <small>{{ transaction.tenant.email }}</small>
+                                {% elif transaction.rent and transaction.rent.unregistered_tenant_name %}
+                                    {{ transaction.rent.unregistered_tenant_name }}<br>
+                                    {% if transaction.rent.unregistered_tenant_email %}
+                                        <small>{{ transaction.rent.unregistered_tenant_email }}</small>
+                                    {% endif %}
                                 {% else %}
                                     —
                                 {% endif %}

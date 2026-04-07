@@ -109,7 +109,15 @@
               </td>
               <td>
                 <p class="text-xs text-center font-weight-bold mb-0">{{ transaction.property }}</p>
-                <p class="text-xs text-center text-secondary mb-0">{{ transaction.tenant }}</p>
+                <p class="text-xs text-center text-secondary mb-0">
+                  {% if transaction.tenant %}
+                    {{ transaction.tenant.get_full_name }}
+                  {% elif transaction.rent and transaction.rent.unregistered_tenant_name %}
+                    {{ transaction.rent.unregistered_tenant_name }}
+                  {% else %}
+                    N/A
+                  {% endif %}
+                </p>
               </td>
               <td class="text-sm text-center">{{ transaction.description }}</td>
               <td class="text-center">

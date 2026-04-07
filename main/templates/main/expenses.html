@@ -1,8 +1,48 @@
-{% extends "index.html" %}
-{% block content %}
 
-<h1>Expenses</h1>
-
-
-
-{% endblock %}
+  <html>
+      <head>
+        <style>
+          body {{
+            font-family: 'Montserrat', Arial, sans-serif;
+            background: #f8f9fa;
+            color: #344767;
+            margin: 0;
+            padding: 0;
+          }}
+          .container {{
+            text-align: center;
+            max-width: 600px;
+            margin: 40px auto;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(44,62,80,0.08);
+            padding: 32px 24px;
+          }}
+          .alert {{
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 16px;
+            margin: 16px 0;
+            border-radius: 4px;
+          }}
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <h2 style="color:#ffc107;">Recargo de Mora Aplicado</h2>
+          <p>Se ha aplicado un recargo de mora a la siguiente factura:</p>
+          
+          <div class="alert">
+            <strong>Factura:</strong> {invoice.invoice_number}<br>
+            <strong>Propiedad:</strong> {rent.property.alias}<br>
+            <strong>Inquilino:</strong> {rent.tenant.full_name if rent.tenant else rent.unregistered_tenant_name}<br>
+            <strong>Monto Original:</strong> ${round(invoice.amount, 2)}<br>
+            <strong>Recargo de Mora:</strong> ${invoice.late_fee_amount}<br>
+            <strong>Total Adeudado:</strong> ${round(invoice.amount + invoice.late_fee_amount),2}
+          </div>
+          
+          <p>Días de retraso: {invoice.get_days_overdue()}</p>
+          <p>Puedes revisar los detalles en tu panel de control.</p>
+        </div>
+      </body>
+    </html>

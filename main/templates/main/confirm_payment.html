@@ -32,7 +32,15 @@
                     
                     <p><strong>Monto:</strong> ${{ transaction.amount }}</p>
                     <p><strong>Descripción:</strong> {{ transaction.description }}</p>
-                    <p><strong>Inquilino:</strong> {{ transaction.tenant.first_name }} {{ transaction.tenant.last_name }}</p>
+                    <p><strong>Inquilino:</strong> 
+                        {% if transaction.tenant %}
+                            {{ transaction.tenant.first_name }} {{ transaction.tenant.last_name }}
+                        {% elif transaction.rent and transaction.rent.unregistered_tenant_name %}
+                            {{ transaction.rent.unregistered_tenant_name }}
+                        {% else %}
+                            N/A
+                        {% endif %}
+                    </p>
                     <p><strong>Propiedad:</strong> {{ transaction.property.alias }}</p>
                     
                     {% if transaction.confirmation_file %}
@@ -111,8 +119,17 @@
                                 <div class="row mb-3">
                                     <div class="col-12">
                                         <strong>Inquilino:</strong><br>
-                                        <span class="text-muted">{{ transaction.tenant.first_name }} {{ transaction.tenant.last_name }}</span><br>
-                                        <span class="text-muted">{{ transaction.tenant.email }}</span>
+                                        {% if transaction.tenant %}
+                                            <span class="text-muted">{{ transaction.tenant.first_name }} {{ transaction.tenant.last_name }}</span><br>
+                                            <span class="text-muted">{{ transaction.tenant.email }}</span>
+                                        {% elif transaction.rent and transaction.rent.unregistered_tenant_name %}
+                                            <span class="text-muted">{{ transaction.rent.unregistered_tenant_name }}</span><br>
+                                            {% if transaction.rent.unregistered_tenant_email %}
+                                                <span class="text-muted">{{ transaction.rent.unregistered_tenant_email }}</span>
+                                            {% endif %}
+                                        {% else %}
+                                            <span class="text-muted">N/A</span>
+                                        {% endif %}
                                     </div>
                                 </div>
                                 

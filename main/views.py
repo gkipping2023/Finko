@@ -194,10 +194,27 @@ def set_user_role(request):
 
 @login_required(login_url='log_in')
 def rent_details(request, rent_id):
+    """API endpoint to get rent details for auto-populating transaction form"""
     rent = get_object_or_404(Rent, id=rent_id, owner=request.user)
+    
+    # Handle both registered and unregistered tenants
+    tenant_id = rent.tenant.id if rent.tenant else None
+    tenant_display = None
+    
+    # If no registered tenant, use unregistered tenant info
+    if not rent.tenant and rent.unregistered_tenant_name:
+        tenant_display = rent.unregistered_tenant_name
+        if rent.unregistered_tenant_email:
+            tenant_display += f" ({rent.unregistered_tenant_email})"
+    elif rent.tenant:
+        tenant_display = f"{rent.tenant.first_name} {rent.tenant.last_name}"
+    
     data = {
-        'tenant_id': rent.tenant.id,
+        'tenant_id': tenant_id,
         'property_id': rent.property.id,
+        'property_display': rent.property.alias,
+        'tenant_display': tenant_display,
+        'is_unregistered': not bool(rent.tenant),
     }
     return JsonResponse(data)
 
@@ -1140,6 +1157,12 @@ def add_transaction(request):
                 # Create transaction object but don't save yet
                 transaction = form.save(commit=False)
                 transaction.owner = request.user
+                
+                # Auto-populate tenant and property from the selected rent
+                if transaction.rent:
+                    transaction.property = transaction.rent.property
+                    transaction.tenant = transaction.rent.tenant  # Can be None for unregistered
+                
                 # Generate a temporary transaction number for preview
                 context = {
                     'form': form,
@@ -1152,7 +1175,13 @@ def add_transaction(request):
                 # This is a confirmation from preview, save the transaction
                 transaction = form.save(commit=False)
                 transaction.owner = request.user  # Set the logged-in user as the owner
-                transaction.status = 'confirmed' 
+                transaction.status = 'confirmed'
+                
+                # Auto-populate tenant and property from the selected rent
+                if transaction.rent:
+                    transaction.property = transaction.rent.property
+                    transaction.tenant = transaction.rent.tenant  # Can be None for unregistered
+                
                 transaction.save()
                 messages.success(request, f"¡{transaction.get_type_display()} creado exitosamente!")
                 return redirect('transaction_pdf', transaction_id=transaction.id)
