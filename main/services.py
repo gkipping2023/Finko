@@ -49,22 +49,40 @@ class RentAccountStatus:
             total=Sum('late_fee_amount')
         )['total'] or Decimal('0.00')
         
-        # Sum transaction amounts (charges increase balance, payments decrease it)
-        # Only count CONFIRMED transactions to avoid including pending payments
-        # Charge transactions: invoice, fee, debit (only confirmed)
-        charge_transactions = transactions.filter(
+        # Sum LEGACY transaction amounts (manual entries by owners)
+        # Only count is_legacy_only=True to avoid double-counting invoice-linked transactions
+        # Transactions with is_legacy_only=False are already reflected in invoice paid_amount
+        
+        # Charge transactions: invoice, fee, debit (increase balance)
+        # These add to what the tenant owes
+        legacy_charge_transactions = transactions.filter(
             type__in=['invoice', 'fee', 'debit'],
-            status='confirmed'
+            status='confirmed',
+            is_legacy_only=True  # Only count manual transactions not linked to invoices
         ).aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
         
-        # Payment transactions: receipt, credit, pago (only confirmed)
-        # These must be confirmed by owner before reducing balance
-        payment_transactions = transactions.filter(
+        # Payment transactions: receipt, credit, pago (decrease balance)
+        # These reduce what the tenant owes
+        # Must be confirmed by owner before reducing balance
+        legacy_payment_transactions = transactions.filter(
             type__in=['receipt', 'credit', 'pago'],
-            status='confirmed'
+            status='confirmed',
+            is_legacy_only=True  # Only count manual transactions not linked to invoices
         ).aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
         
-        balance_owed = total_invoiced - total_paid + (total_late_fees or Decimal('0.00')) + charge_transactions - payment_transactions
+        # Calculate total balance:
+        # - Start with invoice amounts (charges to tenant)
+        # - Subtract payments made via invoice system
+        # - Add late fees
+        # - Add legacy manual charges (debits, fees, manual invoices)
+        # - Subtract legacy manual payments (credits, receipts, pagos)
+        balance_owed = (
+            total_invoiced 
+            - total_paid 
+            + (total_late_fees or Decimal('0.00'))
+            + legacy_charge_transactions 
+            - legacy_payment_transactions
+        )
         
         # Get most recent overdue invoice
         overdue_invoices = invoices.filter(
@@ -96,6 +114,8 @@ class RentAccountStatus:
             'total_invoiced': total_invoiced,
             'total_paid': total_paid,
             'total_late_fees': total_late_fees or Decimal('0.00'),
+            'legacy_charges': legacy_charge_transactions,
+            'legacy_payments': legacy_payment_transactions,
             'status': status,
             'next_due_date': next_due_date,
             'next_due_amount': next_due_amount,

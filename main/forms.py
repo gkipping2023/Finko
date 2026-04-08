@@ -129,6 +129,13 @@ class NewRentForm(BaseCustomModelForm):
         widget=forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Ingresa la cantidad fija'}),
         label='Cantidad Fija de Recargo por Mora'
     )
+    late_fee_grace_days = forms.IntegerField(
+        initial=5,
+        required=False,
+        widget=forms.NumberInput(attrs={'class': 'form-control', 'placeholder': '5', 'min': '0', 'max': '30'}),
+        label='Días de Gracia (antes del recargo)',
+        help_text='Días después del vencimiento antes de aplicar recargo'
+    )
 
     # Unregistered tenant fields
     unregistered_tenant_name = forms.CharField(required=False, widget=forms.TextInput(attrs={'class': 'form-control'}))
@@ -145,7 +152,7 @@ class NewRentForm(BaseCustomModelForm):
         fields = [
             'tenant',  # Registered tenant (optional)
             'start_date', 'end_date', 'rent_amount', 'rent_due_date', 'next_invoice_date',
-            'late_fee_type', 'late_fee_amount',
+            'late_fee_type', 'late_fee_amount', 'late_fee_grace_days',
             'unregistered_tenant_name', 'unregistered_tenant_email', 'unregistered_tenant_phone',
             'unregistered_tenant_id_type', 'unregistered_tenant_personal_id',
             'unregistered_tenant_dob', 'unregistered_tenant_nac', 'unregistered_tenant_sex',

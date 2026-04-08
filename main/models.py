@@ -223,6 +223,10 @@ class Rent(models.Model):
     unregistered_tenant_sex = models.CharField(choices=Sex,max_length=100,null=True, blank=True)
     late_fee_type = models.CharField(choices=LATE_FEE_CHOICES, max_length=20, default='none')
     late_fee_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    late_fee_grace_days = models.IntegerField(
+        default=5,
+        help_text="Number of days past due before late fee is applied (default: 5)"
+    )
 
     def get_late_fee(self):
         """

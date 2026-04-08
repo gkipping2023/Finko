@@ -1176,6 +1176,8 @@ def add_transaction(request):
                 transaction = form.save(commit=False)
                 transaction.owner = request.user  # Set the logged-in user as the owner
                 transaction.status = 'confirmed'
+                transaction.is_legacy_only = True  # Manual transaction, not linked to invoice system
+                transaction.payment_method = 'other'  # Default for manual transactions
                 
                 # Auto-populate tenant and property from the selected rent
                 if transaction.rent:

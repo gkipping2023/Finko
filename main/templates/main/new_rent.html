@@ -141,7 +141,7 @@
             </div>
 
             {% for field in form %}
-              {% if field.name not in "unregistered_tenant_name unregistered_tenant_email unregistered_tenant_phone unregistered_tenant_id_type unregistered_tenant_personal_id unregistered_tenant_dob unregistered_tenant_nac unregistered_tenant_sex late_fee_type late_fee_amount" %}
+              {% if field.name not in "unregistered_tenant_name unregistered_tenant_email unregistered_tenant_phone unregistered_tenant_id_type unregistered_tenant_personal_id unregistered_tenant_dob unregistered_tenant_nac unregistered_tenant_sex late_fee_type late_fee_amount late_fee_grace_days" %}
                 <div class="mb-3">
                   <label class="form-label font-weight-bold text-dark">{{ field.label }}</label>
                   {{ field }}
@@ -187,6 +187,16 @@
               {{ form.late_fee_amount }}
               <small class="form-text text-muted d-block mt-1">Enter the fixed amount (e.g., 50.00)</small>
               {% for error in form.late_fee_amount.errors %}
+                <div class="text-danger small">{{ error }}</div>
+              {% endfor %}
+            </div>
+
+            <!-- Grace Period Field -->
+            <div class="mb-3">
+              <label class="form-label font-weight-bold text-dark" for="id_late_fee_grace_days">{{ form.late_fee_grace_days.label }}</label>
+              {{ form.late_fee_grace_days }}
+              <small class="form-text text-muted d-block mt-1">{{ form.late_fee_grace_days.help_text }}</small>
+              {% for error in form.late_fee_grace_days.errors %}
                 <div class="text-danger small">{{ error }}</div>
               {% endfor %}
             </div>
