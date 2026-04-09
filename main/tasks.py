@@ -42,6 +42,7 @@ def generate_invoices():
             amount=rent.rent_amount,
             description=f"Monthly rent for {rent.property.alias}",
             due_date=due_date,
+            transaction_date=today,
             invoice=invoice,
             is_legacy_only=False
         )

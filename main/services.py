@@ -74,15 +74,19 @@ class RentAccountStatus:
         # - Start with invoice amounts (charges to tenant)
         # - Subtract payments made via invoice system
         # - Add late fees
-        # - Add legacy manual charges (debits, fees, manual invoices)
-        # - Subtract legacy manual payments (credits, receipts, pagos)
-        balance_owed = (
-            total_invoiced 
-            - total_paid 
-            + (total_late_fees or Decimal('0.00'))
-            + legacy_charge_transactions 
-            - legacy_payment_transactions
-        )
+        # ONLY add legacy transactions if there are NO invoices in the new system
+        # This prevents legacy credits from hiding new invoice balances
+        if total_invoiced == Decimal('0.00'):
+            # No invoices in new system, use legacy transactions
+            balance_owed = legacy_charge_transactions - legacy_payment_transactions
+        else:
+            # New invoice system active, show invoice balances
+            # (Legacy transactions should have been migrated or settled)
+            balance_owed = (
+                total_invoiced 
+                - total_paid 
+                + (total_late_fees or Decimal('0.00'))
+            )
         
         # Get most recent overdue invoice
         overdue_invoices = invoices.filter(

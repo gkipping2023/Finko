@@ -40,8 +40,9 @@ class Command(BaseCommand):
                     amount=rent.rent_amount,
                     description=f"Factura mensual para {rent.property.alias}",
                     due_date=due_date,
+                    transaction_date=today,
                     payment_method='other',  # Default payment method
-                    is_legacy_only=True,
+                    is_legacy_only=False,
                     invoice=invoice
                 )
 

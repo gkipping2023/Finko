@@ -219,7 +219,21 @@
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
           </div>
            <div class="modal-body">
-            ¿Está seguro que desea finalizar este alquiler? </br>La propiedad volverá a estar disponible.
+            {% if rent.balance_owed > 0 %}
+            <div class="alert alert-warning d-flex flex-column align-items-start" role="alert" style="white-space: normal;">
+              <div class="d-flex align-items-center mb-2">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                <strong>Advertencia:</strong>
+              </div>
+              <div>
+                Este alquiler tiene un saldo pendiente de <strong>${{ rent.balance_owed }}</strong>.<br>
+                Si finaliza el alquiler, la deuda permanecerá en el sistema y deberá gestionarse por separado.
+              </div>
+            </div>
+            {% endif %}
+            <div class="mt-2">
+              ¿Está seguro que desea finalizar este alquiler? <br>La propiedad volverá a estar disponible.
+            </div>
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
