@@ -2016,8 +2016,8 @@ def generate_documents(request):
     if start_date:
       month_display = f"{months_es[start_date.month]} de {start_date.year}"
     
-    # If request method is POST or if we need to generate PDF
-    if request.method == 'POST' or preview:
+    # If request method is POST, preview, or month param supplied (GET download)
+    if request.method == 'POST' or preview or month_str:
       html_string = render_to_string('main/statement_pdf.html', {
         'transactions': transactions,
         'invoices': invoices,

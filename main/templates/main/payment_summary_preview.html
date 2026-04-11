@@ -22,7 +22,7 @@
           </p>
         </div>
         <div class="d-flex gap-2">
-          <a href="{% url 'generate_documents' %}?action=payment_history{% if start_date %}&start_date={{ start_date }}{% endif %}{% if end_date %}&end_date={{ end_date }}{% endif %}{% for pid in prop_ids %}&properties={{ pid }}{% endfor %}"
+          <a href="{% url 'generate_documents' %}?action=payment_history{% if start_date %}&start_date={{ start_date|date:'Y-m-d' }}{% endif %}{% if end_date %}&end_date={{ end_date|date:'Y-m-d' }}{% endif %}{% for pid in prop_ids %}&properties={{ pid }}{% endfor %}"
              class="btn btn-info btn-sm">
             <i class="fa fa-download me-1"></i> Descargar PDF
           </a>
@@ -133,7 +133,7 @@
           <i class="fa fa-print me-1"></i> Imprimir
         </button>
         <div class="d-flex gap-2">
-          <a href="{% url 'generate_documents' %}?action=payment_history{% if start_date %}&start_date={{ start_date }}{% endif %}{% if end_date %}&end_date={{ end_date }}{% endif %}{% for pid in prop_ids %}&properties={{ pid }}{% endfor %}"
+          <a href="{% url 'generate_documents' %}?action=payment_history{% if start_date %}&start_date={{ start_date|date:'Y-m-d' }}{% endif %}{% if end_date %}&end_date={{ end_date|date:'Y-m-d' }}{% endif %}{% for pid in prop_ids %}&properties={{ pid }}{% endfor %}"
              class="btn btn-info btn-sm">
             <i class="fa fa-download me-1"></i> Descargar PDF
           </a>
