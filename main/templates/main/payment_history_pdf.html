@@ -1,57 +1,263 @@
 <!doctype html>
 <html>
-  <head>
-    <meta charset="utf-8">
-    <title>Historial de Pagos</title>
-    <style>
-      body { font-family: 'Montserrat', Arial, sans-serif; color:#344767; margin:24px; }
-      table { width:100%; border-collapse: collapse; margin-top:10px }
-      th, td { padding:8px 6px; border:1px solid #e9ecef; text-align:left }
-      th { background:#f8f9fa }
-      .header { text-align:center; color:#17c1e8 }
-      .footer { color:#8392ab; font-size:12px; margin-top:20px; text-align:center }
-    </style>
-  </head>
-  <body>
-    <div class="header">
-      <h2>Historial de Pagos</h2>
-      <div>Usuario: {{ user.full_name }} &nbsp; | &nbsp; Fecha: {{ now|date:"d M Y" }}</div>
-      {% if start_date or end_date %}
-        <div class="text-muted small">
-          Período:
-          {% if start_date %} Desde {{ start_date|date:"d M Y" }}{% endif %}
-          {% if end_date %} Hasta {{ end_date|date:"d M Y" }}{% endif %}
-        </div>
-      {% endif %}
+<head>
+  <meta charset="utf-8">
+  <title>Historial de Pagos</title>
+  <style>
+    @page { size: A4; margin: 2cm 2cm; }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+      font-size: 9.5pt;
+      color: #2d3748;
+      background: #fff;
+    }
+
+    /* ── Header ──────────────────────────────── */
+    .doc-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 22px;
+      padding-bottom: 18px;
+      border-bottom: 2px solid #17c1e8;
+    }
+    .doc-header h1 {
+      font-size: 18pt;
+      font-weight: 800;
+      color: #0a2540;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      line-height: 1.15;
+    }
+    .doc-header .sub {
+      font-size: 9pt;
+      color: #718096;
+      margin-top: 6px;
+      line-height: 1.7;
+    }
+    .header-right {
+      text-align: right;
+    }
+    .header-right .logo {
+      max-width: 110px;
+      max-height: 50px;
+      margin-bottom: 6px;
+      display: block;
+      margin-left: auto;
+    }
+    .header-right .brand-text {
+      font-size: 18pt;
+      font-weight: 900;
+      color: #17c1e8;
+      letter-spacing: 3px;
+      display: block;
+      margin-bottom: 4px;
+    }
+    .header-right .brand-sub {
+      font-size: 7pt;
+      color: #a0aec0;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+    .header-right .issued {
+      font-size: 8pt;
+      color: #a0aec0;
+      margin-top: 5px;
+    }
+
+    /* ── KPI tiles ───────────────────────────── */
+    .kpi-row {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .kpi {
+      flex: 1;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 11px 14px;
+      text-align: center;
+    }
+    .kpi-val {
+      font-size: 14pt;
+      font-weight: bold;
+      color: #17c1e8;
+    }
+    .kpi-lbl {
+      font-size: 7pt;
+      color: #a0aec0;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-top: 3px;
+    }
+
+    /* ── Table ───────────────────────────────── */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 9pt;
+    }
+    thead tr {
+      border-bottom: 2px solid #e2e8f0;
+    }
+    thead th {
+      padding: 9px 11px;
+      text-align: left;
+      font-size: 7.5pt;
+      font-weight: bold;
+      color: #a0aec0;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    thead th.num { text-align: right; }
+    tbody tr { border-bottom: 1px solid #f0f4f8; }
+    tbody tr:last-child { border-bottom: none; }
+    tbody td { padding: 9px 11px; vertical-align: middle; }
+    tbody td.num { text-align: right; font-weight: bold; color: #2d3748; }
+    tbody td.txn { font-size: 7.5pt; color: #a0aec0; font-family: 'Courier New', monospace; }
+    tbody tr:nth-child(even) td { background: #f9fafb; }
+
+    /* ── Status dots ─────────────────────────── */
+    .dot {
+      display: inline-block;
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      margin-right: 5px;
+      vertical-align: middle;
+    }
+    .dot-confirmed { background: #38a169; }
+    .dot-pending   { background: #d69e2e; }
+    .dot-rejected  { background: #e53e3e; }
+    .dot-default   { background: #a0aec0; }
+    .status-text   { font-size: 8.5pt; vertical-align: middle; }
+
+    /* ── Total row ───────────────────────────── */
+    tfoot tr.total-row {
+      border-top: 2px solid #17c1e8;
+      background: #f0f9fc;
+    }
+    tfoot td {
+      padding: 10px 11px;
+      font-weight: bold;
+      color: #0a2540;
+    }
+    tfoot td.num {
+      font-size: 11pt;
+      color: #17c1e8;
+      text-align: right;
+    }
+
+    /* ── Footer ──────────────────────────────── */
+    .doc-footer {
+      margin-top: 26px;
+      padding-top: 12px;
+      border-top: 1px solid #e2e8f0;
+      display: flex;
+      justify-content: space-between;
+      font-size: 7.5pt;
+      color: #a0aec0;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <div class="doc-header">
+    <div>
+      <h1>Historial<br>de Pagos</h1>
+      <div class="sub">
+        {{ user.first_name }} {{ user.last_name }}<br>
+        {% if start_date %}{{ start_date|date:"d M Y" }}{% endif %}
+        {% if start_date and end_date %} &mdash; {% endif %}
+        {% if end_date %}{{ end_date|date:"d M Y" }}{% endif %}
+      </div>
     </div>
+    <div class="header-right">
+      {% if logo_base64 %}
+        <img src="{{ logo_base64 }}" alt="Finko" class="logo">
+      {% else %}
+        <span class="brand-text">FINKO</span>
+      {% endif %}
+      <div class="brand-sub">Property Management</div>
+      <div class="issued">{{ now|date:"d M Y" }}</div>
+    </div>
+  </div>
 
-    <table>
-      <thead>
-        <tr>
-          <th>Número</th>
-          <th>Fecha</th>
-          <th>Propiedad</th>
-          <th>Método</th>
-          <th>Monto</th>
-          <th>Estado</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for t in transactions %}
-        <tr>
-          <td>{{ t.transaction_number }}</td>
-          <td>{{ t.transaction_date|date:"d M Y" }}</td>
-          <td>{% if t.property %}{{ t.property.alias }}{% else %}-{% endif %}</td>
-          <td>{{ t.get_payment_method_display }}</td>
-          <td>${{ t.amount }}</td>
-          <td>{{ t.status }}</td>
-        </tr>
-        {% empty %}
-        <tr><td colspan="6" class="text-muted">No hay transacciones para mostrar.</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
+  <!-- KPI tiles -->
+  <div class="kpi-row">
+    <div class="kpi">
+      <div class="kpi-val">{{ transactions|length }}</div>
+      <div class="kpi-lbl">Transacciones</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-val">{% if start_date %}{{ start_date|date:"M Y" }}{% else %}&mdash;{% endif %}</div>
+      <div class="kpi-lbl">Desde</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-val">{% if end_date %}{{ end_date|date:"M Y" }}{% else %}&mdash;{% endif %}</div>
+      <div class="kpi-lbl">Hasta</div>
+    </div>
+  </div>
 
-    <div class="footer">Finko - Property Management System</div>
-  </body>
+  <!-- Table -->
+  <table>
+    <thead>
+      <tr>
+        <th>Referencia</th>
+        <th>Factura</th>
+        <th>Fecha</th>
+        <th>Propiedad</th>
+        <th>M&eacute;todo</th>
+        <th class="num">Monto</th>
+        <th>Estado</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for t in transactions %}
+      <tr>
+        <td class="txn">{{ t.transaction_number }}</td>
+        <td class="txn">{% if t.invoice %}{{ t.invoice.invoice_number }}{% else %}&mdash;{% endif %}</td>
+        <td>{{ t.transaction_date|date:"d M Y" }}</td>
+        <td>{% if t.property %}{{ t.property.alias }}{% else %}&mdash;{% endif %}</td>
+        <td>{{ t.get_payment_method_display }}</td>
+        <td class="num">${{ t.amount }}</td>
+        <td>
+          {% if t.status == "confirmed" %}
+            <span class="dot dot-confirmed"></span><span class="status-text">Confirmado</span>
+          {% elif t.status == "pending" %}
+            <span class="dot dot-pending"></span><span class="status-text">Pendiente</span>
+          {% elif t.status == "rejected" %}
+            <span class="dot dot-rejected"></span><span class="status-text">Rechazado</span>
+          {% else %}
+            <span class="dot dot-default"></span><span class="status-text">{{ t.status }}</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="7" style="text-align:center;color:#a0aec0;padding:24px;">
+          No hay transacciones para mostrar.
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+    <tfoot>
+      <tr class="total-row">
+        <td colspan="5" style="font-size:8.5pt;color:#718096;font-weight:bold;letter-spacing:1px;text-transform:uppercase;">Total General</td>
+        <td class="num">{% if total_amount %}${{ total_amount }}{% else %}&mdash;{% endif %}</td>
+        <td style="font-size:8pt;color:#718096;">{{ transactions|length }} mov.</td>
+      </tr>
+    </tfoot>
+  </table>
+
+  <!-- Footer -->
+  <div class="doc-footer">
+    <span>Finko &mdash; Property Management System</span>
+    <span>{{ now|date:"d/m/Y" }}</span>
+  </div>
+
+</body>
 </html>

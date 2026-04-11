@@ -4,71 +4,143 @@
 <div class="container-fluid py-4">
   <div class="row">
     <div class="col-md-10 offset-md-1">
-      <div class="card">
-        <div class="card-body">
-          <h4 class="font-weight-bolder">Vista Previa - Resumen de Pagos</h4>
-          <p class="text-muted">Revisa el total recolectado y los pagos incluidos en el rango seleccionado.</p>
 
-          <div class="row mb-3">
-            <div class="col-md-4">
-              <strong>Desde:</strong> {{ start_date|default:'—' }}
-            </div>
-            <div class="col-md-4">
-              <strong>Hasta:</strong> {{ end_date|default:'—' }}
-            </div>
-            <div class="col-md-4">
-              <strong>Propiedades:</strong>
-              {% if selected_props %}
-                {% for p in selected_props %}{{ p.alias }}{% if not forloop.last %}, {% endif %}{% endfor %}
-              {% else %}
-                Todas
-              {% endif %}
+      <!-- Page header -->
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+          <h4 class="font-weight-bolder mb-0">Vista Previa &mdash; Resumen de Pagos</h4>
+          <p class="text-sm text-muted mb-0">
+            {% if start_date %}{{ start_date|date:"d M Y" }}{% endif %}
+            {% if start_date and end_date %} &mdash; {% endif %}
+            {% if end_date %}{{ end_date|date:"d M Y" }}{% endif %}
+            {% if selected_props %}
+              &nbsp;&bull;&nbsp;
+              {% for p in selected_props %}{{ p.alias }}{% if not forloop.last %}, {% endif %}{% endfor %}
+            {% else %}
+              &nbsp;&bull;&nbsp; Todas las propiedades
+            {% endif %}
+          </p>
+        </div>
+        <div class="d-flex gap-2">
+          <a href="{% url 'generate_documents' %}?action=payment_history{% if start_date %}&start_date={{ start_date }}{% endif %}{% if end_date %}&end_date={{ end_date }}{% endif %}{% for pid in prop_ids %}&properties={{ pid }}{% endfor %}"
+             class="btn btn-info btn-sm">
+            <i class="fa fa-download me-1"></i> Descargar PDF
+          </a>
+          <a href="{% url 'generate_documents' %}" class="btn btn-outline-secondary btn-sm">
+            <i class="fa fa-arrow-left me-1"></i> Volver
+          </a>
+        </div>
+      </div>
+
+      <!-- KPI tiles -->
+      <div class="row g-3 mb-4">
+        <div class="col-md-3">
+          <div class="card text-center border-0 shadow-sm">
+            <div class="card-body py-3">
+              <p class="text-xs text-uppercase text-muted fw-bold mb-1 ls-1">Transacciones</p>
+              <h4 class="font-weight-bolder mb-0" style="color:#17c1e8;">{{ transactions|length }}</h4>
             </div>
           </div>
-
-          <div class="mb-3">
-            <h5>Total Recolectado: <span class="text-success">${{ total }}</span></h5>
+        </div>
+        <div class="col-md-3">
+          <div class="card text-center border-0 shadow-sm">
+            <div class="card-body py-3">
+              <p class="text-xs text-uppercase text-muted fw-bold mb-1 ls-1">Total Recolectado</p>
+              <h4 class="font-weight-bolder mb-0 text-success">${{ total }}</h4>
+            </div>
           </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card text-center border-0 shadow-sm">
+            <div class="card-body py-3">
+              <p class="text-xs text-uppercase text-muted fw-bold mb-1 ls-1">Desde</p>
+              <h5 class="font-weight-bolder mb-0">
+                {% if start_date %}{{ start_date|date:"M Y" }}{% else %}&mdash;{% endif %}
+              </h5>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card text-center border-0 shadow-sm">
+            <div class="card-body py-3">
+              <p class="text-xs text-uppercase text-muted fw-bold mb-1 ls-1">Hasta</p>
+              <h5 class="font-weight-bolder mb-0">
+                {% if end_date %}{{ end_date|date:"M Y" }}{% else %}&mdash;{% endif %}
+              </h5>
+            </div>
+          </div>
+        </div>
+      </div>
 
+      <!-- Transactions table -->
+      <div class="card shadow-sm">
+        <div class="card-header pb-0 px-4 pt-3 border-0">
+          <h6 class="font-weight-bolder mb-0">Detalle de Transacciones</h6>
+        </div>
+        <div class="card-body px-4 pt-2">
           <div class="table-responsive">
-            <table class="table align-middle mb-0">
+            <table class="table align-middle mb-0" style="font-size:0.875rem;">
               <thead>
-                <tr>
-                  <th>Número</th>
-                  <th>Fecha</th>
-                  <th>Propiedad</th>
-                  <th>Método</th>
-                  <th>Monto</th>
+                <tr style="border-bottom:2px solid #e2e8f0;">
+                  <th class="text-uppercase text-xs text-muted fw-bold py-2 ps-0">Referencia</th>
+                  <th class="text-uppercase text-xs text-muted fw-bold py-2">Factura</th>
+                  <th class="text-uppercase text-xs text-muted fw-bold py-2">Fecha</th>
+                  <th class="text-uppercase text-xs text-muted fw-bold py-2">Propiedad</th>
+                  <th class="text-uppercase text-xs text-muted fw-bold py-2">M&eacute;todo</th>
+                  <th class="text-uppercase text-xs text-muted fw-bold py-2 text-end">Monto</th>
                 </tr>
               </thead>
               <tbody>
                 {% for t in transactions %}
-                <tr>
-                  <td>{{ t.transaction_number }}</td>
+                <tr style="border-bottom:1px solid #f0f4f8;">
+                  <td class="ps-0">
+                    <span class="text-xs font-monospace text-muted">{{ t.transaction_number }}</span>
+                  </td>
+                  <td>
+                    <span class="text-xs font-monospace text-muted">
+                      {% if t.invoice %}{{ t.invoice.invoice_number }}{% else %}&mdash;{% endif %}
+                    </span>
+                  </td>
                   <td>{{ t.transaction_date|date:"d M Y" }}</td>
-                  <td>{% if t.property %}{{ t.property.alias }}{% else %}-{% endif %}</td>
+                  <td>{% if t.property %}{{ t.property.alias }}{% else %}<span class="text-muted">&mdash;</span>{% endif %}</td>
                   <td>{{ t.get_payment_method_display }}</td>
-                  <td>${{ t.amount }}</td>
+                  <td class="text-end fw-bold">${{ t.amount }}</td>
                 </tr>
                 {% empty %}
-                <tr><td colspan="5" class="text-muted">No hay transacciones para mostrar.</td></tr>
+                <tr>
+                  <td colspan="6" class="text-center text-muted py-4">No hay transacciones para mostrar.</td>
+                </tr>
                 {% endfor %}
               </tbody>
+              {% if transactions %}
+              <tfoot>
+                <tr style="border-top:2px solid #17c1e8;background:#f0f9fc;">
+                  <td colspan="5" class="text-uppercase text-xs fw-bold ps-0" style="color:#718096;letter-spacing:1px;">
+                    Total General
+                  </td>
+                  <td class="text-end fw-bold fs-6" style="color:#17c1e8;">${{ total }}</td>
+                </tr>
+              </tfoot>
+              {% endif %}
             </table>
           </div>
-
-          <div class="mt-4 d-flex justify-content-between">
-            <div>
-              <a href="javascript:window.print()" class="btn btn-secondary">Imprimir / Guardar como PDF</a>
-            </div>
-            <div>
-              <a href="{% url 'generate_documents' %}?action=payment_history{% if start_date %}&start_date={{ start_date }}{% endif %}{% if end_date %}&end_date={{ end_date }}{% endif %}{% for pid in prop_ids %}&properties={{ pid }}{% endfor %}" class="btn btn-info">Descargar PDF</a>
-              <a href="{% url 'generate_documents' %}" class="btn btn-link">Volver</a>
-            </div>
-          </div>
-
         </div>
       </div>
+
+      <!-- Actions -->
+      <div class="d-flex justify-content-between mt-3">
+        <button onclick="window.print()" class="btn btn-outline-secondary btn-sm">
+          <i class="fa fa-print me-1"></i> Imprimir
+        </button>
+        <div class="d-flex gap-2">
+          <a href="{% url 'generate_documents' %}?action=payment_history{% if start_date %}&start_date={{ start_date }}{% endif %}{% if end_date %}&end_date={{ end_date }}{% endif %}{% for pid in prop_ids %}&properties={{ pid }}{% endfor %}"
+             class="btn btn-info btn-sm">
+            <i class="fa fa-download me-1"></i> Descargar PDF
+          </a>
+          <a href="{% url 'generate_documents' %}" class="btn btn-link btn-sm">Volver</a>
+        </div>
+      </div>
+
     </div>
   </div>
 </div>

@@ -1774,7 +1774,7 @@ def generate_documents(request):
     end_date = request.GET.get('end_date')
     prop_ids = request.GET.getlist('properties')
 
-    qs = Transaction.objects.filter(type='receipt', status='confirmed')
+    qs = Transaction.objects.filter(type='receipt', status='confirmed').select_related('invoice', 'property', 'tenant')
     if request.user.role == 'O':
       qs = qs.filter(owner=request.user)
     else:
@@ -1807,12 +1807,23 @@ def generate_documents(request):
 
     transactions = qs.order_by('-transaction_date')
 
+    # Derive date range from actual data when no filter applied
+    if transactions.exists():
+      if not sd:
+        sd = transactions.last().transaction_date
+      if not ed:
+        ed = transactions.first().transaction_date
+
+    total_amount = transactions.aggregate(total=models.Sum('amount'))['total'] or 0
+
     html_string = render_to_string('main/payment_history_pdf.html', {
       'transactions': transactions,
       'user': request.user,
       'now': date.today(),
       'start_date': sd,
       'end_date': ed,
+      'total_amount': total_amount,
+      'logo_base64': get_logo_for_pdf(),
     })
     pdf = HTML(string=html_string).write_pdf()
     response = HttpResponse(pdf, content_type='application/pdf')
@@ -1950,7 +1961,7 @@ def generate_documents(request):
         status='confirmed',
         transaction_date__gte=start_date,
         transaction_date__lte=end_date
-      )
+      ).select_related('invoice', 'property', 'tenant')
       
       if request.user.role == 'O':
         qs = qs.filter(owner=request.user)
@@ -1967,8 +1978,32 @@ def generate_documents(request):
       
       transactions = qs.order_by('property__alias', '-transaction_date')
     
+    # Also fetch Invoices for the period (what was billed)
+    from .models import Invoice as InvoiceModel
+    if start_date and end_date:
+      inv_qs = InvoiceModel.objects.filter(
+        invoice_date__gte=start_date,
+        invoice_date__lte=end_date
+      ).select_related('rent', 'rent__property', 'rent__tenant', 'rent__owner')
+      if request.user.role == 'O':
+        inv_qs = inv_qs.filter(rent__owner=request.user)
+        if property_id:
+          try:
+            prop_id = int(property_id)
+            inv_qs = inv_qs.filter(rent__property__id=prop_id)
+          except ValueError:
+            pass
+      else:
+        inv_qs = inv_qs.filter(rent__tenant=request.user)
+      invoices = inv_qs.order_by('rent__property__alias', 'due_date')
+    else:
+      invoices = InvoiceModel.objects.none()
+
     # Calculate total amount
     total_amount = sum(t.amount for t in transactions)
+    invoices_total_billed = sum(i.amount for i in invoices)
+    invoices_total_paid = sum(i.paid_amount for i in invoices)
+    invoices_total_outstanding = sum(i.get_balance_owed() for i in invoices)
     
     months_es = {
       1: 'enero', 2: 'febrero', 3: 'marzo', 4: 'abril',
@@ -1985,6 +2020,10 @@ def generate_documents(request):
     if request.method == 'POST' or preview:
       html_string = render_to_string('main/statement_pdf.html', {
         'transactions': transactions,
+        'invoices': invoices,
+        'invoices_total_billed': invoices_total_billed,
+        'invoices_total_paid': invoices_total_paid,
+        'invoices_total_outstanding': invoices_total_outstanding,
         'user': request.user,
         'property': property_obj,
         'month_display': month_display,
@@ -1992,6 +2031,7 @@ def generate_documents(request):
         'now': date.today(),
         'start_date': start_date,
         'end_date': end_date,
+        'logo_base64': get_logo_for_pdf(),
       })
       pdf = HTML(string=html_string).write_pdf()
       response = HttpResponse(pdf, content_type='application/pdf')
@@ -2035,7 +2075,7 @@ def generate_documents(request):
     end_date = request.GET.get('end_date')
     prop_ids = request.GET.getlist('properties')
 
-    qs = Transaction.objects.filter(type='receipt', status='confirmed')
+    qs = Transaction.objects.filter(type='receipt', status='confirmed').select_related('invoice', 'property', 'tenant')
     if request.user.role == 'O':
       qs = qs.filter(owner=request.user)
     else:

@@ -1,125 +1,377 @@
 <!doctype html>
 <html>
-  <head>
-    <meta charset="utf-8">
-    <title>Estado de Cuenta</title>
-    <style>
-      body { font-family: 'Montserrat', Arial, sans-serif; color:#344767; margin:24px; }
-      table { width:100%; border-collapse: collapse; margin-top:10px }
-      th, td { padding:10px 8px; border:1px solid #e9ecef; text-align:left }
-      th { background:#f8f9fa; font-weight:bold; }
-      .header { text-align:center; color:#17c1e8; margin-bottom:20px; }
-      .header h2 { margin:0; color:#344767; }
-      .statement-period { font-size:14px; color:#666; margin-top:5px; }
-      .property-section { margin-top:20px; }
-      .property-name { font-size:16px; font-weight:bold; color:#344767; margin-bottom:10px; }
-      .summary { margin-top:15px; padding:10px; background:#f8f9fa; border-left:3px solid #17c1e8; }
-      .summary-row { display:flex; justify-content:space-between; margin:5px 0; }
-      .total { font-weight:bold; font-size:16px; color:#17c1e8; }
-      .footer { color:#8392ab; font-size:12px; margin-top:30px; text-align:center; border-top:1px solid #e9ecef; padding-top:10px; }
-      .no-data { text-align:center; color:#999; padding:20px; }
-      .amount { text-align:right; }
-      .date { text-align:center; }
-    </style>
-  </head>
-  <body>
-    <div class="header">
-      <h2>Estado de Cuenta / Extracto de Pagos</h2>
-      <div class="statement-period">
-        Período: {{ month_display }}
+<head>
+  <meta charset="utf-8">
+  <title>Estado de Cuenta</title>
+  <style>
+    @page { size: A4; margin: 2cm 2cm; }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+      font-size: 9.5pt;
+      color: #2d3748;
+      background: #fff;
+    }
+
+    /* ── Header ──────────────────────────────── */
+    .doc-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 22px;
+      padding-bottom: 18px;
+      border-bottom: 2px solid #17c1e8;
+    }
+    .doc-header h1 {
+      font-size: 18pt;
+      font-weight: 800;
+      color: #0a2540;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      line-height: 1.15;
+    }
+    .doc-header .sub {
+      font-size: 9pt;
+      color: #718096;
+      margin-top: 6px;
+      line-height: 1.7;
+    }
+    .header-right { text-align: right; }
+    .header-right .logo {
+      max-width: 110px;
+      max-height: 50px;
+      margin-bottom: 6px;
+      display: block;
+      margin-left: auto;
+    }
+    .header-right .brand-text {
+      font-size: 18pt;
+      font-weight: 900;
+      color: #17c1e8;
+      letter-spacing: 3px;
+      display: block;
+      margin-bottom: 4px;
+    }
+    .header-right .brand-sub {
+      font-size: 7pt;
+      color: #a0aec0;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+    .header-right .issued {
+      font-size: 8pt;
+      color: #a0aec0;
+      margin-top: 5px;
+    }
+
+    /* ── KPI tiles ───────────────────────────── */
+    .kpi-row {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 22px;
+    }
+    .kpi {
+      flex: 1;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 11px 14px;
+      text-align: center;
+    }
+    .kpi-val {
+      font-size: 13pt;
+      font-weight: bold;
+      color: #17c1e8;
+    }
+    .kpi-val.red  { color: #e53e3e; }
+    .kpi-val.green { color: #38a169; }
+    .kpi-lbl {
+      font-size: 7pt;
+      color: #a0aec0;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-top: 3px;
+    }
+
+    /* ── Section titles ──────────────────────── */
+    .section-title {
+      font-size: 8pt;
+      font-weight: bold;
+      color: #718096;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      padding-bottom: 6px;
+      margin: 22px 0 10px 0;
+      border-bottom: 2px solid #17c1e8;
+    }
+
+    /* ── Tables ──────────────────────────────── */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 9pt;
+    }
+    thead tr { border-bottom: 2px solid #e2e8f0; }
+    thead th {
+      padding: 8px 10px;
+      text-align: left;
+      font-size: 7.5pt;
+      font-weight: bold;
+      color: #a0aec0;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    thead th.r { text-align: right; }
+    tbody tr { border-bottom: 1px solid #f0f4f8; }
+    tbody tr:last-child { border-bottom: none; }
+    tbody td { padding: 8px 10px; vertical-align: middle; }
+    tbody td.r { text-align: right; }
+    tbody td.mono { font-size: 7.5pt; color: #a0aec0; font-family: 'Courier New', monospace; }
+    tbody tr:nth-child(even) td { background: #f9fafb; }
+
+    /* ── Invoice status dots ─────────────────── */
+    .dot {
+      display: inline-block;
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      margin-right: 5px;
+      vertical-align: middle;
+    }
+    .dot-paid     { background: #38a169; }
+    .dot-partial  { background: #17c1e8; }
+    .dot-overdue  { background: #e53e3e; }
+    .dot-pending  { background: #d69e2e; }
+    .status-text  { font-size: 8.5pt; vertical-align: middle; }
+
+    .amount-red   { color: #e53e3e; font-weight: bold; }
+    .amount-green { color: #38a169; font-weight: bold; }
+    .amount-bold  { font-weight: bold; color: #0a2540; }
+
+    /* ── Total rows ──────────────────────────── */
+    tfoot tr.total-row { border-top: 2px solid #17c1e8; background: #f0f9fc; }
+    tfoot td { padding: 9px 10px; font-weight: bold; color: #0a2540; }
+    tfoot td.r { text-align: right; font-size: 10.5pt; color: #17c1e8; }
+
+    /* ── Property group label ────────────────── */
+    .prop-label {
+      font-size: 8.5pt;
+      font-weight: bold;
+      color: #0a2540;
+      background: #f0f9fc;
+      padding: 6px 10px;
+      border-left: 3px solid #17c1e8;
+      margin-top: 12px;
+      margin-bottom: 2px;
+    }
+
+    /* ── Footer ──────────────────────────────── */
+    .doc-footer {
+      margin-top: 26px;
+      padding-top: 12px;
+      border-top: 1px solid #e2e8f0;
+      display: flex;
+      justify-content: space-between;
+      font-size: 7.5pt;
+      color: #a0aec0;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <div class="doc-header">
+    <div>
+      <h1>Estado<br>de Cuenta</h1>
+      <div class="sub">
+        {{ user.first_name }} {{ user.last_name }}<br>
+        Per&iacute;odo: {{ month_display }}
+        {% if property %}<br>Propiedad: {{ property.alias }}{% endif %}
       </div>
-      <div>Usuario: {{ user.full_name }} &nbsp; | &nbsp; Fecha de Generación: {{ now|date:"d M Y" }}</div>
-      {% if property %}
-        <div style="margin-top:5px; font-size:14px;">Propiedad: {{ property.alias }}</div>
+    </div>
+    <div class="header-right">
+      {% if logo_base64 %}
+        <img src="{{ logo_base64 }}" alt="Finko" class="logo">
+      {% else %}
+        <span class="brand-text">FINKO</span>
       {% endif %}
+      <div class="brand-sub">Property Management</div>
+      <div class="issued">{{ now|date:"d M Y" }}</div>
     </div>
+  </div>
 
-    {% if transactions %}
-      <div class="property-section">
-        {% if property %}
-          <!-- For owners viewing a single property -->
-          <table>
-            <thead>
-              <tr>
-                <th>Número de Transacción</th>
-                <th class="date">Fecha</th>
-                <th>Método de Pago</th>
-                <th class="amount">Monto</th>
-                <th>Estado</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for t in transactions %}
-              <tr>
-                <td>{{ t.transaction_number }}</td>
-                <td class="date">{{ t.transaction_date|date:"d M Y" }}</td>
-                <td>{{ t.get_payment_method_display }}</td>
-                <td class="amount">${{ t.amount }}</td>
-                <td>{{ t.get_status_display }}</td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-          
-          <div class="summary">
-            <div class="summary-row">
-              <span>Total de Pagos:</span>
-              <span class="total">${{ total_amount }}</span>
-            </div>
-          </div>
-        {% else %}
-          <!-- For tenants viewing multiple properties -->
-          {% regroup transactions by property.alias as prop_groups %}
-          {% for prop_group in prop_groups %}
-            <div class="property-name">{{ prop_group.grouper }}</div>
-            <table>
-              <thead>
-                <tr>
-                  <th>Número de Transacción</th>
-                  <th class="date">Fecha</th>
-                  <th>Método de Pago</th>
-                  <th class="amount">Monto</th>
-                  <th>Estado</th>
-                </tr>
-              </thead>
-              <tbody>
-                {% for t in prop_group.list %}
-                <tr>
-                  <td>{{ t.transaction_number }}</td>
-                  <td class="date">{{ t.transaction_date|date:"d M Y" }}</td>
-                  <td>{{ t.get_payment_method_display }}</td>
-                  <td class="amount">${{ t.amount }}</td>
-                  <td>{{ t.get_status_display }}</td>
-                </tr>
-                {% endfor %}
-              </tbody>
-            </table>
-            
-            <div class="summary">
-              <div class="summary-row">
-                <span>Subtotal {{ prop_group.grouper }}:</span>
-                <span class="total">${{ prop_group.list|length }}</span>
-              </div>
-            </div>
-          {% endfor %}
-        {% endif %}
-      </div>
-
-      <div class="summary" style="margin-top:30px; font-size:16px; background:#e8f4f8;">
-        <div class="summary-row">
-          <span style="font-weight:bold;">TOTAL GENERAL:</span>
-          <span class="total" style="font-size:18px;">${{ total_amount }}</span>
-        </div>
-      </div>
-    {% else %}
-      <div class="no-data">
-        <p>No hay transacciones para mostrar en el período seleccionado.</p>
-      </div>
-    {% endif %}
-
-    <div class="footer">
-      <p>Este es un documento de carácter informativo. Todos los datos mostrados corresponden a transacciones confirmadas en el sistema.</p>
+  <!-- KPI tiles -->
+  <div class="kpi-row">
+    <div class="kpi">
+      <div class="kpi-val">{{ invoices|length }}</div>
+      <div class="kpi-lbl">Facturas</div>
     </div>
-  </body>
+    <div class="kpi">
+      <div class="kpi-val">${{ invoices_total_billed }}</div>
+      <div class="kpi-lbl">Total Facturado</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-val green">${{ invoices_total_paid }}</div>
+      <div class="kpi-lbl">Total Cobrado</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-val red">${{ invoices_total_outstanding }}</div>
+      <div class="kpi-lbl">Pendiente</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-val">${{ total_amount }}</div>
+      <div class="kpi-lbl">Pagos Recibidos</div>
+    </div>
+  </div>
+
+  <!-- ── Invoices section ─────────────────────── -->
+  {% if invoices %}
+  <div class="section-title">Facturas del Per&iacute;odo</div>
+  <table>
+    <thead>
+      <tr>
+        <th>N&deg; Factura</th>
+        <th>Propiedad</th>
+        <th>Fecha</th>
+        <th>Vencimiento</th>
+        <th class="r">Monto</th>
+        <th class="r">Cobrado</th>
+        <th class="r">Mora</th>
+        <th class="r">Pendiente</th>
+        <th>Estado</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for inv in invoices %}
+      <tr>
+        <td class="mono">{{ inv.invoice_number }}</td>
+        <td>{{ inv.rent.property.alias }}</td>
+        <td>{{ inv.invoice_date|date:"d M Y" }}</td>
+        <td>{{ inv.due_date|date:"d M Y" }}</td>
+        <td class="r">${{ inv.amount }}</td>
+        <td class="r amount-green">${{ inv.paid_amount }}</td>
+        <td class="r">
+          {% if inv.late_fee_amount and inv.late_fee_amount > 0 %}
+            <span class="amount-red">${{ inv.late_fee_amount }}</span>
+          {% else %}&mdash;{% endif %}
+        </td>
+        <td class="r">
+          {% with bal=inv.get_balance_owed %}
+            {% if bal > 0 %}<span class="amount-red">${{ bal }}</span>
+            {% else %}<span class="amount-green">$0.00</span>{% endif %}
+          {% endwith %}
+        </td>
+        <td>
+          {% if inv.status == 'paid' %}
+            <span class="dot dot-paid"></span><span class="status-text">Pagado</span>
+          {% elif inv.status == 'overdue' %}
+            <span class="dot dot-overdue"></span><span class="status-text">Vencido</span>
+          {% elif inv.status == 'partial' %}
+            <span class="dot dot-partial"></span><span class="status-text">Parcial</span>
+          {% else %}
+            <span class="dot dot-pending"></span><span class="status-text">Pendiente</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="9" style="text-align:center;color:#a0aec0;padding:20px;">
+          No hay facturas para el per&iacute;odo.
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+    <tfoot>
+      <tr class="total-row">
+        <td colspan="4" style="font-size:8pt;color:#718096;font-weight:bold;text-transform:uppercase;letter-spacing:1px;">Totales</td>
+        <td class="r">${{ invoices_total_billed }}</td>
+        <td class="r" style="color:#38a169;">${{ invoices_total_paid }}</td>
+        <td class="r">&mdash;</td>
+        <td class="r" style="color:#e53e3e;">${{ invoices_total_outstanding }}</td>
+        <td style="font-size:8pt;color:#718096;">{{ invoices|length }} fact.</td>
+      </tr>
+    </tfoot>
+  </table>
+  {% endif %}
+
+  <!-- ── Payments section ────────────────────── -->
+  {% if transactions %}
+  <div class="section-title">Pagos Recibidos &mdash; Recibos Confirmados</div>
+  {% if property %}
+    <!-- Single property: flat list -->
+    <table>
+      <thead>
+        <tr>
+          <th>Referencia</th>
+          <th>Factura</th>
+          <th>Fecha</th>
+          <th>M&eacute;todo</th>
+          <th class="r">Monto</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for t in transactions %}
+        <tr>
+          <td class="mono">{{ t.transaction_number }}</td>
+          <td class="mono">{% if t.invoice %}{{ t.invoice.invoice_number }}{% else %}&mdash;{% endif %}</td>
+          <td>{{ t.transaction_date|date:"d M Y" }}</td>
+          <td>{{ t.get_payment_method_display }}</td>
+          <td class="r amount-bold">${{ t.amount }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr class="total-row">
+          <td colspan="4" style="font-size:8pt;color:#718096;font-weight:bold;text-transform:uppercase;letter-spacing:1px;">Total Pagos</td>
+          <td class="r">${{ total_amount }}</td>
+        </tr>
+      </tfoot>
+    </table>
+  {% else %}
+    <!-- All properties: grouped -->
+    {% regroup transactions by property.alias as prop_groups %}
+    {% for prop_group in prop_groups %}
+    <div class="prop-label">{{ prop_group.grouper }}</div>
+    <table>
+      <thead>
+        <tr>
+          <th>Referencia</th>
+          <th>Factura</th>
+          <th>Fecha</th>
+          <th>M&eacute;todo</th>
+          <th class="r">Monto</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for t in prop_group.list %}
+        <tr>
+          <td class="mono">{{ t.transaction_number }}</td>
+          <td class="mono">{% if t.invoice %}{{ t.invoice.invoice_number }}{% else %}&mdash;{% endif %}</td>
+          <td>{{ t.transaction_date|date:"d M Y" }}</td>
+          <td>{{ t.get_payment_method_display }}</td>
+          <td class="r amount-bold">${{ t.amount }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% endfor %}
+    <tfoot style="display:table;width:100%;border-top:2px solid #17c1e8;background:#f0f9fc;">
+      <tr>
+        <td style="padding:9px 10px;font-weight:bold;color:#718096;font-size:8pt;text-transform:uppercase;letter-spacing:1px;" colspan="4">Total General Pagos</td>
+        <td style="padding:9px 10px;text-align:right;font-weight:bold;font-size:10.5pt;color:#17c1e8;">${{ total_amount }}</td>
+      </tr>
+    </tfoot>
+  {% endif %}
+  {% else %}
+  <div class="section-title">Pagos Recibidos</div>
+  <p style="text-align:center;color:#a0aec0;padding:20px 0;font-size:9pt;">No hay pagos recibidos en el per&iacute;odo seleccionado.</p>
+  {% endif %}
+
+  <!-- Footer -->
+  <div class="doc-footer">
+    <span>Finko &mdash; Property Management System</span>
+    <span>{{ now|date:"d/m/Y" }}</span>
+  </div>
+
+</body>
 </html>
-

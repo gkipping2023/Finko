@@ -70,6 +70,7 @@
 
             <!-- Display Tenant Information -->
             {% if tenant %}
+              <span id="registered-tenant-name" class="d-none">{{ tenant.first_name }} {{ tenant.last_name }}</span>
               <div class="alert alert-success mb-3">
                 <strong>Tenant Name:</strong> {{ tenant.first_name }} {{ tenant.last_name }}<br>
                 <strong>Tenant Email:</strong> {{ tenant.email }}
@@ -141,7 +142,7 @@
             </div>
 
             {% for field in form %}
-              {% if field.name not in "unregistered_tenant_name unregistered_tenant_email unregistered_tenant_phone unregistered_tenant_id_type unregistered_tenant_personal_id unregistered_tenant_dob unregistered_tenant_nac unregistered_tenant_sex late_fee_type late_fee_amount late_fee_grace_days" %}
+              {% if field.name not in "unregistered_tenant_name unregistered_tenant_email unregistered_tenant_phone unregistered_tenant_id_type unregistered_tenant_personal_id unregistered_tenant_dob unregistered_tenant_nac unregistered_tenant_sex late_fee_type late_fee_amount late_fee_grace_days rent_due_date next_invoice_date rent_amount" %}
                 <div class="mb-3">
                   <label class="form-label font-weight-bold text-dark">{{ field.label }}</label>
                   {{ field }}
@@ -154,6 +155,46 @@
                 </div>
               {% endif %}
             {% endfor %}
+
+            <!-- Monto de Alquiler -->
+            <div class="mb-3">
+              <label class="form-label font-weight-bold text-dark" for="id_rent_amount">{{ form.rent_amount.label }}</label>
+              {{ form.rent_amount }}
+              {% for error in form.rent_amount.errors %}
+                <div class="text-danger small">{{ error }}</div>
+              {% endfor %}
+            </div>
+
+            <!-- Próxima Fecha de Factura -->
+            <div class="mb-3">
+              <label class="form-label font-weight-bold text-dark" for="id_next_invoice_date">{{ form.next_invoice_date.label }}</label>
+              {{ form.next_invoice_date }}
+              {% if form.next_invoice_date.help_text %}
+                <small class="form-text text-muted d-block mt-1">{{ form.next_invoice_date.help_text }}</small>
+              {% endif %}
+              {% for error in form.next_invoice_date.errors %}
+                <div class="text-danger small">{{ error }}</div>
+              {% endfor %}
+            </div>
+
+            <!-- Día de Vencimiento + Días de Gracia (lado a lado) -->
+            <div class="row g-3 mb-3">
+              <div class="col-md-6">
+                <label class="form-label font-weight-bold text-dark" for="id_rent_due_date">{{ form.rent_due_date.label }}</label>
+                {{ form.rent_due_date }}
+                {% for error in form.rent_due_date.errors %}
+                  <div class="text-danger small">{{ error }}</div>
+                {% endfor %}
+              </div>
+              <div class="col-md-6">
+                <label class="form-label font-weight-bold text-dark" for="id_late_fee_grace_days">{{ form.late_fee_grace_days.label }}</label>
+                {{ form.late_fee_grace_days }}
+                <small class="form-text text-muted d-block mt-1">{{ form.late_fee_grace_days.help_text }}</small>
+                {% for error in form.late_fee_grace_days.errors %}
+                  <div class="text-danger small">{{ error }}</div>
+                {% endfor %}
+              </div>
+            </div>
 
             <!-- Late Fee Type Field (Radio Buttons) -->
             <div class="mb-3">
@@ -191,18 +232,48 @@
               {% endfor %}
             </div>
 
-            <!-- Grace Period Field -->
-            <div class="mb-3">
-              <label class="form-label font-weight-bold text-dark" for="id_late_fee_grace_days">{{ form.late_fee_grace_days.label }}</label>
-              {{ form.late_fee_grace_days }}
-              <small class="form-text text-muted d-block mt-1">{{ form.late_fee_grace_days.help_text }}</small>
-              {% for error in form.late_fee_grace_days.errors %}
-                <div class="text-danger small">{{ error }}</div>
-              {% endfor %}
+            <!-- Resumen del Contrato -->
+            <div class="card border-0 shadow-sm mb-4" id="summary-card">
+              <div class="card-header bg-gradient-dark py-3 border-radius-lg">
+                <p class="text-xs font-weight-bold text-white text-uppercase mb-0"><i class="fas fa-file-contract me-2"></i>Resumen del Contrato</p>
+              </div>
+              <div class="card-body px-4 py-3">
+
+                <!-- Datos generales -->
+                <p class="text-xs font-weight-bold text-uppercase text-secondary mb-2">Datos Generales</p>
+                <div class="row g-2 mb-3" id="summary-general">
+                  <div class="col-6 col-md-4"><p class="text-xs text-secondary mb-0">Propiedad</p><p class="text-sm font-weight-bold mb-0" id="s-property">—</p></div>
+                  <div class="col-6 col-md-4"><p class="text-xs text-secondary mb-0">Inquilino</p><p class="text-sm font-weight-bold mb-0" id="s-tenant">—</p></div>
+                  <div class="col-6 col-md-4"><p class="text-xs text-secondary mb-0">Monto Mensual</p><p class="text-sm font-weight-bold mb-0" id="s-amount">—</p></div>
+                  <div class="col-6 col-md-4"><p class="text-xs text-secondary mb-0">Inicio</p><p class="text-sm font-weight-bold mb-0" id="s-start">—</p></div>
+                  <div class="col-6 col-md-4"><p class="text-xs text-secondary mb-0">Fin</p><p class="text-sm font-weight-bold mb-0" id="s-end">—</p></div>
+                  <div class="col-6 col-md-4"><p class="text-xs text-secondary mb-0">Día de Vencimiento</p><p class="text-sm font-weight-bold mb-0" id="s-dueday">—</p></div>
+                </div>
+
+                <hr class="my-2">
+
+                <!-- Cobro y mora -->
+                <p class="text-xs font-weight-bold text-uppercase text-secondary mb-2">Cobro y Mora</p>
+                <div class="row g-2 mb-3">
+                  <div class="col-6 col-md-4"><p class="text-xs text-secondary mb-0">Próxima Factura</p><p class="text-sm font-weight-bold mb-0" id="s-nextinv">—</p></div>
+                  <div class="col-6 col-md-4"><p class="text-xs text-secondary mb-0">Tipo de Mora</p><p class="text-sm font-weight-bold mb-0" id="s-feetype">—</p></div>
+                  <div class="col-6 col-md-4" id="s-feeamount-wrap"><p class="text-xs text-secondary mb-0">Monto Mora Fija</p><p class="text-sm font-weight-bold mb-0" id="s-feeamount">—</p></div>
+                  <div class="col-6 col-md-4"><p class="text-xs text-secondary mb-0">Días de Gracia</p><p class="text-sm font-weight-bold mb-0" id="s-grace">—</p></div>
+                </div>
+
+                <hr class="my-2">
+
+                <!-- Ejemplo de fechas -->
+                <p class="text-xs font-weight-bold text-uppercase text-secondary mb-2"><i class="fas fa-calendar-check me-1"></i>Ejemplo del Próximo Mes</p>
+                <div id="live-example-text" class="text-sm text-dark">
+                  <span class="text-muted">Completa los campos para ver el ejemplo.</span>
+                </div>
+
+              </div>
             </div>
-            
+
             <div class="text-center">
-              <button type="submit" class="btn btn-info bg-gradient w-50 mt-3">Save Rent</button>
+              <button type="submit" class="btn btn-info bg-gradient w-50 mt-3">Guardar Contrato</button>
             </div>
             </form>
           {% endif %}
@@ -216,27 +287,133 @@
 </div>
 <script src="/static/assets/js/custom.js"></script>
 <script>
-  // Show/hide late fee amount field based on selection
+  const MESES_ES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+
+  function fmtDate(val) {
+    if (!val) return '—';
+    const parts = val.split('-');
+    if (parts.length !== 3) return val;
+    return `${parseInt(parts[2])} de ${MESES_ES[parseInt(parts[1])-1]} de ${parts[0]}`;
+  }
+
+  function set(id, text) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = text || '—';
+  }
+
+  function updateSummary() {
+    // Property
+    const propEl = document.getElementById('property');
+    const propText = propEl ? (propEl.options[propEl.selectedIndex]?.text || '—') : '—';
+    set('s-property', propText.includes('--') ? '—' : propText);
+
+    // Tenant — prefer server-rendered hidden span (registered), then unregistered name field
+    const registeredName = document.getElementById('registered-tenant-name')?.textContent?.trim();
+    const unregiName = (document.getElementById('id_unregistered_tenant_name')?.value || '').trim();
+    const tenantText = registeredName || unregiName || '—';
+    set('s-tenant', tenantText);
+
+    // Dates & amount
+    set('s-start', fmtDate(document.getElementById('id_start_date')?.value));
+    set('s-end', fmtDate(document.getElementById('id_end_date')?.value));
+    const amount = document.getElementById('id_rent_amount')?.value;
+    set('s-amount', amount ? `$${parseFloat(amount).toLocaleString('es-PA', {minimumFractionDigits:2, maximumFractionDigits:2})}` : '—');
+
+    // Due day
+    const dueDayEl = document.getElementById('id_rent_due_date');
+    const dueDay = dueDayEl ? parseInt(dueDayEl.value) : NaN;
+    set('s-dueday', dueDay ? `Día ${dueDay} de cada mes` : '—');
+
+    // Next invoice
+    set('s-nextinv', fmtDate(document.getElementById('id_next_invoice_date')?.value));
+
+    // Late fee type
+    const checkedRadio = document.querySelector('input[name="late_fee_type"]:checked');
+    let feeTypeLabel = '—';
+    if (checkedRadio) {
+      const lbl = document.querySelector(`label[for="${checkedRadio.id}"]`);
+      feeTypeLabel = lbl ? lbl.textContent.trim() : checkedRadio.value;
+    }
+    set('s-feetype', feeTypeLabel);
+
+    // Late fee amount (only if fixed)
+    const feeAmountWrap = document.getElementById('s-feeamount-wrap');
+    const feeAmountVal = document.getElementById('id_late_fee_amount')?.value;
+    if (checkedRadio?.value === 'fixed_amount') {
+      if (feeAmountWrap) feeAmountWrap.style.display = '';
+      set('s-feeamount', feeAmountVal ? `$${parseFloat(feeAmountVal).toLocaleString('es-PA', {minimumFractionDigits:2, maximumFractionDigits:2})}` : '—');
+    } else {
+      if (feeAmountWrap) feeAmountWrap.style.display = 'none';
+    }
+
+    // Grace days
+    const graceDays = parseInt(document.getElementById('id_late_fee_grace_days')?.value) || 0;
+    set('s-grace', graceDays === 0 ? 'Sin días de gracia' : `${graceDays} día${graceDays !== 1 ? 's' : ''}`);
+
+    // Live date example
+    const outputEl = document.getElementById('live-example-text');
+    if (!outputEl) return;
+
+    if (!dueDay || dueDay < 1 || dueDay > 31) {
+      outputEl.innerHTML = '<span class="text-muted">Selecciona el día de vencimiento para ver el ejemplo.</span>';
+      return;
+    }
+
+    const today = new Date();
+    const exampleYear = today.getMonth() === 11 ? today.getFullYear() + 1 : today.getFullYear();
+    const exampleMonth = (today.getMonth() + 1) % 12;
+    const maxDay = new Date(exampleYear, exampleMonth + 1, 0).getDate();
+    const clampedDay = Math.min(dueDay, maxDay);
+    const lateFeeDate = new Date(exampleYear, exampleMonth, clampedDay + graceDays);
+    const monthName = MESES_ES[exampleMonth];
+
+    const nextInvoiceVal = document.getElementById('id_next_invoice_date')?.value || '';
+    let invoiceHtml = '';
+    if (nextInvoiceVal) {
+      invoiceHtml = `<li>📤 <strong>Factura generada el:</strong> ${fmtDate(nextInvoiceVal)}</li>`;
+    } else {
+      invoiceHtml = `<li>📤 <strong>Próxima factura:</strong> <span class="text-muted">introduce la fecha de próxima factura</span></li>`;
+    }
+
+    outputEl.innerHTML = `
+      <p class="mb-2 text-xs text-secondary">Ejemplo del mes de <strong>${monthName} ${exampleYear}</strong>:</p>
+      <ul class="mb-0 ps-3" style="line-height:2">
+        ${invoiceHtml}
+        <li>📅 <strong>Vencimiento:</strong> ${clampedDay} de ${monthName} de ${exampleYear}</li>
+        <li>⚠️ <strong>Mora aplicada desde:</strong> ${lateFeeDate.getDate()} de ${MESES_ES[lateFeeDate.getMonth()]} de ${lateFeeDate.getFullYear()}
+          <span class="text-secondary">(${graceDays === 0 ? 'sin días de gracia' : `${graceDays} día${graceDays !== 1 ? 's' : ''} de gracia`})</span></li>
+      </ul>`;
+  }
+
   document.addEventListener('DOMContentLoaded', function() {
+    // Late fee amount visibility toggle
     const radioButtons = document.querySelectorAll('input[name="late_fee_type"]');
     const amountContainer = document.getElementById('late_fee_amount_container');
-    
+
     function toggleAmountField() {
-      const selectedValue = document.querySelector('input[name="late_fee_type"]:checked')?.value;
-      if (selectedValue === 'fixed_amount') {
-        amountContainer.style.display = 'block';
-      } else {
-        amountContainer.style.display = 'none';
-      }
+      const selected = document.querySelector('input[name="late_fee_type"]:checked')?.value;
+      if (amountContainer) amountContainer.style.display = selected === 'fixed_amount' ? 'block' : 'none';
+      updateSummary();
     }
-    
-    // Add event listeners to all radio buttons
-    radioButtons.forEach(radio => {
-      radio.addEventListener('change', toggleAmountField);
-    });
-    
-    // Initial check on page load
+    radioButtons.forEach(r => r.addEventListener('change', toggleAmountField));
     toggleAmountField();
+
+    // Listen to all relevant fields
+    const watchIds = [
+      'property', 'id_tenant', 'id_unregistered_tenant_name',
+      'id_start_date', 'id_end_date', 'id_rent_amount',
+      'id_rent_due_date', 'id_next_invoice_date',
+      'id_late_fee_amount', 'id_late_fee_grace_days'
+    ];
+    watchIds.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.addEventListener('change', updateSummary);
+        el.addEventListener('input', updateSummary);
+      }
+    });
+
+    updateSummary();
   });
 </script>
 {% endblock %}
