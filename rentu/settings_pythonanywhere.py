@@ -10,7 +10,7 @@ CELERY_ACCEPT_CONTENT = None
 CELERY_TASK_SERIALIZER = None
 
 # PythonAnywhere specific configurations
-ALLOWED_HOSTS = ['finko.pythonanywhere.com', 'localhost', '127.0.0.1']
+ALLOWED_HOSTS = ['finko.pythonanywhere.com', 'localhost', '127.0.0.1','www.finkoapp.com']
 
 # Use file-based cache instead of Redis
 CACHES = {
