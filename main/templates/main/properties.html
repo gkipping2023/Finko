@@ -1,6 +1,19 @@
 {% extends "index.html" %}
 {% block content %}
 
+<style>
+  .btn-share-card {
+    background: transparent;
+    border: 1.5px solid #17c1e8;
+    border-radius: 8px;
+    line-height: 1;
+    transition: background .15s, color .15s;
+  }
+  .btn-share-card:hover {
+    background: #e8f9fd;
+  }
+</style>
+
 {% if request.user.role == "O" %}
 <!-- Propiedades table -->
 <div class="container-fluid py-4">
@@ -116,6 +129,7 @@
                         <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Ultimo Pago</th>
                         <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Morosidad</th>
                         <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Contrato</th>
+                        <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Compartir</th>
                         <th class="text-secondary opacity-7"></th>
                       </tr>
                     </thead>
@@ -187,6 +201,25 @@
                             <i class="fas fa-file-contract fa-lg"></i>
                           </a>
                         </td>
+                        <td class="align-middle text-center">
+                          <button type="button"
+                                  class="btn btn-sm btn-share-card p-1 px-2"
+                                  title="Ver y Compartir Info"
+                                  data-bs-toggle="modal"
+                                  data-bs-target="#rentInfoModal"
+                                  data-tenant="{% if rent.tenant %}{{ rent.tenant.get_full_name }}{% elif rent.unregistered_tenant_name %}{{ rent.unregistered_tenant_name }}{% else %}N/A{% endif %}"
+                                  data-property-alias="{{ rent.property.alias }}"
+                                  data-property-location="{{ rent.property.location }}"
+                                  data-owner-phone="{{ rent.owner.phone }}"
+                                  data-rent-number="{{ rent.rent_number }}"
+                                  data-rent-amount="{{ rent.rent_amount }}"
+                                  data-start-date="{{ rent.start_date|date:'d M Y' }}"
+                                  data-end-date="{{ rent.end_date|date:'d M Y' }}"
+                                  data-due-date="{{ rent.rent_due_date }}"
+                                  data-balance="{{ rent.balance_owed }}">
+                            <i class="fas fa-share-alt text-info"></i>
+                          </button>
+                        </td>
                         {% if request.user.role == "O" %}
                         <td class="align-middle">
   <div class="dropdown">
@@ -249,7 +282,7 @@
                       {% endfor %}
                       {% else %}
                       <tr>
-                        <td colspan="7" class="text-center">No hay alquileres activos.</td>
+                        <td colspan="8" class="text-center">No hay alquileres activos.</td>
                       </tr>
                       {% endif %}
                     </tbody>
@@ -441,6 +474,117 @@
   </div>
 </div>
 
+<!-- ─── Rent Info Share Modal ─────────────────────────────────── -->
+<div class="modal fade" id="rentInfoModal" tabindex="-1" aria-labelledby="rentInfoModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered" style="max-width:380px;">
+    <div class="modal-content border-0 shadow-lg" style="border-radius:18px;overflow:hidden;">
+
+      <!-- Card to capture -->
+      <div id="rentInfoCard" style="background:linear-gradient(135deg,#0a2540 0%,#0e3460 100%);padding:28px 26px 22px;">
+        <!-- Header strip -->
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+          <div>
+            <div style="font-size:7pt;letter-spacing:2px;text-transform:uppercase;color:#17c1e8;font-weight:700;margin-bottom:3px;">Finko · Property Management</div>
+            <div style="font-size:14pt;font-weight:900;color:#fff;line-height:1.2;" id="card-property-alias">—</div>
+          </div>
+          <div style="width:44px;height:44px;background:#17c1e8;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <i class="fas fa-home" style="color:#fff;font-size:16px;"></i>
+          </div>
+        </div>
+
+        <!-- Divider -->
+        <div style="height:1px;background:rgba(255,255,255,0.12);margin-bottom:18px;"></div>
+
+        <!-- Info rows -->
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <div style="display:flex;align-items:flex-start;gap:10px;">
+            <i class="fas fa-map-marker-alt" style="color:#17c1e8;width:14px;margin-top:2px;font-size:11px;"></i>
+            <div>
+              <div style="font-size:7pt;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:1px;">Dirección</div>
+              <div id="card-location" style="font-size:9pt;color:#fff;font-weight:500;">—</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:flex-start;gap:10px;">
+            <i class="fas fa-user" style="color:#17c1e8;width:14px;margin-top:2px;font-size:11px;"></i>
+            <div>
+              <div style="font-size:7pt;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:1px;">Inquilino</div>
+              <div id="card-tenant" style="font-size:9pt;color:#fff;font-weight:500;">—</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:flex-start;gap:10px;">
+            <i class="fas fa-phone" style="color:#17c1e8;width:14px;margin-top:2px;font-size:11px;"></i>
+            <div>
+              <div style="font-size:7pt;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:1px;">Teléfono Propietario</div>
+              <div id="card-owner-phone" style="font-size:9pt;color:#fff;font-weight:500;">—</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:flex-start;gap:10px;">
+            <i class="fas fa-hashtag" style="color:#17c1e8;width:14px;margin-top:2px;font-size:11px;"></i>
+            <div>
+              <div style="font-size:7pt;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:1px;">N° Alquiler</div>
+              <div id="card-rent-number" style="font-size:9pt;color:#fff;font-weight:500;">—</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Divider -->
+        <div style="height:1px;background:rgba(255,255,255,0.12);margin:18px 0;"></div>
+
+        <!-- Bottom stats row -->
+        <div style="display:flex;gap:0;justify-content:space-between;">
+          <div style="text-align:center;flex:1;">
+            <div style="font-size:7pt;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:1px;">Mensualidad</div>
+            <div id="card-amount" style="font-size:11pt;font-weight:800;color:#17c1e8;">—</div>
+          </div>
+          <div style="width:1px;background:rgba(255,255,255,0.12);"></div>
+          <div style="text-align:center;flex:1;">
+            <div style="font-size:7pt;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:1px;">Día de Pago</div>
+            <div id="card-due-date" style="font-size:11pt;font-weight:800;color:#fff;">—</div>
+          </div>
+          <div style="width:1px;background:rgba(255,255,255,0.12);"></div>
+          <div style="text-align:center;flex:1;">
+            <div style="font-size:7pt;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:1px;">Vigencia</div>
+            <div id="card-period" style="font-size:7pt;font-weight:600;color:#fff;margin-top:3px;">—</div>
+          </div>
+        </div>
+
+        <!-- Watermark badge -->
+        <div style="text-align:right;margin-top:16px;">
+          <span style="font-size:6.5pt;color:rgba(255,255,255,0.35);letter-spacing:1.5px;text-transform:uppercase;">finko.app</span>
+        </div>
+      </div>
+
+      <!-- Modal footer actions -->
+      <div class="modal-footer border-0 pt-2 pb-3 px-3" style="background:#fff;flex-wrap:wrap;gap:8px;">
+        <!-- Share status msg -->
+        <div id="shareStatusMsg" class="w-100 text-center" style="font-size:8pt;min-height:18px;color:#718096;display:none;"></div>
+
+        <button type="button" id="btnShareCard" class="btn btn-info btn-sm flex-fill" style="border-radius:10px;">
+          <span id="shareSpinner" class="spinner-border spinner-border-sm me-1 d-none" role="status"></span>
+          <i class="fas fa-share-alt me-1" id="shareIcon"></i> Compartir
+        </button>
+
+        <!-- Fallback buttons (shown when Web Share API unavailable) -->
+        <div id="fallbackShare" class="w-100 d-none">
+          <div class="d-flex gap-2 flex-wrap">
+            <a id="waLink" href="#" target="_blank" class="btn btn-success btn-sm flex-fill" style="border-radius:10px;">
+              <i class="fab fa-whatsapp me-1"></i> WhatsApp
+            </a>
+            <a id="tgLink" href="#" target="_blank" class="btn btn-sm flex-fill text-white" style="background:#2CA5E0;border-radius:10px;">
+              <i class="fab fa-telegram-plane me-1"></i> Telegram
+            </a>
+            <button type="button" id="btnCopyText" class="btn btn-outline-secondary btn-sm flex-fill" style="border-radius:10px;">
+              <i class="fas fa-copy me-1"></i> Copiar
+            </button>
+          </div>
+        </div>
+
+        <button type="button" class="btn btn-outline-secondary btn-sm" style="border-radius:10px;" data-bs-dismiss="modal">Cerrar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 // Auto-open contract PDF in new tab after creating a new rent
 {% if new_rent_contract_id %}
@@ -449,13 +593,149 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 {% endif %}
 
+// ─── Rent Info Share Card ─────────────────────────────────────────────────────
+(function () {
+  // Lazily load html2canvas when the modal is first opened
+  var html2canvasLoaded = false;
+  function loadHtml2Canvas(cb) {
+    if (html2canvasLoaded) { cb(); return; }
+    var s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+    s.onload = function () { html2canvasLoaded = true; cb(); };
+    document.head.appendChild(s);
+  }
+
+  var modalEl = document.getElementById('rentInfoModal');
+  if (!modalEl) return;
+
+  // ── Populate card when modal opens ──────────────────────────────────────────
+  modalEl.addEventListener('show.bs.modal', function (e) {
+    var btn = e.relatedTarget;
+    if (!btn) return;
+    var d = btn.dataset;
+
+    document.getElementById('card-property-alias').textContent = d.propertyAlias || '—';
+    document.getElementById('card-location').textContent       = d.propertyLocation || '—';
+    document.getElementById('card-tenant').textContent         = d.tenant || '—';
+    document.getElementById('card-owner-phone').textContent    = d.ownerPhone || '—';
+    document.getElementById('card-rent-number').textContent    = d.rentNumber || '—';
+    document.getElementById('card-amount').textContent         = d.rentAmount ? '$' + d.rentAmount : '—';
+    document.getElementById('card-due-date').textContent       = d.dueDate ? 'Día ' + d.dueDate : '—';
+    document.getElementById('card-period').textContent         = (d.startDate && d.endDate) ? d.startDate + ' – ' + d.endDate : '—';
+
+    // Reset share UI
+    document.getElementById('shareStatusMsg').style.display = 'none';
+    document.getElementById('shareStatusMsg').textContent = '';
+    document.getElementById('fallbackShare').classList.add('d-none');
+    document.getElementById('shareSpinner').classList.add('d-none');
+    document.getElementById('shareIcon').classList.remove('d-none');
+
+    // Build share text
+    var text = [
+      '🏠 *' + (d.propertyAlias || '') + '*',
+      '📍 ' + (d.propertyLocation || ''),
+      '👤 Inquilino: ' + (d.tenant || ''),
+      '📞 Propietario: ' + (d.ownerPhone || ''),
+      '🔢 N° Alquiler: ' + (d.rentNumber || ''),
+      '💵 Mensualidad: $' + (d.rentAmount || '') + ' · Día de pago: ' + (d.dueDate || ''),
+      '📅 Vigencia: ' + (d.startDate || '') + ' – ' + (d.endDate || ''),
+      '\nCompartido desde Finko Property Management'
+    ].join('\n');
+
+    var encodedText = encodeURIComponent(text);
+    document.getElementById('waLink').href = 'https://wa.me/?text=' + encodedText;
+    document.getElementById('tgLink').href = 'https://t.me/share/url?url=https://finko.app&text=' + encodedText;
+
+    // Copy button
+    document.getElementById('btnCopyText').onclick = function () {
+      navigator.clipboard.writeText(text.replace(/\*/g, '')).then(function () {
+        showStatus('✅ Texto copiado al portapapeles', '#38a169');
+      }).catch(function () {
+        showStatus('⚠️ No se pudo copiar', '#e53e3e');
+      });
+    };
+  });
+
+  // ── Share button ─────────────────────────────────────────────────────────────
+  document.getElementById('btnShareCard').addEventListener('click', function () {
+    var btn = this;
+    var spinner = document.getElementById('shareSpinner');
+    var icon    = document.getElementById('shareIcon');
+
+    spinner.classList.remove('d-none');
+    icon.classList.add('d-none');
+    btn.disabled = true;
+
+    loadHtml2Canvas(function () {
+      var card = document.getElementById('rentInfoCard');
+      html2canvas(card, {
+        scale: 3,
+        useCORS: true,
+        backgroundColor: null,
+        logging: false
+      }).then(function (canvas) {
+        canvas.toBlob(function (blob) {
+          spinner.classList.add('d-none');
+          icon.classList.remove('d-none');
+          btn.disabled = false;
+
+          var alias = document.getElementById('card-property-alias').textContent;
+          var shareTitle = 'Alquiler – ' + alias;
+          var shareText  = 'Información de alquiler: ' + alias;
+
+          var file = new File([blob], 'alquiler-' + alias.replace(/\s+/g,'-').toLowerCase() + '.png', { type: 'image/png' });
+
+          // Try Web Share API with file (level 2)
+          var canShareFile = navigator.canShare && navigator.canShare({ files: [file] });
+
+          if (navigator.share && canShareFile) {
+            navigator.share({ title: shareTitle, text: shareText, files: [file] })
+              .then(function () { showStatus('✅ Compartido exitosamente', '#38a169'); })
+              .catch(function (err) {
+                if (err.name !== 'AbortError') {
+                  showFallback();
+                }
+              });
+          } else if (navigator.share) {
+            // Share without file (text only, level 1)
+            navigator.share({ title: shareTitle, text: shareText })
+              .then(function () { showStatus('✅ Compartido exitosamente', '#38a169'); })
+              .catch(function (err) {
+                if (err.name !== 'AbortError') showFallback();
+              });
+          } else {
+            // No Web Share API — show manual fallback
+            showFallback();
+          }
+        }, 'image/png');
+      }).catch(function () {
+        spinner.classList.add('d-none');
+        icon.classList.remove('d-none');
+        btn.disabled = false;
+        showFallback();
+      });
+    });
+  });
+
+  function showStatus(msg, color) {
+    var el = document.getElementById('shareStatusMsg');
+    el.textContent = msg;
+    el.style.color = color || '#718096';
+    el.style.display = 'block';
+    setTimeout(function () { el.style.display = 'none'; }, 4000);
+  }
+
+  function showFallback() {
+    document.getElementById('fallbackShare').classList.remove('d-none');
+    showStatus('Elige cómo compartir:', '#718096');
+  }
+})();
+
 document.addEventListener('DOMContentLoaded', function() {
   var tbody = document.querySelector('#pending-approvals-table tbody');
   if (!tbody) return;
-  // Count only rows that represent payment entries (exclude placeholder rows)
   var rows = Array.from(tbody.querySelectorAll('tr'))
     .filter(function(r) { return r.querySelector('td'); });
-  // If there are rows but none include action buttons (meaning no pending rows were rendered), show fallback
   var hasPending = rows.some(function(r){ return r.querySelector('a.btn'); });
   if (rows.length === 0 || !hasPending) {
     tbody.innerHTML = '<tr><td colspan="3" class="text-center">No hay aprobaciones pendientes</td></tr>';
