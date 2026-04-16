@@ -7,8 +7,8 @@
     <div class="col-lg-8 col-md-10 col-12">
       <div class="card shadow border-0 mb-4">
         <div class="card-header bg-gradient-info pb-3 border-radius-lg">
-          <h4 class="text-white mb-0">Add Property</h4>
-          <p class="text-white-50 mb-0">Register a new property in your portfolio</p>
+          <h4 class="text-white mb-0">Agregar Propiedad</h4>
+          <p class="text-white-50 mb-0">Registrar una nueva propiedad en tu portafolio</p>
         </div>
         <div class="card-body">
           <form method="POST" enctype="multipart/form-data" autocomplete="off">
@@ -26,11 +26,11 @@
               </div>
             {% endfor %}
             <div class="text-center">
-              <button type="submit" class="btn btn-info bg-gradient w-50 mt-3">Save Property</button>
+              <button type="submit" class="btn btn-info bg-gradient w-50 mt-3">Guardar Propiedad</button>
             </div>
           </form>
           <div class="text-center mt-3">
-            <a href="{% url 'properties' %}" class="btn btn-secondary">Back to Properties</a>
+            <a href="{% url 'properties' %}" class="btn btn-secondary">Volver a Propiedades</a>
           </div>
         </div>
       </div>
@@ -43,15 +43,15 @@
 {% comment %} {% extends "index.html" %}
 {% block content %}
 
-<h1 class="text-center text-info text-gradient">New Property</h1>
-<h2 class="text-center text-info text-gradient">Add a Property</h2>
+<h1 class="text-center text-info text-gradient">Nueva Propiedad</h1>
+<h2 class="text-center text-info text-gradient">Agregar una Propiedad</h2>
 
 
 <form method="POST" enctype="multipart/form-data">
     {% csrf_token %}
     <div class="form-control container-sm text-dark form-control bg-gray-200">
         {{add_property_form.as_p}}
-    <input type="submit" class="btn btn-info bg-gradient container text-center my-3" name="Submit" value="Save"/>
+    <input type="submit" class="btn btn-info bg-gradient container text-center my-3" name="Submit" value="Guardar"/>
           </div>
 </form>
 
