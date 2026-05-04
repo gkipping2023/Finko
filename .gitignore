@@ -60,6 +60,7 @@ datadump.json
 datadump2.json
 Notes.txt
 finko_pythonanywhere_com_wsgi
+tests.py
 
 # Media
 /media
