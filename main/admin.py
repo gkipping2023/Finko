@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.utils import timezone
-from .models import User, Properties, Transaction, Rent, PromoCode, AuditLog, Feedback, Invoice, Payment
+from .models import User, Properties, Rent, PromoCode, AuditLog, Feedback, Invoice, Payment, Credit, Debit
 
 # Register your models here.
 
@@ -33,12 +33,6 @@ class UserAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
     )
-
-@admin.register(Transaction)
-class TransactionAdmin(admin.ModelAdmin):
-    list_display = ('type', 'owner', 'amount', 'created_at','status')
-    list_filter = ('type', 'owner')
-    search_fields = ('owner__email', 'type')
 
 @admin.register(Rent)
 class RentAdmin(admin.ModelAdmin):
@@ -120,21 +114,36 @@ class InvoiceAdmin(admin.ModelAdmin):
 
 @admin.register(Payment)
 class PaymentAdmin(admin.ModelAdmin):
-    list_display = ('id', 'invoice', 'amount', 'payment_date', 'payment_method', 'status')
+    list_display = ('payment_number', 'invoice', 'amount', 'payment_date', 'payment_method', 'status')
     list_filter = ('status', 'payment_date', 'payment_method')
-    search_fields = ('invoice__invoice_number', 'transaction__transaction_number')
-    readonly_fields = ('created_at', 'transaction')
-    
+    search_fields = ('payment_number', 'invoice__invoice_number')
+    readonly_fields = ('payment_number', 'created_at', 'confirmed_at')
+
     fieldsets = (
-        ('Payment Information', {
-            'fields': ('invoice', 'amount', 'payment_date', 'payment_method')
+        ('Información del Pago', {
+            'fields': ('payment_number', 'invoice', 'amount', 'payment_date', 'payment_method')
         }),
-        ('Status', {
-            'fields': ('status', 'description')
+        ('Estado', {
+            'fields': ('status', 'confirmed_at', 'confirmation_file', 'description')
         }),
-        ('Audit', {
-            'fields': ('created_at', 'transaction'),
+        ('Registro', {
+            'fields': ('created_at',),
             'classes': ('collapse',)
         }),
     )
 
+
+@admin.register(Credit)
+class CreditAdmin(admin.ModelAdmin):
+    list_display = ('credit_number', 'rent', 'amount', 'credit_date', 'created_by')
+    list_filter = ('credit_date',)
+    search_fields = ('credit_number', 'rent__rent_number', 'description')
+    readonly_fields = ('credit_number', 'created_at')
+
+
+@admin.register(Debit)
+class DebitAdmin(admin.ModelAdmin):
+    list_display = ('debit_number', 'rent', 'amount', 'debit_date', 'created_by')
+    list_filter = ('debit_date',)
+    search_fields = ('debit_number', 'rent__rent_number', 'description')
+    readonly_fields = ('debit_number', 'created_at')

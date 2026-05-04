@@ -189,7 +189,7 @@
   <!-- KPI tiles -->
   <div class="kpi-row">
     <div class="kpi">
-      <div class="kpi-val">{{ transactions|length }}</div>
+      <div class="kpi-val">{{ payments|length }}</div>
       <div class="kpi-lbl">Transacciones</div>
     </div>
     <div class="kpi">
@@ -216,12 +216,12 @@
       </tr>
     </thead>
     <tbody>
-      {% for t in transactions %}
+      {% for t in payments %}
       <tr>
-        <td class="txn">{{ t.transaction_number }}</td>
+        <td class="txn">{{ t.payment_number }}</td>
         <td class="txn">{% if t.invoice %}{{ t.invoice.invoice_number }}{% else %}&mdash;{% endif %}</td>
-        <td>{{ t.transaction_date|date:"d M Y" }}</td>
-        <td>{% if t.property %}{{ t.property.alias }}{% else %}&mdash;{% endif %}</td>
+        <td>{{ t.payment_date|date:"d M Y" }}</td>
+        <td>{% if t.invoice.rent.property %}{{ t.invoice.rent.invoice.rent.property.alias }}{% else %}&mdash;{% endif %}</td>
         <td>{{ t.get_payment_method_display }}</td>
         <td class="num">${{ t.amount }}</td>
         <td>
@@ -248,7 +248,7 @@
       <tr class="total-row">
         <td colspan="5" style="font-size:8.5pt;color:#718096;font-weight:bold;letter-spacing:1px;text-transform:uppercase;">Total General</td>
         <td class="num">{% if total_amount %}${{ total_amount }}{% else %}&mdash;{% endif %}</td>
-        <td style="font-size:8pt;color:#718096;">{{ transactions|length }} mov.</td>
+        <td style="font-size:8pt;color:#718096;">{{ payments|length }} mov.</td>
       </tr>
     </tfoot>
   </table>

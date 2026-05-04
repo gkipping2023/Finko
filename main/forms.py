@@ -1,5 +1,5 @@
 from django.forms import ModelForm, ModelChoiceField
-from .models import PLAN_CHOICES, User, Properties, Transaction, Rent, ID_Type, Sex, payment_method, Feedback, LATE_FEE_CHOICES, Invoice, Payment
+from .models import PLAN_CHOICES, User, Properties, Rent, ID_Type, Sex, payment_method, Feedback, LATE_FEE_CHOICES, Invoice, Payment, Credit, Debit
 from django.contrib.auth.forms import UserCreationForm
 from django import forms
 from django_countries.fields import CountryField
@@ -255,86 +255,6 @@ class NewTenantForm(BaseCustomModelForm):
         super().__init__(*args, **kwargs)
         self.fields['role'].disabled = True  # Disable the role field to ensure it is always "Inquilino"
 
-class TransactionForm(BaseCustomModelForm):
-    class Meta:
-        model = Transaction
-        fields = ['transaction_date', 'type', 'rent', 'amount', 'description']
-        widgets = {
-            'transaction_date': forms.DateTimeInput(attrs={'type': 'date', 'class': 'form-control'}),
-            'type': forms.Select(attrs={'class': 'form-control'}),
-            'rent': forms.Select(attrs={'class': 'form-control'}),
-            'amount': forms.NumberInput(attrs={'class': 'form-control'}),
-            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
-        }
-
-    def __init__(self, *args, **kwargs):
-        user = kwargs.pop('user', None)  # Get the current user from the view
-        super().__init__(*args, **kwargs)
-        if user:
-            # Filter rents to only show active rents for this owner
-            self.fields['rent'].queryset = Rent.objects.filter(owner=user, is_active=True).select_related('property', 'tenant')
-            # Customize the display to show property and tenant info
-            self.fields['rent'].label_from_instance = lambda obj: (
-                f"{obj.rent_number} - {obj.property.alias} - "
-                f"{obj.tenant.get_full_name() if obj.tenant else obj.unregistered_tenant_name or 'N/A'}"
-            )
-
-class ReportPaymentForm(BaseCustomModelForm):
-    # Add confirmation_file as a separate field that won't be saved to the model
-    confirmation_file = forms.FileField(
-        required=False, 
-        widget=forms.ClearableFileInput(attrs={'class': 'form-control-file'})
-    )
-    
-    class Meta:
-        model = Transaction
-        fields = ['transaction_date','type','rent','tenant', 'property', 'amount', 'description', 'payment_method','confirmation_file']
-        widgets = {
-            'transaction_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
-            'type': forms.Select(attrs={'class': 'form-control'}),
-            'rent': forms.Select(attrs={'class': 'form-control'}),
-            'tenant': forms.HiddenInput(),  # Hide tenant field
-            'property': forms.Select(attrs={'class': 'form-control'}),
-            'amount': forms.NumberInput(attrs={'class': 'form-control'}),
-            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
-            'payment_method': forms.Select(attrs={'class': 'form-control'}),
-            'confirmation_file': forms.ClearableFileInput(attrs={'class': 'form-control-file'}),
-        }
-
-    def __init__(self, *args, **kwargs):
-        user = kwargs.pop('user', None)  # Get the current user from the view
-        super().__init__(*args, **kwargs)
-        if user:
-            self.fields['tenant'].queryset = User.objects.filter(id=user.id)
-            self.fields['tenant'].initial = user.id
-            rented_properties = Properties.objects.filter(rent__tenant=user).distinct()
-            self.fields['property'].queryset = rented_properties
-            self.fields['rent'].queryset = Rent.objects.filter(tenant=user, is_active=True)
-            
-            # For tenants, restrict transaction type to only "Pago"
-            if user.role == 'T':  # Tenant role
-                self.fields['type'].choices = [('pago', 'Pago')]
-                self.fields['type'].initial = 'pago'
-                self.fields['type'].widget.attrs['disabled'] = True
-                self.fields['type'].widget.attrs['readonly'] = True
-                self.fields['type'].required = False  # Make field not required for tenants
-                # Store user role for clean method
-                self._user_role = user.role
-            else:
-                self._user_role = user.role if user else None
-
-    def clean(self):
-        """Custom validation for the entire form"""
-        cleaned_data = super().clean()
-        
-        # Handle type field for tenants
-        if hasattr(self, '_user_role') and self._user_role == 'T':
-            # For tenants, always set type to 'pago' regardless of what was submitted
-            cleaned_data['type'] = 'pago'
-        
-        return cleaned_data
-
-
 class OwnerPaymentForm(forms.Form):
     """
     Form for owners to register payments they've received.
@@ -438,7 +358,7 @@ class PublicPaymentForm(forms.Form):
         label='Correo Electrónico para la Confirmación',
         help_text='El correo donde se enviará la confirmación del pago reportado.'
     )
-    transaction_date = forms.DateField(
+    payment_date = forms.DateField(
         widget=forms.DateInput(attrs={
             'type': 'date',
             'class': 'form-control'
@@ -470,13 +390,13 @@ class PublicPaymentForm(forms.Form):
         label='Descripción'
     )
     confirmation_file = forms.FileField(
-        required=True,
+        required=False,
         widget=forms.FileInput(attrs={
             'class': 'form-control',
             'accept': 'image/*,.pdf'
         }),
         label='Comprobante de Pago',
-        help_text='Sube una imagen o PDF del comprobante de pago'
+        help_text='Sube una imagen o PDF del comprobante de pago (opcional)'
     )
 
     def clean_rent_number(self):
@@ -528,3 +448,125 @@ class FeedbackForm(forms.ModelForm):
     class Meta:
         model = Feedback
         fields = ['feedback_type', 'subject', 'message']
+
+
+class TenantPaymentForm(forms.Form):
+    """Form for tenants to report payments they've made (pending confirmation)."""
+    rent = forms.ModelChoiceField(
+        queryset=Rent.objects.none(),
+        widget=forms.Select(attrs={'class': 'form-control', 'id': 'id_tenant_rent'}),
+        label='Contrato de Alquiler',
+        required=True
+    )
+    invoice = forms.ModelChoiceField(
+        queryset=Invoice.objects.none(),
+        widget=forms.Select(attrs={'class': 'form-control', 'id': 'id_tenant_invoice'}),
+        label='Factura',
+        required=True
+    )
+    amount = forms.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        widget=forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+        label='Monto del Pago',
+        required=True
+    )
+    payment_date = forms.DateField(
+        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+        label='Fecha del Pago',
+        required=True
+    )
+    payment_method = forms.ChoiceField(
+        choices=payment_method,
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        label='Método de Pago',
+        required=True
+    )
+    description = forms.CharField(
+        widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+        label='Notas',
+        required=False
+    )
+    confirmation_file = forms.FileField(
+        required=False,
+        widget=forms.FileInput(attrs={'class': 'form-control', 'accept': 'image/*,.pdf'}),
+        label='Comprobante de Pago'
+    )
+
+    def __init__(self, *args, **kwargs):
+        user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+        if user:
+            active_rents = Rent.objects.filter(tenant=user, is_active=True).select_related('property')
+            self.fields['rent'].queryset = active_rents
+            self.fields['invoice'].queryset = Invoice.objects.filter(
+                rent__tenant=user,
+                status__in=['pending', 'partial', 'overdue', 'overdue_with_fee']
+            ).order_by('-due_date')
+
+
+class CreditForm(forms.Form):
+    """Form for owners to apply a credit to a rent account."""
+    rent = forms.ModelChoiceField(
+        queryset=Rent.objects.none(),
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        label='Contrato de Alquiler',
+        required=True
+    )
+    amount = forms.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        widget=forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+        label='Monto del Crédito',
+        required=True
+    )
+    credit_date = forms.DateField(
+        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+        label='Fecha del Crédito',
+        required=True
+    )
+    description = forms.CharField(
+        widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+        label='Descripción',
+        required=True
+    )
+
+    def __init__(self, *args, **kwargs):
+        user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+        if user:
+            self.fields['rent'].queryset = Rent.objects.filter(owner=user, is_active=True).select_related('property', 'tenant')
+
+
+class DebitForm(forms.Form):
+    """Form for owners to apply a debit (charge) to a rent account."""
+    rent = forms.ModelChoiceField(
+        queryset=Rent.objects.none(),
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        label='Contrato de Alquiler',
+        required=True
+    )
+    amount = forms.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        widget=forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+        label='Monto del Cargo',
+        required=True
+    )
+    debit_date = forms.DateField(
+        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+        label='Fecha del Cargo',
+        required=True
+    )
+    description = forms.CharField(
+        widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+        label='Descripción',
+        required=True
+    )
+
+    def __init__(self, *args, **kwargs):
+        user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+        if user:
+            self.fields['rent'].queryset = Rent.objects.filter(owner=user, is_active=True).select_related('property', 'tenant')
+

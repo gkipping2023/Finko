@@ -126,6 +126,7 @@
                         <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Propiedad</th>
                         <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">Duracion</th>
                         <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Mensualidad</th>
+                        <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Proxima Facturacion</th>
                         <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Ultimo Pago</th>
                         <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Morosidad</th>
                         <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Contrato</th>
@@ -168,6 +169,9 @@
                         <td class="align-middle text-center">
                             <span class="text-secondary text-xs font-weight-bold">{{rent.rent_amount}}</span>
                             <p class="text-xs text-secondary mb-0">Fecha de pago: {{rent.rent_due_date}}</p>
+                          </td>
+                          <td class="align-middle text-center">
+                            <span class="text-secondary text-xs font-weight-bold">{{rent.next_invoice_date}}</span>
                           </td>
                           <td class="align-middle text-center">
                               <span class="text-secondary text-xs font-weight-bold">{{rent.last_payment_amount}}</span>
@@ -422,41 +426,31 @@
                 </tr>
               </thead>
               <tbody>
-                {% if pending_transactions and pending_transactions.exists %}
-                  {% for transaction in pending_transactions %}
+                {% if pending_payments and pending_payments.exists %}
+                  {% for payment in pending_payments %}
                   <tr>
                     <td>
-                      <p class="text-xs font-weight-bold mb-0">{{ transaction.property.alias }}</p>
+                      <p class="text-xs font-weight-bold mb-0">{{ payment.invoice.rent.property.alias }}</p>
                     </td>
                     <td>
                       <p class="text-xs font-weight-bold mb-0">
-                        {% if transaction.tenant %}
-                          {{ transaction.tenant.first_name }} {{ transaction.tenant.last_name }}
-                        {% elif transaction.rent and transaction.rent.unregistered_tenant_name %}
-                          {{ transaction.rent.unregistered_tenant_name }}
+                        {% if payment.invoice.rent.tenant %}
+                          {{ payment.invoice.rent.tenant.first_name }} {{ payment.invoice.rent.tenant.last_name }}
+                        {% elif payment.invoice.rent.unregistered_tenant_name %}
+                          {{ payment.invoice.rent.unregistered_tenant_name }}
                         {% else %}
                           N/A
                         {% endif %}
                       </p>
-                      <p class="text-xs text-secondary mb-0">{{ transaction.created_at|date:"d M Y" }}</p>
+                      <p class="text-xs text-secondary mb-0">{{ payment.payment_date|date:"d M Y" }}</p>
                     </td>
                     <td>
-                      <p class="text-xs font-weight-bold mb-0">${{ transaction.amount }}</p>
-                      <p class="text-xs text-secondary mb-0">
-                        {% if transaction.payment_method == 'ach_yappy' %}
-                          ACH o Yappy
-                        {% elif transaction.payment_method == 'cash' %}
-                          Efectivo
-                        {% elif transaction.payment_method == 'other' %}
-                          Otros
-                        {% else %}
-                          {{ transaction.payment_method }}
-                        {% endif %}
-                      </p>
+                      <p class="text-xs font-weight-bold mb-0">${{ payment.amount }}</p>
+                      <p class="text-xs text-secondary mb-0">{{ payment.get_payment_method_display }}</p>
                     </td>
                     <td class="align-middle text-center">
-                      <a href="{% url 'confirm_payment' transaction.id %}" class="btn btn-sm btn-success">Aprobar</a>
-                      <a href="{% url 'confirm_payment' transaction.id %}?action=reject" class="btn btn-sm btn-danger ms-2">Rechazar</a>
+                      <a href="{% url 'confirm_payment' payment.id %}" class="btn btn-sm btn-success">Aprobar</a>
+                      <a href="{% url 'confirm_payment' payment.id %}?action=reject" class="btn btn-sm btn-danger ms-2">Rechazar</a>
                     </td>
                   </tr>
                   {% endfor %}

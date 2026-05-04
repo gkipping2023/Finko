@@ -15,14 +15,12 @@ from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout, get_backends
 from django.contrib.auth.decorators import login_required
-from .models import Properties, Transaction, Rent, User, PromoCode, Roles, Invoice, Payment
-from .forms import AddPropertyForm, NewUserForm,NewTenantForm, NewRentForm, UpdateUserForm, TransactionForm, ReportPaymentForm, RenewLeaseForm, PublicPaymentForm
+from .models import Properties, Rent, User, PromoCode, Roles, Invoice, Payment, Credit, Debit
+from .forms import AddPropertyForm, NewUserForm, NewTenantForm, NewRentForm, UpdateUserForm, RenewLeaseForm, PublicPaymentForm, OwnerPaymentForm, TenantPaymentForm, CreditForm, DebitForm
 from django_countries.fields import Country  # Add this import if using django-countries
-#from .filters import Reserves_DailyFilter, DogsFilter, Reserves_HotelFilter
 from django.db import models  # Import models for aggregate functions
-# from django.core.mail import send_mail, EmailMultiAlternatives
 from django.template.loader import render_to_string
-from .filters import TransactionFilter
+from .filters import InvoiceFilter, PaymentFilter, CreditFilter, DebitFilter
 from weasyprint import HTML
 from django.http import HttpResponse
 from main.mailgun_utils import send_mailgun_simple
@@ -59,44 +57,77 @@ def get_logo_for_pdf(fallback_url=None):
 
 
 #PDF Generation Function
-def render_transaction_pdf(transaction):
-    # Map transaction types to templates
-    template_map = {
-        'invoice': 'main/transaction_invoice.html',
-        'receipt': 'main/transaction_receipt.html',
-        'credit': 'main/transaction_credit.html',
-        'debit': 'main/transaction_debit.html',
-        'fee': 'main/transaction_fee.html',
-        'pago': 'main/transaction_pago.html',
-    }
-    
-    # Get template for this transaction type, fallback to receipt
-    template_name = template_map.get(transaction.type, 'main/transaction_receipt.html')
-    
+def render_payment_pdf(payment):
     context = {
-        'transaction': transaction,
+        'payment': payment,
         'logo_base64': get_logo_for_pdf()
     }
-    html_string = render_to_string(template_name, context)
-    html = HTML(string=html_string)
-    pdf = html.write_pdf()
-    return pdf
+    html_string = render_to_string('main/payment_receipt.html', context)
+    return HTML(string=html_string).write_pdf()
 
-#Download Pdf Function
+
 @login_required(login_url='log_in')
 @xframe_options_sameorigin
-def transaction_pdf(request, transaction_id):
-    transaction = get_object_or_404(Transaction, id=transaction_id)
-    pdf = render_transaction_pdf(transaction)
+def payment_pdf(request, payment_id):
+    payment = get_object_or_404(Payment, id=payment_id)
+    # Security: only allow owner or the tenant of the invoice's rent
+    rent = payment.invoice.rent
+    if request.user != rent.owner and request.user != rent.tenant:
+        messages.error(request, "No tienes acceso a este documento.")
+        return redirect('dashboard')
+    pdf = render_payment_pdf(payment)
     response = HttpResponse(pdf, content_type='application/pdf')
-    # If preview query param is provided, show inline in browser for previewing.
     preview = request.GET.get('preview')
-    if preview in ['1', 'true', 'yes']:
-      disposition = f'inline; filename="Transaccion_{transaction.transaction_number}.pdf"'
-    else:
-      disposition = f'attachment; filename="Transaccion_{transaction.transaction_number}.pdf"'
-      response['Content-Disposition'] = disposition
+    disposition = f'inline; filename="Pago_{payment.payment_number}.pdf"' if preview in ['1', 'true', 'yes'] else f'attachment; filename="Pago_{payment.payment_number}.pdf"'
+    response['Content-Disposition'] = disposition
     return response
+
+
+@login_required(login_url='log_in')
+@xframe_options_sameorigin
+def invoice_pdf(request, invoice_id):
+    invoice = get_object_or_404(Invoice, id=invoice_id)
+    rent = invoice.rent
+    if request.user != rent.owner and request.user != rent.tenant:
+        messages.error(request, "No tienes acceso a este documento.")
+        return redirect('dashboard')
+    context = {'invoice': invoice, 'logo_base64': get_logo_for_pdf()}
+    html_string = render_to_string('main/invoice_pdf.html', context)
+    pdf = HTML(string=html_string).write_pdf()
+    response = HttpResponse(pdf, content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="Factura_{invoice.invoice_number}.pdf"'
+    return response
+
+
+@login_required(login_url='log_in')
+@xframe_options_sameorigin
+def credit_pdf(request, credit_id):
+    credit = get_object_or_404(Credit, id=credit_id)
+    if request.user != credit.rent.owner:
+        messages.error(request, "No tienes acceso a este documento.")
+        return redirect('dashboard')
+    context = {'credit': credit, 'logo_base64': get_logo_for_pdf()}
+    html_string = render_to_string('main/credit_pdf.html', context)
+    pdf = HTML(string=html_string).write_pdf()
+    response = HttpResponse(pdf, content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="Credito_{credit.credit_number}.pdf"'
+    return response
+
+
+@login_required(login_url='log_in')
+@xframe_options_sameorigin
+def debit_pdf(request, debit_id):
+    debit = get_object_or_404(Debit, id=debit_id)
+    if request.user != debit.rent.owner:
+        messages.error(request, "No tienes acceso a este documento.")
+        return redirect('dashboard')
+    context = {'debit': debit, 'logo_base64': get_logo_for_pdf()}
+    html_string = render_to_string('main/debit_pdf.html', context)
+    pdf = HTML(string=html_string).write_pdf()
+    response = HttpResponse(pdf, content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="Debito_{debit.debit_number}.pdf"'
+    return response
+
 
 # Contract PDF Generation Function
 def render_contract_pdf(rent):
@@ -989,53 +1020,32 @@ def dashboard(request):
         end_date__lte=datetime.now() + timedelta(days=30)
     ).count()
 
-    # Financial Snapshot - Calculate confirmed payments this month
-    # Confirmed Invoice payments
-    confirmed_invoice_payments = 0
-    for rent in active_rents:
-        current_month_invoices = rent.invoices.filter(
-            invoice_date__gte=month_start,
-            invoice_date__lte=month_end
-        )
-        confirmed_invoice_payments += current_month_invoices.aggregate(
-            total=models.Sum('paid_amount')
-        )['total'] or 0
-    
-    # Confirmed Transaction payments (receipt, credit, pago types)
-    confirmed_transaction_payments = Transaction.objects.filter(
-        owner=user,
-        type__in=['receipt', 'credit', 'pago'],
+    # Financial Snapshot — confirmed payments this month
+    rent_collected = Payment.objects.filter(
+        invoice__rent__owner=user,
+        invoice__rent__is_active=True,
         status='confirmed',
-        transaction_date__gte=month_start,
-        transaction_date__lte=month_end
+        payment_date__gte=month_start,
+        payment_date__lte=month_end
     ).aggregate(total=models.Sum('amount'))['total'] or 0
-    
-    # Total collected and outstanding
-    rent_collected = confirmed_invoice_payments + confirmed_transaction_payments
+
     rent_outstanding = expected_monthly_income - rent_collected
-    
+
     # Recent confirmed payments
-    recent_payments = Transaction.objects.filter(
-        owner=user, 
-        type__in=['receipt', 'credit', 'pago'],
+    recent_payments = Payment.objects.filter(
+        invoice__rent__owner=user,
         status='confirmed'
-    ).order_by('-transaction_date')[:5]
-    
-    last_payment = Transaction.objects.filter(
-        owner=user, 
-        type__in=['receipt', 'credit', 'pago'],
-        status='confirmed'
-    ).order_by('-transaction_date').first()
-    
-    # Monthly expenses (this month only)
-    expense_summary = Transaction.objects.filter(
-        owner=user, 
-        type='debit',
-        transaction_date__gte=month_start,
-        transaction_date__lte=month_end
+    ).order_by('-payment_date').select_related('invoice__rent__property', 'invoice__rent__tenant')[:5]
+
+    last_payment = recent_payments.first() if recent_payments else None
+
+    # Monthly debits (manual charges this month)
+    expense_summary = Debit.objects.filter(
+        rent__owner=user,
+        debit_date__gte=month_start,
+        debit_date__lte=month_end
     ).aggregate(total=models.Sum('amount'))['total'] or 0
-    
-    # Monthly net cash flow
+
     net_cash_flow = rent_collected - expense_summary
 
     # Alerts / Notifications
@@ -1075,14 +1085,17 @@ def dashboard(request):
     if user.role == 'T':
       tenant_rents = Rent.objects.filter(tenant=user, is_active=True)
       tenant_next_rent = tenant_rents.order_by('end_date').first() if tenant_rents.exists() else None
-      # compute days past due if available
       if tenant_next_rent:
         try:
           tenant_next_rent.days_past_due = get_days_past_due(tenant_next_rent)
         except Exception:
           tenant_next_rent.days_past_due = 0
-      tenant_total_paid = Transaction.objects.filter(tenant=user, type='receipt', status='confirmed').aggregate(total=models.Sum('amount'))['total'] or 0
-      tenant_recent_payments = Transaction.objects.filter(tenant=user, type='receipt', status='confirmed').order_by('-transaction_date')[:5]
+      tenant_total_paid = Payment.objects.filter(
+          invoice__rent__tenant=user, status='confirmed'
+      ).aggregate(total=models.Sum('amount'))['total'] or 0
+      tenant_recent_payments = Payment.objects.filter(
+          invoice__rent__tenant=user, status='confirmed'
+      ).order_by('-payment_date').select_related('invoice__rent__property')[:5]
 
       context.update({
         'tenant_rents': tenant_rents,
@@ -1097,12 +1110,14 @@ def dashboard(request):
       # annotate each property with last payment info to avoid template queries
       props_with_last = []
       for p in owner_properties:
-        last_payment = Transaction.objects.filter(property=p, type='receipt', status='confirmed').order_by('-transaction_date').first()
-        p.last_payment_amount = last_payment.amount if last_payment else None
-        p.last_payment_date = last_payment.transaction_date if last_payment else None
+        last_pmt = Payment.objects.filter(
+            invoice__rent__property=p, status='confirmed'
+        ).order_by('-payment_date').first()
+        p.last_payment_amount = last_pmt.amount if last_pmt else None
+        p.last_payment_date = last_pmt.payment_date if last_pmt else None
         props_with_last.append(p)
 
-      pending_confirmations = Transaction.objects.filter(owner=user, status='pending').count()
+      pending_confirmations = Payment.objects.filter(invoice__rent__owner=user, status='pending').count()
       context.update({
         'owner_properties': props_with_last,
         'pending_confirmations': pending_confirmations,
@@ -1113,260 +1128,204 @@ def dashboard(request):
 from django.core.files.base import ContentFile
 
 @login_required(login_url='log_in')
-def payments(request):
-  if request.method == 'POST':
-    form = TransactionForm(request.POST, user=request.user)
-    if form.is_valid():
-      transaction = form.save(commit=False)
-      transaction.owner = request.user  # Set the logged-in user as the owner
-      transaction.save()
-      pdf = render_transaction_pdf(transaction)
-      messages.success(request, f"¡{transaction.get_type_display()} creado exitosamente!")
-      return redirect('payments')
+def invoices(request):
+    if request.user.role == 'O':
+        qs = Invoice.objects.filter(rent__owner=request.user).order_by('-due_date').select_related('rent__property', 'rent__tenant')
     else:
-      messages.error(request, "Hubo un error al crear la transacción.")
-  else:
-    form = TransactionForm(user=request.user)
+        qs = Invoice.objects.filter(rent__tenant=request.user).order_by('-due_date').select_related('rent__property')
 
-  transactions = Transaction.objects.filter(owner=request.user).order_by('-created_at')
-  transaction_properties = Properties.objects.filter(owner=request.user).distinct()
+    invoice_filter = InvoiceFilter(request.GET, queryset=qs, user=request.user)
 
-  # Use django-filter for filtering
-  transaction_filter = TransactionFilter(request.GET, queryset=transactions)
-  # Limit tenant and property dropdowns to current user's data
-  transaction_filter.form.fields['tenant'].queryset = User.objects.filter(
-    tenant_transactions__owner=request.user, role='T'
-  ).distinct()
-  transaction_filter.form.fields['property'].queryset = transaction_properties
-
-  context = {
-    'transaction_properties': transaction_properties,
-    'transactions': transaction_filter.qs,
-    'form': form,
-    'filter': transaction_filter,
-  }
-  return render(request, 'main/payments.html', context)
-
-@login_required(login_url='log_in')
-def add_transaction(request):
-    if request.method == 'POST':
-        form = TransactionForm(request.POST, user=request.user)
-        if form.is_valid():
-            # Check if this is a preview request
-            if request.POST.get('action') == 'preview':
-                # Create transaction object but don't save yet
-                transaction = form.save(commit=False)
-                transaction.owner = request.user
-                
-                # Auto-populate tenant and property from the selected rent
-                if transaction.rent:
-                    transaction.property = transaction.rent.property
-                    transaction.tenant = transaction.rent.tenant  # Can be None for unregistered
-                
-                # Generate a temporary transaction number for preview
-                context = {
-                    'form': form,
-                    'transaction': transaction,
-                    'preview': True,
-                    'form_data': request.POST.dict()
-                }
-                return render(request, 'main/add_transaction.html', context)
-            else:
-                # This is a confirmation from preview, save the transaction
-                transaction = form.save(commit=False)
-                transaction.owner = request.user  # Set the logged-in user as the owner
-                transaction.status = 'confirmed'
-                transaction.is_legacy_only = True  # Manual transaction, not linked to invoice system
-                transaction.payment_method = 'other'  # Default for manual transactions
-                
-                # Auto-populate tenant and property from the selected rent
-                if transaction.rent:
-                    transaction.property = transaction.rent.property
-                    transaction.tenant = transaction.rent.tenant  # Can be None for unregistered
-                
-                transaction.save()
-                messages.success(request, f"¡{transaction.get_type_display()} creado exitosamente!")
-                return redirect('transaction_pdf', transaction_id=transaction.id)
-        else:
-            messages.error(request, "Hubo un error al crear la transacción.")
-    else:
-        form = TransactionForm(user=request.user)
     context = {
-        'form': form,
-        'preview': False,
+        'invoices': invoice_filter.qs,
+        'filter': invoice_filter,
     }
-    return render(request, 'main/add_transaction.html', context)
+    return render(request, 'main/invoices.html', context)
 
 @login_required(login_url='log_in')
-def report_payments(request):
-    """
-    Unified payment registration view that handles both roles:
-    - Tenant: Reports payment they made (pending confirmation by owner)
-    - Owner: Registers payment received (immediately confirmed)
-    """
-    from .forms import OwnerPaymentForm
+def all_transactions(request):
+    """Unified view combining invoices, credits, and debits with filtering."""
+    if request.user.role != 'O':
+        messages.error(request, "Solo los propietarios pueden ver todas las transacciones.")
+        return redirect('dashboard')
+
+    # Get transaction type filter
+    transaction_type = request.GET.get('transaction_type', 'all')
     
-    if request.user.role == 'O':  # Owner
-        # Owner payment registration flow
+    # Get rent filter
+    rent_id = request.GET.get('rent', '')
+    
+    # Get date filters
+    date_from = request.GET.get('date_from', '')
+    date_to = request.GET.get('date_to', '')
+    
+    # Prepare queryset based on transaction type
+    transactions = []
+    
+    if transaction_type in ['all', 'invoice']:
+        invoices_qs = Invoice.objects.filter(rent__owner=request.user).select_related('rent__property', 'rent__tenant')
+        if rent_id:
+            invoices_qs = invoices_qs.filter(rent_id=rent_id)
+        if date_from:
+            invoices_qs = invoices_qs.filter(invoice_date__gte=date_from)
+        if date_to:
+            invoices_qs = invoices_qs.filter(invoice_date__lte=date_to)
+        invoices_qs = invoices_qs.order_by('-invoice_date')
+        for invoice in invoices_qs:
+            transactions.append({
+                'type': 'invoice',
+                'id': invoice.id,
+                'number': invoice.invoice_number,
+                'date': invoice.invoice_date,
+                'due_date': invoice.due_date,
+                'property': invoice.rent.property.alias,
+                'rent_number': invoice.rent.rent_number,
+                'description': f"Factura de renta",
+                'amount': invoice.amount,
+                'status': invoice.status,
+                'pdf_url': reverse('invoice_pdf', args=[invoice.id]),
+            })
+    
+    if transaction_type in ['all', 'credit']:
+        credits_qs = Credit.objects.filter(rent__owner=request.user).select_related('rent__property')
+        if rent_id:
+            credits_qs = credits_qs.filter(rent_id=rent_id)
+        if date_from:
+            credits_qs = credits_qs.filter(credit_date__gte=date_from)
+        if date_to:
+            credits_qs = credits_qs.filter(credit_date__lte=date_to)
+        credits_qs = credits_qs.order_by('-credit_date')
+        for credit in credits_qs:
+            transactions.append({
+                'type': 'credit',
+                'id': credit.id,
+                'number': credit.credit_number,
+                'date': credit.credit_date,
+                'due_date': None,
+                'property': credit.rent.property.alias,
+                'rent_number': credit.rent.rent_number,
+                'description': credit.description,
+                'amount': credit.amount,
+                'status': 'credit',
+                'pdf_url': reverse('credit_pdf', args=[credit.id]),
+            })
+    
+    if transaction_type in ['all', 'debit']:
+        debits_qs = Debit.objects.filter(rent__owner=request.user).select_related('rent__property')
+        if rent_id:
+            debits_qs = debits_qs.filter(rent_id=rent_id)
+        if date_from:
+            debits_qs = debits_qs.filter(debit_date__gte=date_from)
+        if date_to:
+            debits_qs = debits_qs.filter(debit_date__lte=date_to)
+        debits_qs = debits_qs.order_by('-debit_date')
+        for debit in debits_qs:
+            transactions.append({
+                'type': 'debit',
+                'id': debit.id,
+                'number': debit.debit_number,
+                'date': debit.debit_date,
+                'due_date': None,
+                'property': debit.rent.property.alias,
+                'rent_number': debit.rent.rent_number,
+                'description': debit.description,
+                'amount': debit.amount,
+                'status': 'debit',
+                'pdf_url': reverse('debit_pdf', args=[debit.id]),
+            })
+    
+    # Sort all transactions by date (most recent first)
+    transactions.sort(key=lambda x: x['date'], reverse=True)
+    
+    # Get rents for filter dropdown
+    rents = Rent.objects.filter(owner=request.user, is_active=True).select_related('property')
+    
+    context = {
+        'transactions': transactions,
+        'transaction_type': transaction_type,
+        'rent_id': rent_id,
+        'date_from': date_from,
+        'date_to': date_to,
+        'rents': rents,
+    }
+    return render(request, 'main/all_transactions.html', context)
+
+@login_required(login_url='log_in')
+def report_payment(request):
+    """
+    Unified payment registration view:
+    - Owner: Registers payment received (immediately confirmed)
+    - Tenant: Reports payment made (pending confirmation by owner)
+    """
+    if request.user.role == 'O':
         if request.method == 'POST':
             form = OwnerPaymentForm(request.POST, user=request.user)
             if form.is_valid():
                 try:
                     invoice = form.cleaned_data['invoice']
-                    
-                    # Validate owner has access to this invoice
                     if invoice.rent.owner != request.user:
                         messages.error(request, "No tienes acceso a esta factura.")
                         return render(request, 'main/report_payment.html', {'form': form, 'user_role': 'O'})
-                    
-                    # Create Payment record with confirmed status
+
                     payment = Payment.objects.create(
                         invoice=invoice,
                         amount=form.cleaned_data['amount'],
                         payment_date=form.cleaned_data['payment_date'],
                         payment_method=form.cleaned_data['payment_method'],
                         description=form.cleaned_data['description'],
-                        status='confirmed'  # Auto-confirm since owner registered it
-                    )
-                    
-                    # Signal handler will auto-update invoice
-                    
-                    # Create legacy Transaction record for audit trail
-                    transaction = Transaction.objects.create(
-                        owner=request.user,
-                        tenant=invoice.rent.tenant,
-                        property=invoice.rent.property,
-                        rent=invoice.rent,
-                        amount=form.cleaned_data['amount'],
-                        transaction_date=form.cleaned_data['payment_date'],
-                        payment_method=form.cleaned_data['payment_method'],
-                        type='pago',
-                        description=form.cleaned_data['description'],
                         status='confirmed',
-                        is_legacy_only=True
                     )
-                    
-                    # Link payment to transaction for audit trail
-                    payment.transaction = transaction
-                    payment.save()
-                    
-                    # Send receipt if requested
+
                     if form.cleaned_data['send_receipt']:
-                        send_receipt_to_tenant(transaction)
-                        messages.success(
-                            request, 
-                            f"Pago registrado por ${form.cleaned_data['amount']:.2f}. "
-                            "Recibo enviado al inquilino."
-                        )
+                        send_payment_receipt(payment)
+                        messages.success(request, f"Pago registrado por ${form.cleaned_data['amount']:.2f}. Recibo enviado al inquilino.")
                     else:
-                        messages.success(
-                            request, 
-                            f"Pago registrado por ${form.cleaned_data['amount']:.2f}."
-                        )
-                    
+                        messages.success(request, f"Pago registrado por ${form.cleaned_data['amount']:.2f}.")
+
                     return redirect('properties')
-                    
+
                 except Exception as e:
                     import logging
-                    logger = logging.getLogger(__name__)
-                    logger.error(f"Error registering owner payment: {e}")
+                    logging.getLogger(__name__).error(f"Error registering owner payment: {e}")
                     messages.error(request, "Error al registrar el pago. Por favor intenta de nuevo.")
-                    return render(request, 'main/report_payment.html', {'form': form, 'user_role': 'O'})
-        
         else:
             form = OwnerPaymentForm(user=request.user)
-        
-        context = {'form': form, 'user_role': 'O'}
-        return render(request, 'main/report_payment.html', context)
-    
+
+        return render(request, 'main/report_payment.html', {'form': form, 'user_role': 'O'})
+
     else:  # Tenant
-        # Tenant payment reporting flow (existing behavior)
         if request.method == 'POST':
-            form = ReportPaymentForm(request.POST, request.FILES, user=request.user)
+            form = TenantPaymentForm(request.POST, request.FILES, user=request.user)
             if form.is_valid():
-                # Get the uploaded file before saving the transaction
-                confirmation_file = request.FILES.get('confirmation_file')
-                
-                transaction = form.save(commit=False)
-                # Set the owner and tenant BEFORE calling save() to ensure proper transaction number generation
-                transaction.owner = transaction.property.owner  # Set the owner as the property's owner
-                transaction.tenant = request.user  # Set the tenant as the logged-in user
-                transaction.status = 'pending'
-                # Don't save the confirmation_file to the model
-                transaction.confirmation_file = None
-                
-                # Ensure all required fields are set before saving
-                if not transaction.owner:
-                    messages.error(request, "Error: No se pudo determinar el propietario de la propiedad.")
-                    return render(request, 'main/report_payment.html', {'form': form, 'user_role': 'T'})
-                
-                transaction.save()
-                
-                # Send email to owner
-                owner_email = transaction.property.owner.email
-                confirm_url = request.build_absolute_uri(
-                    reverse('confirm_payment', args=[transaction.id])
+                invoice = form.cleaned_data['invoice']
+                payment = Payment.objects.create(
+                    invoice=invoice,
+                    amount=form.cleaned_data['amount'],
+                    payment_date=form.cleaned_data['payment_date'],
+                    payment_method=form.cleaned_data['payment_method'],
+                    description=form.cleaned_data.get('description', ''),
+                    confirmation_file=request.FILES.get('confirmation_file'),
+                    status='pending',
                 )
-                # Example for report_payment (sending to owner)
+
+                owner_email = invoice.rent.owner.email
+                confirm_url = request.build_absolute_uri(
+                    reverse('confirm_payment', args=[payment.id])
+                )
                 owner_html = f"""
-                    <html>
-                      <head>
-                        <style>
-                          body {{
-                            font-family: 'Montserrat', Arial, sans-serif;
-                            background: #f8f9fa;
-                            color: #344767;
-                            margin: 0;
-                            padding: 0;
-                          }}
-                          .container {{
-                            text-align: center;
-                            max-width: 600px;
-                            margin: 40px auto;
-                            background: #fff;
-                            border-radius: 12px;
-                            box-shadow: 0 2px 8px rgba(44,62,80,0.08);
-                            padding: 32px 24px;
-                          }}
-                          .btn {{
-                            display: inline-block;
-                            background: #17c1e8;
-                            color: #fff !important;
-                            padding: 12px 28px;
-                            border-radius: 6px;
-                            text-decoration: none;
-                            font-weight: 600;
-                            margin-top: 16px;
-                          }}
-                          .footer {{
-                            color: #8392ab;
-                            font-size: 13px;
-                            margin-top: 32px;
-                            text-align: center;
-                          }}
-                        </style>
-                      </head>
-                      <body>
-                        <div class="container">
-                          <h2 style="color:#17c1e8;">Nuevo pago registrado</h2>
-                          <p>Se ha registrado un nuevo pago por parte de tu inquilino.</p>
-                          <p style="color:#17c1e8;" class="fw-semibold">Una ves confirmes con tu banco, confirma el pago en el siguiente boton y se le enviara un recibo automaticamente a tu inquilino</p>
-                          <p>
-                            <a href="{confirm_url}" class="btn">Confirmar Pago</a>
-                          </p>
-                          <div class="footer">
-                            Este es un mensaje automático de Finko - Property Management System.
-                          </div>
-                        </div>
-                      </body>
-                    </html>
-                    """
-                
-                # Prepare attachments if confirmation file exists
+                    <html><body style="font-family:Arial,sans-serif;color:#344767;background:#f8f9fa;">
+                    <div style="max-width:600px;margin:40px auto;background:#fff;border-radius:12px;padding:32px 24px;">
+                      <h2 style="color:#17c1e8;text-align:center;">Nuevo Pago Pendiente</h2>
+                      <p>Tu inquilino ha reportado un pago de <strong>${payment.amount}</strong> para la factura <strong>{invoice.invoice_number}</strong>.</p>
+                      <p style="text-align:center;"><a href="{confirm_url}" style="display:inline-block;background:#17c1e8;color:#fff;padding:12px 28px;border-radius:6px;text-decoration:none;font-weight:600;">Confirmar Pago</a></p>
+                      <p style="color:#8392ab;font-size:13px;text-align:center;">Finko - Property Management System</p>
+                    </div></body></html>"""
+
                 attachments = []
-                if confirmation_file:
-                    attachments.append((confirmation_file.name, confirmation_file.read()))
-                
+                if payment.confirmation_file:
+                    payment.confirmation_file.seek(0)
+                    attachments.append((payment.confirmation_file.name, payment.confirmation_file.read()))
+
                 try:
                     send_mailgun_simple(
                         subject="Nuevo pago pendiente de confirmación",
@@ -1377,41 +1336,40 @@ def report_payments(request):
                     )
                 except Exception as e:
                     import logging
-                    logger = logging.getLogger(__name__)
-                    logger.error(f"Failed to send payment notification email: {e}")
-                messages.success(request, "Pago registrado. Esperando confirmación del propietario.")
+                    logging.getLogger(__name__).error(f"Failed to send payment notification: {e}")
+
+                messages.success(request, "Pago reportado. Esperando confirmación del propietario.")
                 return redirect('report_payment')
         else:
-            form = ReportPaymentForm(user=request.user)
-        
-        transactions = Transaction.objects.filter(owner=request.user).order_by('-created_at')
-        context = {'transactions': transactions, 'form': form, 'user_role': 'T'}
-        return render(request, 'main/report_payment.html', context)
+            form = TenantPaymentForm(user=request.user)
+
+        pending_payments = Payment.objects.filter(
+            invoice__rent__tenant=request.user, status='pending'
+        ).order_by('-payment_date')
+        return render(request, 'main/report_payment.html', {
+            'form': form,
+            'user_role': 'T',
+            'pending_payments': pending_payments,
+        })
 
 
 @login_required
 @require_POST
 def get_unpaid_invoices(request):
-    """
-    AJAX endpoint to fetch unpaid invoices for a selected rent.
-    Returns JSON list of invoices with balance information.
-    Only accessible to owners.
-    """
     if request.user.role != 'O':
         return JsonResponse({'invoices': [], 'error': 'Unauthorized'}, status=403)
-    
+
     rent_id = request.POST.get('rent_id')
-    
     if not rent_id:
         return JsonResponse({'invoices': []})
-    
+
     try:
         rent = Rent.objects.get(id=rent_id, owner=request.user)
         invoices = Invoice.objects.filter(
             rent=rent,
             status__in=['pending', 'partial', 'overdue', 'overdue_with_fee']
         ).order_by('-due_date')
-        
+
         invoice_list = [
             {
                 'id': inv.id,
@@ -1426,190 +1384,160 @@ def get_unpaid_invoices(request):
             }
             for inv in invoices
         ]
-        
         return JsonResponse({'invoices': invoice_list})
     except Rent.DoesNotExist:
         return JsonResponse({'invoices': [], 'error': 'Rent not found'}, status=404)
 
+
 @login_required(login_url='log_in')
-def confirm_payment(request, transaction_id):
-    transaction = get_object_or_404(Transaction, id=transaction_id)
-    
-    # Check if payment is already confirmed
-    if transaction.confirmed_at is not None:
-        if request.method == 'POST':
-            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                return JsonResponse({'success': False, 'error': 'Este pago ya ha sido confirmado previamente.'})
-            messages.warning(request, "Este pago ya ha sido confirmado previamente. No se puede confirmar nuevamente.")
-            return render(request, 'main/confirm_payment.html', {'transaction': transaction, 'already_confirmed': True})
-        else:
-            # GET request - show template with confirmation info
-            return render(request, 'main/confirm_payment.html', {'transaction': transaction, 'already_confirmed': True})
-    
-    # Handle rejection via query parameter
+def confirm_payment(request, payment_id):
+    from django.utils import timezone as tz
+    payment = get_object_or_404(Payment, id=payment_id)
+    rent = payment.invoice.rent
+
+    # Allow owner or public token confirmation
+    if request.user != rent.owner:
+        messages.error(request, "No tienes permiso para confirmar este pago.")
+        return redirect('dashboard')
+
+    if payment.confirmed_at is not None:
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({'success': False, 'error': 'Este pago ya ha sido confirmado previamente.'})
+        messages.warning(request, "Este pago ya ha sido confirmado previamente.")
+        return render(request, 'main/confirm_payment.html', {'payment': payment, 'already_confirmed': True})
+
     action = request.GET.get('action') or request.POST.get('action')
     if action == 'reject':
         if request.method == 'POST':
-            transaction.status = 'rejected'
-            transaction.save()
+            payment.status = 'rejected'
+            payment.save()
             messages.success(request, "Pago rechazado.")
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                 return JsonResponse({'success': True})
             return redirect('properties')
-        else:
-            # Show confirmation dialog for rejection
-            return render(request, 'main/confirm_payment.html', {'transaction': transaction, 'confirm_rejection': True})
-    
+        return render(request, 'main/confirm_payment.html', {'payment': payment, 'confirm_rejection': True})
+
     if request.method == 'POST':
-        # Check if this is a resend request
         resend = request.POST.get('resend') or request.GET.get('resend')
-        
-        # If POST with JSON body (from AJAX), parse it
         if request.content_type == 'application/json':
             import json
             try:
                 data = json.loads(request.body)
                 resend = data.get('resend', False)
-            except:
+            except Exception:
                 pass
-        
+
         if resend:
-            # Just resend the email without changing status
-            send_receipt_to_tenant(transaction)
+            send_payment_receipt(payment)
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                # Return JSON for AJAX requests
                 return JsonResponse({'success': True, 'message': 'Confirmación reenviada exitosamente'})
             messages.success(request, "Confirmación reenviada al inquilino.")
         else:
-            # Confirm payment - set confirmed_at timestamp to prevent duplicate confirmations
-            from django.utils import timezone
-            transaction.status = 'confirmed'
-            transaction.type = 'receipt'  # Change type to receipt when confirming
-            transaction.is_legacy_only = True  # Mark as legacy
-            transaction.confirmed_at = timezone.now()  # Record when confirmation happened
-            transaction.save()
-            
-            # NEW: If linked to rent/invoice, create Payment and update Invoice
-            if transaction.rent:
-                try:
-                    # Get most recent pending invoice for this rent
-                    invoice = Invoice.objects.filter(
-                        rent=transaction.rent,
-                        status__in=['pending', 'partial', 'overdue', 'overdue_with_fee']
-                    ).order_by('-due_date').first()
-                    
-                    if invoice:
-                        # Create Payment record
-                        payment = Payment.objects.create(
-                            invoice=invoice,
-                            amount=transaction.amount,
-                            payment_date=transaction.transaction_date or date.today(),
-                            payment_method=transaction.payment_method,
-                            status='confirmed',
-                            transaction=transaction,
-                            description=transaction.description
-                        )
-                        
-                        # payment.save() will auto-update invoice via signal
-                        
-                        # Update transaction reference
-                        transaction.payment = payment
-                        transaction.invoice = invoice
-                        transaction.save()
-                except Exception as e:
-                    import logging
-                    logger = logging.getLogger(__name__)
-                    logger.error(f"Failed to link payment to invoice: {e}")
-            
-            # Generate PDF and send to tenant
-            send_receipt_to_tenant(transaction)
+            payment.status = 'confirmed'
+            payment.confirmed_at = tz.now()
+            payment.save()
+            # Signal auto-updates invoice
+            send_payment_receipt(payment)
             messages.success(request, "Pago confirmado y recibo enviado al inquilino.")
-        
+
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return JsonResponse({'success': True})
         return redirect('dashboard')
-    return render(request, 'main/confirm_payment.html', {'transaction': transaction})
+
+    return render(request, 'main/confirm_payment.html', {'payment': payment})
 
 from django.template.loader import render_to_string
 from weasyprint import HTML
 
-def send_receipt_to_tenant(transaction):
-    # Skip email if tenant is not registered (non-registered user)
-    if not transaction.tenant or not transaction.tenant.email:
+def send_payment_receipt(payment):
+    """Send a payment receipt PDF to the tenant."""
+    rent = payment.invoice.rent
+    # Determine tenant email
+    if rent.tenant and rent.tenant.email:
+        tenant_email = rent.tenant.email
+    elif rent.unregistered_tenant_email:
+        tenant_email = rent.unregistered_tenant_email
+    else:
         import logging
-        logger = logging.getLogger(__name__)
-        logger.info(f"Skipping receipt email for transaction {transaction.id}: tenant is not registered or has no email")
+        logging.getLogger(__name__).info(f"Skipping receipt email for payment {payment.id}: no tenant email")
         return
-    
-    context = {
-        'transaction': transaction,
-        'logo_base64': get_logo_for_pdf()
-    }
-    html_string = render_to_string('main/transaction_confirmation.html', context)
+
+    context = {'payment': payment, 'logo_base64': get_logo_for_pdf()}
+    html_string = render_to_string('main/payment_receipt.html', context)
     pdf = HTML(string=html_string).write_pdf()
-    tenant_email = transaction.tenant.email
-    
+
     email_html = """
-        <html>
-          <head>
-            <style>
-              body {
-                font-family: 'Montserrat', Arial, sans-serif;
-                background: #f8f9fa;
-                color: #344767;
-                margin: 0;
-                padding: 0;
-              }
-              .container {
-                text-align: center;
-                max-width: 600px;
-                margin: 40px auto;
-                background: #fff;
-                border-radius: 12px;
-                box-shadow: 0 2px 8px rgba(44,62,80,0.08);
-                padding: 32px 24px;
-              }
-              .footer {
-                color: #8392ab;
-                font-size: 13px;
-                margin-top: 32px;
-                text-align: center;
-              }
-            </style>
-          </head>
-          <body>
-            <div class="container">
-              <h2 style="color:#17c1e8;">¡Pago confirmado!</h2>
-              <p>Tu pago ha sido confirmado exitosamente. Adjuntamos tu recibo en PDF.</p>
-              <div class="footer">
-                Gracias por usar Finko - Property Management System.
-              </div>
-            </div>
-          </body>
-        </html>
-        """
-    
-    attachments = [(f"recibo_{transaction.transaction_number}.pdf", pdf)]
-    
+        <html><body style="font-family:Arial,sans-serif;background:#f8f9fa;color:#344767;">
+        <div style="max-width:600px;margin:40px auto;background:#fff;border-radius:12px;padding:32px 24px;text-align:center;">
+          <h2 style="color:#17c1e8;">¡Pago confirmado!</h2>
+          <p>Tu pago ha sido confirmado exitosamente. Adjuntamos tu recibo en PDF.</p>
+          <p style="color:#8392ab;font-size:13px;">Gracias por usar Finko - Property Management System.</p>
+        </div></body></html>"""
+
     try:
         send_mailgun_simple(
             subject="Recibo de pago confirmado",
             html=email_html,
             to_emails=tenant_email,
             from_email=settings.DEFAULT_FROM_EMAIL,
-            attachments=attachments
+            attachments=[(f"recibo_{payment.payment_number}.pdf", pdf)]
         )
     except Exception as e:
         import logging
-        logger = logging.getLogger(__name__)
-        logger.error(f"Failed to send receipt email: {e}")
+        logging.getLogger(__name__).error(f"Failed to send receipt email: {e}")
 
 @login_required(login_url='log_in')
-def expenses(request):
-    context= {
+def adjustments(request):
+    """View for credits and debits (adjustments to rent accounts)."""
+    if request.user.role != 'O':
+        messages.error(request, "Solo los propietarios pueden gestionar ajustes.")
+        return redirect('dashboard')
 
+    credit_form = CreditForm(user=request.user)
+    debit_form = DebitForm(user=request.user)
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        if action == 'add_credit':
+            credit_form = CreditForm(request.POST, user=request.user)
+            if credit_form.is_valid():
+                Credit.objects.create(
+                    rent=credit_form.cleaned_data['rent'],
+                    amount=credit_form.cleaned_data['amount'],
+                    credit_date=credit_form.cleaned_data['credit_date'],
+                    description=credit_form.cleaned_data['description'],
+                    created_by=request.user
+                )
+                messages.success(request, "Crédito aplicado exitosamente.")
+                return redirect('adjustments')
+        elif action == 'add_debit':
+            debit_form = DebitForm(request.POST, user=request.user)
+            if debit_form.is_valid():
+                Debit.objects.create(
+                    rent=debit_form.cleaned_data['rent'],
+                    amount=debit_form.cleaned_data['amount'],
+                    debit_date=debit_form.cleaned_data['debit_date'],
+                    description=debit_form.cleaned_data['description'],
+                    created_by=request.user
+                )
+                messages.success(request, "Cargo aplicado exitosamente.")
+                return redirect('adjustments')
+
+    credits_qs = Credit.objects.filter(rent__owner=request.user).order_by('-credit_date').select_related('rent__property')
+    debits_qs = Debit.objects.filter(rent__owner=request.user).order_by('-debit_date').select_related('rent__property')
+
+    credit_filter = CreditFilter(request.GET, queryset=credits_qs, user=request.user)
+    debit_filter = DebitFilter(request.GET, queryset=debits_qs, user=request.user)
+
+    context = {
+        'credit_form': credit_form,
+        'debit_form': debit_form,
+        'credits': credit_filter.qs,
+        'debits': debit_filter.qs,
+        'credit_filter': credit_filter,
+        'debit_filter': debit_filter,
     }
-    return render(request,'main/expenses.html',context)
+    return render(request, 'main/adjustments.html', context)
 
 def pricing(request):
     context= {
@@ -1624,7 +1552,7 @@ def properties(request):
     rents = []
     payments = []
     pending_payments = []
-    pending_transactions = []
+    pending_transactions = []  # kept for template compatibility
     
     if request.user.role == 'O':
       # If the user is an owner, filter rents by owner
@@ -1634,21 +1562,19 @@ def properties(request):
       payments = invoices_qs[:10]
       # Get pending payments from Payment model (awaiting confirmation)
       pending_payments = Payment.objects.filter(invoice__rent__owner=request.user, status='pending').order_by('-payment_date')
-      # Get pending transactions (reported payments from public portal that need approval)
-      pending_transactions = Transaction.objects.filter(owner=request.user, type='pago', status='pending').order_by('-created_at')
+      pending_transactions = Payment.objects.none()  # kept for template compat
     elif request.user.role == 'T':
       # If the user is a tenant, filter rents by tenant
       rents = Rent.objects.filter(tenant=request.user, is_active=True)
       # Get confirmed payments (last 10)
       payments_qs = Payment.objects.filter(invoice__rent__tenant=request.user, status='confirmed').order_by('-payment_date')
       payments = payments_qs[:10]
-      # Tenants don't have pending approvals
       pending_payments = Payment.objects.none()
-      pending_transactions = Transaction.objects.none()
+      pending_transactions = Payment.objects.none()
 
     for rent in rents:
-        last_payment = Transaction.objects.filter(rent=rent, type='receipt',status='confirmed').order_by('-created_at').first()
-        rent.last_payment_date = last_payment.created_at if last_payment else None
+        last_payment = Payment.objects.filter(invoice__rent=rent, status='confirmed').order_by('-payment_date').first()
+        rent.last_payment_date = last_payment.payment_date if last_payment else None
         rent.last_payment_amount = last_payment.amount if last_payment else None
         
         # NEW: Use comprehensive status
@@ -1769,55 +1695,50 @@ def generate_documents(request):
     return redirect(f"{reverse('generate_documents')}?action=statement")
 
   if action == 'payment_history':
-    # Filters: start/end date and properties
     start_date = request.GET.get('start_date')
     end_date = request.GET.get('end_date')
     prop_ids = request.GET.getlist('properties')
 
-    qs = Transaction.objects.filter(type='receipt', status='confirmed').select_related('invoice', 'property', 'tenant')
     if request.user.role == 'O':
-      qs = qs.filter(owner=request.user)
+        qs = Payment.objects.filter(invoice__rent__owner=request.user, status='confirmed').select_related('invoice__rent__property', 'invoice__rent__tenant')
     else:
-      qs = qs.filter(tenant=request.user)
+        qs = Payment.objects.filter(invoice__rent__tenant=request.user, status='confirmed').select_related('invoice__rent__property')
 
+    sd = None
+    ed = None
     if start_date:
       try:
         sd = datetime.strptime(start_date, '%Y-%m-%d').date()
-        qs = qs.filter(transaction_date__gte=sd)
+        qs = qs.filter(payment_date__gte=sd)
       except Exception:
-        sd = None
-    else:
-      sd = None
+        pass
 
     if end_date:
       try:
         ed = datetime.strptime(end_date, '%Y-%m-%d').date()
-        qs = qs.filter(transaction_date__lte=ed)
+        qs = qs.filter(payment_date__lte=ed)
       except Exception:
-        ed = None
-    else:
-      ed = None
+        pass
 
     if prop_ids:
       try:
         ids = [int(x) for x in prop_ids]
-        qs = qs.filter(property__id__in=ids)
+        qs = qs.filter(invoice__rent__property__id__in=ids)
       except Exception:
         pass
 
-    transactions = qs.order_by('-transaction_date')
+    payments_list = qs.order_by('-payment_date')
 
-    # Derive date range from actual data when no filter applied
-    if transactions.exists():
+    if payments_list.exists():
       if not sd:
-        sd = transactions.last().transaction_date
+        sd = payments_list.last().payment_date
       if not ed:
-        ed = transactions.first().transaction_date
+        ed = payments_list.first().payment_date
 
-    total_amount = transactions.aggregate(total=models.Sum('amount'))['total'] or 0
+    total_amount = payments_list.aggregate(total=models.Sum('amount'))['total'] or 0
 
     html_string = render_to_string('main/payment_history_pdf.html', {
-      'transactions': transactions,
+      'payments': payments_list,
       'user': request.user,
       'now': date.today(),
       'start_date': sd,
@@ -1831,65 +1752,47 @@ def generate_documents(request):
     return response
 
   if action == 'income_letter':
-    # Get available years for dropdown
     if request.user.role == 'O':
-      transactions = Transaction.objects.filter(owner=request.user, type='receipt', status='confirmed')
+        payments_qs = Payment.objects.filter(invoice__rent__owner=request.user, status='confirmed')
     else:
-      transactions = Transaction.objects.filter(tenant=request.user, type='receipt', status='confirmed')
-    
+        payments_qs = Payment.objects.filter(invoice__rent__tenant=request.user, status='confirmed')
+
     available_years = sorted(set(
-      t.transaction_date.year for t in transactions 
-      if t.transaction_date
+      p.payment_date.year for p in payments_qs if p.payment_date
     ), reverse=True)
-    
-    # If no transactions, add current year
+
     if not available_years:
       available_years = [date.today().year]
-    
-    # Handle both GET with preview param and POST for generation
+
     if request.method == 'POST' or request.GET.get('recipient'):
       recipient = request.POST.get('recipient') or request.GET.get('recipient', '')
       year = request.POST.get('year') or request.GET.get('year', str(date.today().year))
-      
+
       try:
         year = int(year)
       except (ValueError, TypeError):
         year = date.today().year
-      
-      # Fetch all confirmed receipts for the selected year
+
       if request.user.role == 'O':
-        qs = Transaction.objects.filter(
-          owner=request.user,
-          type='receipt',
-          status='confirmed',
-          transaction_date__year=year
-        )
+        qs = payments_qs.filter(payment_date__year=year)
       else:
-        qs = Transaction.objects.filter(
-          tenant=request.user,
-          type='receipt',
-          status='confirmed',
-          transaction_date__year=year
-        )
-      
+        qs = payments_qs.filter(payment_date__year=year)
+
       # Group income by property
       property_income_dict = {}
-      for transaction in qs:
-        if transaction.property:
-          prop_name = transaction.property.alias or f"Propiedad {transaction.property.id}"
-          if prop_name not in property_income_dict:
-            property_income_dict[prop_name] = 0
-          property_income_dict[prop_name] += float(transaction.amount)
-      
-      # Convert to list of dicts, sorted by property name
+      for p in qs:
+        prop_name = p.invoice.rent.property.alias or f"Propiedad {p.invoice.rent.property.id}"
+        if prop_name not in property_income_dict:
+          property_income_dict[prop_name] = 0
+        property_income_dict[prop_name] += float(p.amount)
+
       property_incomes = [
         {'property_name': prop_name, 'total': amount}
         for prop_name, amount in sorted(property_income_dict.items())
       ]
-      
-      total_income = sum(t.amount for t in qs)
-      
-      # Format date
+
+      total_income = sum(p.amount for p in qs)
+
       from datetime import datetime as dt
       today = date.today()
       months_es = {
@@ -1898,11 +1801,8 @@ def generate_documents(request):
         9: 'septiembre', 10: 'octubre', 11: 'noviembre', 12: 'diciembre'
       }
       date_formatted = f"{today.day} de {months_es[today.month]} de {today.year}"
-      
-      # Get user location (using nationality or default)
-      #location = request.user.nac.name if request.user.nac else "Panama"
-      location = 'Panama'  # Default to Panama for simplicity
-      
+      location = 'Panama'
+
       html_string = render_to_string('main/income_letter_pdf.html', {
         'recipient': recipient,
         'year': year,
@@ -1914,8 +1814,6 @@ def generate_documents(request):
       })
       pdf = HTML(string=html_string).write_pdf()
       response = HttpResponse(pdf, content_type='application/pdf')
-      
-      # Check if preview mode
       preview = request.GET.get('preview')
       if preview in ['1', 'true', 'yes']:
         response['Content-Disposition'] = 'inline; filename="carta_ingresos_preview.pdf"'
@@ -1937,7 +1835,6 @@ def generate_documents(request):
     property_obj = None
     start_date = None
     end_date = None
-    transactions = []
     
     if month_str:
       try:
@@ -1956,32 +1853,35 @@ def generate_documents(request):
         end_date = None
     
     if start_date and end_date:
-      qs = Transaction.objects.filter(
-        type='receipt', 
-        status='confirmed',
-        transaction_date__gte=start_date,
-        transaction_date__lte=end_date
-      ).select_related('invoice', 'property', 'tenant')
-      
       if request.user.role == 'O':
-        qs = qs.filter(owner=request.user)
-        # If property is specified, filter by it
+        qs = Payment.objects.filter(
+          status='confirmed',
+          payment_date__gte=start_date,
+          payment_date__lte=end_date,
+          invoice__rent__owner=request.user
+        ).select_related('invoice__rent__property', 'invoice__rent__tenant')
         if property_id:
           try:
             prop_id = int(property_id)
-            qs = qs.filter(property__id=prop_id)
+            qs = qs.filter(invoice__rent__property__id=prop_id)
             property_obj = Properties.objects.get(id=prop_id, owner=request.user)
           except (ValueError, Properties.DoesNotExist):
             pass
       else:
-        qs = qs.filter(tenant=request.user)
-      
-      transactions = qs.order_by('property__alias', '-transaction_date')
+        qs = Payment.objects.filter(
+          status='confirmed',
+          payment_date__gte=start_date,
+          payment_date__lte=end_date,
+          invoice__rent__tenant=request.user
+        ).select_related('invoice__rent__property')
+
+      payments_list = qs.order_by('invoice__rent__property__alias', '-payment_date')
+    else:
+      payments_list = Payment.objects.none()
     
     # Also fetch Invoices for the period (what was billed)
-    from .models import Invoice as InvoiceModel
     if start_date and end_date:
-      inv_qs = InvoiceModel.objects.filter(
+      inv_qs = Invoice.objects.filter(
         invoice_date__gte=start_date,
         invoice_date__lte=end_date
       ).select_related('rent', 'rent__property', 'rent__tenant', 'rent__owner')
@@ -1995,15 +1895,14 @@ def generate_documents(request):
             pass
       else:
         inv_qs = inv_qs.filter(rent__tenant=request.user)
-      invoices = inv_qs.order_by('rent__property__alias', 'due_date')
+      invoices_list = inv_qs.order_by('rent__property__alias', 'due_date')
     else:
-      invoices = InvoiceModel.objects.none()
+      invoices_list = Invoice.objects.none()
 
-    # Calculate total amount
-    total_amount = sum(t.amount for t in transactions)
-    invoices_total_billed = sum(i.amount for i in invoices)
-    invoices_total_paid = sum(i.paid_amount for i in invoices)
-    invoices_total_outstanding = sum(i.get_balance_owed() for i in invoices)
+    total_amount = sum(p.amount for p in payments_list)
+    invoices_total_billed = sum(i.amount for i in invoices_list)
+    invoices_total_paid = sum(i.paid_amount for i in invoices_list)
+    invoices_total_outstanding = sum(i.get_balance_owed() for i in invoices_list)
     
     months_es = {
       1: 'enero', 2: 'febrero', 3: 'marzo', 4: 'abril',
@@ -2019,8 +1918,8 @@ def generate_documents(request):
     # If request method is POST, preview, or month param supplied (GET download)
     if request.method == 'POST' or preview or month_str:
       html_string = render_to_string('main/statement_pdf.html', {
-        'transactions': transactions,
-        'invoices': invoices,
+        'payments': payments_list,
+        'invoices': invoices_list,
         'invoices_total_billed': invoices_total_billed,
         'invoices_total_paid': invoices_total_paid,
         'invoices_total_outstanding': invoices_total_outstanding,
@@ -2075,41 +1974,40 @@ def generate_documents(request):
     end_date = request.GET.get('end_date')
     prop_ids = request.GET.getlist('properties')
 
-    qs = Transaction.objects.filter(type='receipt', status='confirmed').select_related('invoice', 'property', 'tenant')
     if request.user.role == 'O':
-      qs = qs.filter(owner=request.user)
+      qs = Payment.objects.filter(status='confirmed', invoice__rent__owner=request.user).select_related('invoice__rent__property', 'invoice__rent__tenant')
     else:
-      qs = qs.filter(tenant=request.user)
+      qs = Payment.objects.filter(status='confirmed', invoice__rent__tenant=request.user).select_related('invoice__rent__property')
 
     sd = None
     ed = None
     if start_date:
       try:
         sd = datetime.strptime(start_date, '%Y-%m-%d').date()
-        qs = qs.filter(transaction_date__gte=sd)
+        qs = qs.filter(payment_date__gte=sd)
       except Exception:
-        sd = None
+        pass
     if end_date:
       try:
         ed = datetime.strptime(end_date, '%Y-%m-%d').date()
-        qs = qs.filter(transaction_date__lte=ed)
+        qs = qs.filter(payment_date__lte=ed)
       except Exception:
-        ed = None
+        pass
 
     if prop_ids:
       try:
         ids = [int(x) for x in prop_ids]
-        qs = qs.filter(property__id__in=ids)
+        qs = qs.filter(invoice__rent__property__id__in=ids)
       except Exception:
         pass
 
-    transactions = qs.order_by('-transaction_date')
-    total = transactions.aggregate(total=models.Sum('amount'))['total'] or 0
+    payments_preview = qs.order_by('-payment_date')
+    total = payments_preview.aggregate(total=models.Sum('amount'))['total'] or 0
 
     selected_props = Properties.objects.filter(id__in=[int(x) for x in prop_ids]) if prop_ids else None
 
     return render(request, 'main/payment_summary_preview.html', {
-      'transactions': transactions,
+      'payments': payments_preview,
       'total': total,
       'start_date': sd,
       'end_date': ed,
@@ -2158,345 +2056,120 @@ def create_subscription_checkout_session(request):
     )
     return JsonResponse({'id': checkout_session.id})
 
-@login_required(login_url='log_in')
-def preview_transaction_confirmation(request):
-    # Create a dummy transaction object for testing
-    dummy_transaction = {
-        'transaction_number': 'TXN12345',
-        'created_at': datetime.now(),
-        'get_type_display': 'Payment',
-        'amount': 1500.00,
-        'tenant': {
-            'full_name': 'John Doe',
-            'email': 'johndoe@example.com',
-        },
-        'property': {
-            'alias': 'Luxury Apartment',
-            'location': '123 Main St, Springfield',
-        },
-        'description': 'Monthly Rent Payment',
-        'get_payment_method_display': 'Bank Transfer',
-        'owner': {
-            'full_name': 'Jane Smith',
-            'email': 'janesmith@example.com',
-        },
-    }
-
-    # Render the template with the dummy data
-    return render(request, 'main/transaction_confirmation.html', {'transaction': dummy_transaction, 'logo_base64': get_logo_for_pdf()})
-
 def public_payment_portal(request):
     """Public payment portal - no login required"""
     if request.method == 'POST':
         form = PublicPaymentForm(request.POST, request.FILES)
         if form.is_valid():
-            # Get form data
             rent_number = form.cleaned_data['rent_number']
             tenant_email = form.cleaned_data['tenant_email']
-            transaction_date = form.cleaned_data['transaction_date']
+            payment_date = form.cleaned_data['payment_date']
             amount = form.cleaned_data['amount']
             payment_method = form.cleaned_data['payment_method']
             description = form.cleaned_data.get('description', '')
             confirmation_file = request.FILES.get('confirmation_file')
-            
+
             try:
-                # Get the rent
                 rent = Rent.objects.get(rent_number=rent_number, is_active=True)
-                
-                # Create transaction
-                transaction = Transaction(
-                    type='pago',
-                    owner=rent.owner,
-                    tenant=rent.tenant,
-                    property=rent.property,
+
+                # Find the most recent unpaid invoice for this rent
+                invoice = Invoice.objects.filter(
                     rent=rent,
+                    status__in=['pending', 'partial', 'overdue', 'overdue_with_fee']
+                ).order_by('-due_date').first()
+
+                if not invoice:
+                    messages.error(request, 'No hay facturas pendientes para este contrato.')
+                    return render(request, 'main/public_payment_portal.html', {'form': form})
+
+                payment = Payment(
+                    invoice=invoice,
                     amount=amount,
-                    description=description or f'Pago reportado vía portal público - Contrato {rent_number}',
+                    payment_date=payment_date,
                     payment_method=payment_method,
-                    transaction_date=transaction_date,
+                    description=description or f'Pago reportado vía portal público - Contrato {rent_number}',
                     status='pending',
-                    confirmation_file=None  # Don't save file to model
                 )
-                transaction.save()
-                
-                # Send notification email to owner
+                if confirmation_file:
+                    payment.confirmation_file = confirmation_file
+                payment.save()
+
                 owner_email = rent.owner.email
                 confirm_url = request.build_absolute_uri(
-                    reverse('confirm_payment', args=[transaction.id])
+                    reverse('confirm_payment', args=[payment.id])
                 )
-                
+                tenant_name = rent.tenant.full_name if rent.tenant else (rent.unregistered_tenant_name or 'Inquilino')
+
                 owner_html = f"""
-                    <html>
-                      <head>
-                        <style>
-                          body {{
-                            font-family: 'Montserrat', Arial, sans-serif;
-                            background: #f8f9fa;
-                            color: #344767;
-                            margin: 0;
-                            padding: 0;
-                          }}
-                          .container {{
-                            max-width: 600px;
-                            margin: 40px auto;
-                            background: #fff;
-                            border-radius: 12px;
-                            box-shadow: 0 2px 8px rgba(44,62,80,0.08);
-                            padding: 32px 24px;
-                          }}
-                          .header {{
-                            text-align: center;
-                            color: #17c1e8;
-                            margin-bottom: 24px;
-                          }}
-                          .info-box {{
-                            background: #f8f9fa;
-                            border-left: 4px solid #17c1e8;
-                            padding: 16px;
-                            margin: 16px 0;
-                          }}
-                          .btn {{
-                            display: inline-block;
-                            background: #17c1e8;
-                            color: #fff !important;
-                            padding: 12px 28px;
-                            border-radius: 6px;
-                            text-decoration: none;
-                            font-weight: 600;
-                            margin-top: 16px;
-                          }}
-                          .footer {{
-                            color: #8392ab;
-                            font-size: 13px;
-                            margin-top: 32px;
-                            text-align: center;
-                          }}
-                        </style>
-                      </head>
-                      <body>
-                        <div class="container">
-                          <h2 class="header">Nuevo Pago Reportado - Portal Público</h2>
-                          <p>Hola {rent.owner.first_name},</p>
-                          <p>Se ha reportado un nuevo pago a través del portal público para el contrato <strong>{rent_number}</strong>.</p>
-                          
-                          <div class="info-box">
-                            <strong>Detalles del Pago:</strong><br>
-                            <strong>Propiedad:</strong> {rent.property.alias}<br>
-                            <strong>Inquilino:</strong> {rent.tenant.full_name if rent.tenant else rent.unregistered_tenant_name}<br>
-                            <strong>Monto:</strong> ${amount}<br>
-                            <strong>Fecha:</strong> {transaction_date}<br>
-                            <strong>Método:</strong> {transaction.get_payment_method_display()}<br>
-                            <strong>Número de Transacción:</strong> {transaction.transaction_number}
-                          </div>
-                          
-                          <p>Por favor revisa y confirma este pago en tu panel de control.</p>
-                          <p style="text-align: center;">
-                            <a href="{confirm_url}" class="btn">Confirmar Pago</a>
-                          </p>
-                          
-                          <div class="footer">
-                            Este es un mensaje automático de Finko - Property Management System.
-                          </div>
-                        </div>
-                      </body>
-                    </html>
-                    """
-                
-                # Prepare email attachments
-                attachments = []
-                if confirmation_file:
-                    attachments.append((
-                        confirmation_file.name,
-                        confirmation_file.read()
-                    ))
-                
+                    <html><body style="font-family:Arial,sans-serif;background:#f8f9fa;color:#344767;">
+                    <div style="max-width:600px;margin:40px auto;background:#fff;border-radius:12px;padding:32px 24px;">
+                      <h2 style="color:#17c1e8;text-align:center;">Nuevo Pago Reportado - Portal Público</h2>
+                      <p>Hola {rent.owner.first_name},</p>
+                      <p>Se ha reportado un pago para el contrato <strong>{rent_number}</strong>.</p>
+                      <div style="background:#f8f9fa;border-left:4px solid #17c1e8;padding:16px;margin:16px 0;">
+                        <strong>Propiedad:</strong> {rent.property.alias}<br>
+                        <strong>Inquilino:</strong> {tenant_name}<br>
+                        <strong>Monto:</strong> ${amount}<br>
+                        <strong>Fecha:</strong> {payment_date}<br>
+                        <strong>Método:</strong> {payment.get_payment_method_display()}<br>
+                        <strong>Número de Pago:</strong> {payment.payment_number}
+                      </div>
+                      <p style="text-align:center;">
+                        <a href="{confirm_url}" style="display:inline-block;background:#17c1e8;color:#fff;padding:12px 28px;border-radius:6px;text-decoration:none;font-weight:600;">Confirmar Pago</a>
+                      </p>
+                    </div></body></html>"""
+
                 try:
                     send_mailgun_simple(
                         subject=f"Nuevo Pago Reportado - Contrato {rent_number}",
                         html=owner_html,
                         to_emails=owner_email,
                         from_email=settings.DEFAULT_FROM_EMAIL,
-                        attachments=attachments if attachments else None
                     )
                 except Exception as e:
                     import logging
-                    logger = logging.getLogger(__name__)
-                    logger.error(f"Failed to send owner notification email: {e}")
-                
-                # Send confirmation to tenant
+                    logging.getLogger(__name__).error(f"Failed to send owner notification: {e}")
+
                 tenant_html = f"""
-                    <html>
-                      <head>
-                        <style>
-                          body {{
-                            font-family: 'Montserrat', Arial, sans-serif;
-                            background: #f8f9fa;
-                            color: #344767;
-                            margin: 0;
-                            padding: 0;
-                          }}
-                          .container {{
-                            max-width: 600px;
-                            margin: 40px auto;
-                            background: #fff;
-                            border-radius: 12px;
-                            box-shadow: 0 2px 8px rgba(44,62,80,0.08);
-                            padding: 32px 24px;
-                          }}
-                          .success-icon {{
-                            text-align: center;
-                            font-size: 48px;
-                            color: #82d616;
-                            margin-bottom: 16px;
-                          }}
-                          .info-box {{
-                            background: #f8f9fa;
-                            border-left: 4px solid #82d616;
-                            padding: 16px;
-                            margin: 16px 0;
-                          }}
-                          .footer {{
-                            color: #8392ab;
-                            font-size: 13px;
-                            margin-top: 32px;
-                            text-align: center;
-                          }}
-                        </style>
-                      </head>
-                      <body>
-                        <div class="container">
-                          <div class="success-icon">✓</div>
-                          <h2 style="color:#82d616; text-align:center;">¡Pago Reportado Exitosamente!</h2>
-                          <p>Tu pago ha sido reportado correctamente y está pendiente de confirmación por el propietario.</p>
-                          
-                          <div class="info-box">
-                            <strong>Resumen del Pago:</strong><br>
-                            <strong>Contrato:</strong> {rent_number}<br>
-                            <strong>Propiedad:</strong> {rent.property.alias}<br>
-                            <strong>Monto:</strong> ${amount}<br>
-                            <strong>Fecha:</strong> {transaction_date}<br>
-                            <strong>Número de Transacción:</strong> {transaction.transaction_number}
-                          </div>
-                          
-                          <p>Recibirás una notificación cuando el propietario confirme el pago.</p>
-                          
-                          <div class="footer">
-                            Este es un mensaje automático de Finko - Property Management System.<br>
-                            Para consultas, contacta a tu propietario.
-                          </div>
-                        </div>
-                      </body>
-                    </html>
-                    """
-                
-                try:
-                    send_mailgun_simple(
-                        subject="Confirmación de Reporte de Pago",
-                        html=tenant_html,
-                        to_emails=tenant_email,
-                        from_email=settings.DEFAULT_FROM_EMAIL
-                    )
-                except Exception as e:
-                    import logging
-                    logger = logging.getLogger(__name__)
-                    logger.error(f"Failed to send tenant confirmation email: {e}")
-                
-                # Send confirmation to actual tenant (if different from reporter email)
-                actual_tenant_email = rent.tenant.email if rent.tenant else rent.unregistered_tenant_email
-                if actual_tenant_email and actual_tenant_email != tenant_email:
-                    actual_tenant_html = f"""
-                    <html>
-                      <head>
-                        <style>
-                          body {{
-                            font-family: 'Montserrat', Arial, sans-serif;
-                            background: #f8f9fa;
-                            color: #344767;
-                            margin: 0;
-                            padding: 0;
-                          }}
-                          .container {{
-                            max-width: 600px;
-                            margin: 40px auto;
-                            background: #fff;
-                            border-radius: 12px;
-                            box-shadow: 0 2px 8px rgba(44,62,80,0.08);
-                            padding: 32px 24px;
-                          }}
-                          .success-icon {{
-                            text-align: center;
-                            font-size: 48px;
-                            color: #82d616;
-                            margin-bottom: 16px;
-                          }}
-                          .info-box {{
-                            background: #f8f9fa;
-                            border-left: 4px solid #82d616;
-                            padding: 16px;
-                            margin: 16px 0;
-                          }}
-                          .footer {{
-                            color: #8392ab;
-                            font-size: 13px;
-                            margin-top: 32px;
-                            text-align: center;
-                          }}
-                        </style>
-                      </head>
-                      <body>
-                        <div class="container">
-                          <div class="success-icon">✓</div>
-                          <h2 style="color:#82d616; text-align:center;">¡Pago Reportado Exitosamente!</h2>
-                          <p>Tu pago ha sido reportado correctamente y está pendiente de confirmación por el propietario.</p>
-                          
-                          <div class="info-box">
-                            <strong>Resumen del Pago:</strong><br>
-                            <strong>Contrato:</strong> {rent_number}<br>
-                            <strong>Propiedad:</strong> {rent.property.alias}<br>
-                            <strong>Monto:</strong> ${amount}<br>
-                            <strong>Fecha:</strong> {transaction_date}<br>
-                            <strong>Número de Transacción:</strong> {transaction.transaction_number}
-                          </div>
-                          
-                          <p>Recibirás una notificación cuando el propietario confirme el pago.</p>
-                          
-                          <div class="footer">
-                            Este es un mensaje automático de Finko - Property Management System.<br>
-                            Para consultas, contacta a tu propietario.
-                          </div>
-                        </div>
-                      </body>
-                    </html>
-                    """
+                    <html><body style="font-family:Arial,sans-serif;background:#f8f9fa;color:#344767;">
+                    <div style="max-width:600px;margin:40px auto;background:#fff;border-radius:12px;padding:32px 24px;text-align:center;">
+                      <h2 style="color:#82d616;">¡Pago Reportado Exitosamente!</h2>
+                      <div style="background:#f8f9fa;border-left:4px solid #82d616;padding:16px;margin:16px 0;text-align:left;">
+                        <strong>Contrato:</strong> {rent_number}<br>
+                        <strong>Monto:</strong> ${amount}<br>
+                        <strong>Número de Pago:</strong> {payment.payment_number}
+                      </div>
+                      <p>Recibirás una notificación cuando el propietario confirme el pago.</p>
+                    </div></body></html>"""
+
+                for email in filter(None, [tenant_email]):
                     try:
                         send_mailgun_simple(
                             subject="Confirmación de Reporte de Pago",
-                            html=actual_tenant_html,
-                            to_emails=actual_tenant_email,
+                            html=tenant_html,
+                            to_emails=email,
                             from_email=settings.DEFAULT_FROM_EMAIL
                         )
                     except Exception as e:
                         import logging
-                        logger = logging.getLogger(__name__)
-                        logger.error(f"Failed to send actual tenant confirmation email: {e}")
-                
-                messages.success(request, 
-                    f'¡Pago reportado exitosamente! Número de transacción: {transaction.transaction_number}. '
+                        logging.getLogger(__name__).error(f"Failed to send tenant confirmation: {e}")
+
+                messages.success(request,
+                    f'¡Pago reportado exitosamente! Número: {payment.payment_number}. '
                     'Recibirás una confirmación por correo electrónico.')
                 return redirect('public_payment_success')
-                
+
             except Rent.DoesNotExist:
                 messages.error(request, 'No se pudo procesar el pago. Verifica el número de contrato.')
             except Exception as e:
                 import logging
-                logger = logging.getLogger(__name__)
-                logger.error(f"Error processing public payment: {e}")
+                logging.getLogger(__name__).error(f"Error processing public payment: {e}")
                 messages.error(request, 'Ocurrió un error al procesar el pago. Por favor intenta de nuevo.')
         else:
             messages.error(request, 'Por favor corrige los errores en el formulario.')
     else:
         form = PublicPaymentForm()
-    
+
     return render(request, 'main/public_payment_portal.html', {'form': form})
 
 def public_payment_success(request):
@@ -2565,10 +2238,10 @@ def my_data(request):
     if user.role == 'O':  # Owner
         user_data['properties'] = Properties.objects.filter(owner=user)
         user_data['rents'] = Rent.objects.filter(owner=user)
-        user_data['transactions'] = Transaction.objects.filter(owner=user).order_by('-created_at')[:20]  # Last 20
+        user_data['payments'] = Payment.objects.filter(invoice__rent__owner=user).order_by('-payment_date')[:20]
     elif user.role == 'T':  # Tenant
         user_data['rents'] = Rent.objects.filter(tenant=user)
-        user_data['transactions'] = Transaction.objects.filter(tenant=user).order_by('-created_at')[:20]  # Last 20
+        user_data['payments'] = Payment.objects.filter(invoice__rent__tenant=user).order_by('-payment_date')[:20]
     
     return render(request, 'main/my_data.html', {'user_data': user_data})
 
@@ -2617,10 +2290,10 @@ def export_my_data(request):
     if user.role == 'O':
         data['properties'] = list(Properties.objects.filter(owner=user).values())
         data['rents'] = list(Rent.objects.filter(owner=user).values())
-        data['transactions'] = list(Transaction.objects.filter(owner=user).values())
+        data['payments'] = list(Payment.objects.filter(invoice__rent__owner=user).order_by('-payment_date').values())
     elif user.role == 'T':
         data['rents'] = list(Rent.objects.filter(tenant=user).values())
-        data['payments'] = list(Transaction.objects.filter(tenant=user).values())
+        data['payments'] = list(Payment.objects.filter(invoice__rent__tenant=user).order_by('-payment_date').values())
     
     # Create JSON response
     response = HttpResponse(

@@ -18,7 +18,7 @@
                         <div class="alert alert-info" role="alert">
                             <i class="fas fa-check-circle me-2"></i>
                             <strong>Pago ya confirmado</strong>
-                            <p class="mb-0 mt-2">Este pago fue confirmado el <strong>{{ transaction.confirmed_at|date:"d/m/Y \a \l\a\s H:i" }}</strong> y no puede ser confirmado nuevamente.</p>
+                            <p class="mb-0 mt-2">Este pago fue confirmado el <strong>{{ payment.confirmed_at|date:"d/m/Y \a \l\a\s H:i" }}</strong> y no puede ser confirmado nuevamente.</p>
                         </div>
                     {% endif %}
                     
@@ -30,23 +30,23 @@
                         </div>
                     {% endif %}
                     
-                    <p><strong>Monto:</strong> ${{ transaction.amount }}</p>
-                    <p><strong>Descripción:</strong> {{ transaction.description }}</p>
+                    <p><strong>Monto:</strong> ${{ payment.amount }}</p>
+                    <p><strong>Descripción:</strong> {{ payment.description }}</p>
                     <p><strong>Inquilino:</strong> 
-                        {% if transaction.tenant %}
-                            {{ transaction.tenant.first_name }} {{ transaction.tenant.last_name }}
-                        {% elif transaction.rent and transaction.rent.unregistered_tenant_name %}
-                            {{ transaction.rent.unregistered_tenant_name }}
+                        {% if payment.invoice.rent.tenant %}
+                            {{ payment.invoice.rent.tenant.first_name }} {{ payment.invoice.rent.tenant.last_name }}
+                        {% elif payment.invoice.rent and payment.invoice.rent.unregistered_tenant_name %}
+                            {{ payment.invoice.rent.unregistered_tenant_name }}
                         {% else %}
                             N/A
                         {% endif %}
                     </p>
-                    <p><strong>Propiedad:</strong> {{ transaction.property.alias }}</p>
+                    <p><strong>Propiedad:</strong> {{ payment.invoice.rent.property.alias }}</p>
                     
-                    {% if transaction.confirmation_file %}
+                    {% if payment.confirmation_file %}
                         <div class="mb-3">
                             <p><strong>Archivo de confirmación:</strong></p>
-                            <a href="{{ transaction.confirmation_file.url }}" target="_blank" class="btn btn-outline-info btn-sm">
+                            <a href="{{ payment.confirmation_file.url }}" target="_blank" class="btn btn-outline-info btn-sm">
                                 <i class="fas fa-file-pdf"></i> Ver archivo original
                             </a>
                         </div>
@@ -108,24 +108,24 @@
                                 <div class="row mb-3">
                                     <div class="col-6">
                                         <strong>Número de transacción:</strong><br>
-                                        <span class="text-muted">{{ transaction.transaction_number }}</span>
+                                        <span class="text-muted">{{ payment.payment_number }}</span>
                                     </div>
                                     <div class="col-6">
                                         <strong>Fecha:</strong><br>
-                                        <span class="text-muted">{{ transaction.transaction_date|date:"d/m/Y" }}</span>
+                                        <span class="text-muted">{{ payment.payment_date|date:"d/m/Y" }}</span>
                                     </div>
                                 </div>
                                 
                                 <div class="row mb-3">
                                     <div class="col-12">
                                         <strong>Inquilino:</strong><br>
-                                        {% if transaction.tenant %}
-                                            <span class="text-muted">{{ transaction.tenant.first_name }} {{ transaction.tenant.last_name }}</span><br>
-                                            <span class="text-muted">{{ transaction.tenant.email }}</span>
-                                        {% elif transaction.rent and transaction.rent.unregistered_tenant_name %}
-                                            <span class="text-muted">{{ transaction.rent.unregistered_tenant_name }}</span><br>
-                                            {% if transaction.rent.unregistered_tenant_email %}
-                                                <span class="text-muted">{{ transaction.rent.unregistered_tenant_email }}</span>
+                                        {% if payment.invoice.rent.tenant %}
+                                            <span class="text-muted">{{ payment.invoice.rent.tenant.first_name }} {{ payment.invoice.rent.tenant.last_name }}</span><br>
+                                            <span class="text-muted">{{ payment.invoice.rent.tenant.email }}</span>
+                                        {% elif payment.invoice.rent and payment.invoice.rent.unregistered_tenant_name %}
+                                            <span class="text-muted">{{ payment.invoice.rent.unregistered_tenant_name }}</span><br>
+                                            {% if payment.invoice.rent.unregistered_tenant_email %}
+                                                <span class="text-muted">{{ payment.invoice.rent.unregistered_tenant_email }}</span>
                                             {% endif %}
                                         {% else %}
                                             <span class="text-muted">N/A</span>
@@ -136,7 +136,7 @@
                                 <div class="row mb-3">
                                     <div class="col-12">
                                         <strong>Propiedad:</strong><br>
-                                        <span class="text-muted">{{ transaction.property.alias }}</span><br>
+                                        <span class="text-muted">{{ payment.invoice.rent.property.alias }}</span><br>
                                         <span class="text-muted">{{ transaction.property.address }}</span>
                                     </div>
                                 </div>
@@ -144,7 +144,7 @@
                                 <div class="row mb-3">
                                     <div class="col-12">
                                         <strong>Concepto:</strong><br>
-                                        <span class="text-muted">{{ transaction.description }}</span>
+                                        <span class="text-muted">{{ payment.description }}</span>
                                     </div>
                                 </div>
                                 
@@ -162,7 +162,7 @@
                                 <hr>
                                 <div class="text-center">
                                     <h3 class="text-success">
-                                        <strong>Total: ${{ transaction.amount }}</strong>
+                                        <strong>Total: ${{ payment.amount }}</strong>
                                     </h3>
                                 </div>
                                 <hr>

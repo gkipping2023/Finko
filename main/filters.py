@@ -1,38 +1,111 @@
 import django_filters
-from .models import Transaction, Properties, User
+from django_filters import FilterSet, ChoiceFilter, ModelChoiceFilter, DateFromToRangeFilter
+from django import forms
+from .models import Invoice, Payment, Credit, Debit, Rent, User
+from .models import INVOICE_STATUS_CHOICES, PAYMENT_STATUS_CHOICES, payment_method
 
-class TransactionFilter(django_filters.FilterSet):
-	type = django_filters.ChoiceFilter(
-		field_name='type',
-		choices=lambda: Transaction._meta.get_field('type').choices,
-		label='Tipo',
-		empty_label='All'
-	)
-	tenant = django_filters.ModelChoiceFilter(
-		queryset=User.objects.filter(role='T'),
-		label='Inquilino',
-		empty_label='All'
-	)
-	property = django_filters.ModelChoiceFilter(
-		queryset=Properties.objects.all(),
-		label='Propiedad',
-		empty_label='All'
-	)
-	date_range = django_filters.CharFilter(method='filter_date_range', label='Date Range')
 
-	class Meta:
-		model = Transaction
-		fields = ['type', 'tenant', 'property', 'date_range']
+class DateRangeWidget(forms.MultiWidget):
+    """Custom widget for date range with HTML5 date inputs."""
+    def __init__(self, attrs=None):
+        widgets = (
+            forms.DateInput(attrs={
+                'type': 'date',
+                'class': 'form-control',
+                'placeholder': 'Fecha inicio'
+            }),
+            forms.DateInput(attrs={
+                'type': 'date',
+                'class': 'form-control',
+                'placeholder': 'Fecha fin'
+            }),
+        )
+        super().__init__(widgets, attrs)
 
-	def filter_date_range(self, queryset, name, value):
-		if value:
-			try:
-				# Accepts 'YYYY-MM-DD - YYYY-MM-DD' or 'YYYY/MM/DD - YYYY/MM/DD'
-				import re
-				match = re.match(r"(\d{4}-\d{2}-\d{2})\s*-\s*(\d{4}-\d{2}-\d{2})", value)
-				if match:
-					start, end = match.groups()
-					return queryset.filter(created_at__date__gte=start, created_at__date__lte=end)
-			except Exception:
-				return queryset
-		return queryset
+    def decompress(self, value):
+        if value:
+            return value.split(',')
+        return [None, None]
+
+
+class InvoiceFilter(FilterSet):
+    status = ChoiceFilter(choices=INVOICE_STATUS_CHOICES, empty_label="Todos los estados")
+    rent = ModelChoiceFilter(queryset=Rent.objects.none(), label="Contrato")
+    invoice_date = DateFromToRangeFilter(label="Rango de fechas", widget=DateRangeWidget())
+
+    class Meta:
+        model = Invoice
+        fields = ['status', 'rent', 'invoice_date']
+
+    def __init__(self, *args, **kwargs):
+        user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+        if user is not None:
+            self.filters['rent'].queryset = Rent.objects.filter(owner=user, is_active=True)
+
+
+class PaymentFilter(FilterSet):
+    status = ChoiceFilter(choices=PAYMENT_STATUS_CHOICES, empty_label="Todos los estados")
+    payment_method = ChoiceFilter(choices=payment_method, empty_label="Todos los métodos")
+    payment_date = DateFromToRangeFilter(label="Rango de fechas", widget=DateRangeWidget())
+
+    class Meta:
+        model = Payment
+        fields = ['status', 'payment_method', 'payment_date']
+
+
+class DebitFilter(FilterSet):
+    rent = ModelChoiceFilter(queryset=Rent.objects.none(), label="Contrato")
+    debit_date = DateFromToRangeFilter(label="Rango de fechas", widget=DateRangeWidget())
+
+    class Meta:
+        model = Debit
+        fields = ['rent', 'debit_date']
+
+    def __init__(self, *args, **kwargs):
+        user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+        if user is not None:
+            self.filters['rent'].queryset = Rent.objects.filter(owner=user)
+
+
+class CreditFilter(FilterSet):
+    rent = ModelChoiceFilter(queryset=Rent.objects.none(), label="Contrato")
+    credit_date = DateFromToRangeFilter(label="Rango de fechas", widget=DateRangeWidget())
+
+    class Meta:
+        model = Credit
+        fields = ['rent', 'credit_date']
+
+    def __init__(self, *args, **kwargs):
+        user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+        if user is not None:
+            self.filters['rent'].queryset = Rent.objects.filter(owner=user)
+
+
+class AllTransactionsFilter(FilterSet):
+    """Filter for unified transactions view combining invoices, credits, and debits."""
+    rent = ModelChoiceFilter(queryset=Rent.objects.none(), label="Contrato")
+    transaction_type = ChoiceFilter(
+        choices=[('all', 'Todos'), ('invoice', 'Facturas'), ('credit', 'Créditos'), ('debit', 'Cargos')],
+        method='filter_transaction_type',
+        initial='all',
+        label="Tipo de Transacción"
+    )
+    invoice_date = DateFromToRangeFilter(label="Rango de fechas", widget=DateRangeWidget())
+
+    class Meta:
+        model = Invoice
+        fields = ['invoice_date']
+
+    def __init__(self, *args, **kwargs):
+        user = kwargs.pop('user', None)
+        self.user = user
+        super().__init__(*args, **kwargs)
+        if user is not None:
+            self.filters['rent'].queryset = Rent.objects.filter(owner=user, is_active=True)
+
+    def filter_transaction_type(self, queryset, name, value):
+        # This filter is handled in the view; placeholder here
+        return queryset

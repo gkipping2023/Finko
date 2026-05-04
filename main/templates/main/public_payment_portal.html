@@ -62,10 +62,10 @@
             <!-- Transaction Date and Amount -->
             <div class="row mb-3">
               <div class="col-md-6">
-                <label for="{{ form.transaction_date.id_for_label }}" class="form-label fw-bold">
-                  <i class="fas fa-calendar text-info me-1"></i>{{ form.transaction_date.label }}
+                  <label for="{{ form.payment_date.id_for_label }}" class="form-label fw-bold">
+                  <i class="fas fa-calendar text-info me-1"></i>{{ form.payment_date.label }}
                 </label>
-                {{ form.transaction_date }}
+                {{ form.payment_date }}
                 {% if form.transaction_date.errors %}
                   <div class="text-danger small mt-1">{{ form.transaction_date.errors.0 }}</div>
                 {% endif %}

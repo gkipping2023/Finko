@@ -5,17 +5,9 @@ from django_countries import countries
 from django.db.models import Max
 from datetime import datetime
 from decimal import Decimal
+import uuid
 
 # Create your models lists here.
-
-TRANSACTION_TYPES = (
-        ('invoice', 'Factura'),
-        ('receipt', 'Recibo'),
-        ('credit', 'Credito'),
-        ('debit', 'Debito'),
-        ('fee', 'Recargo'),
-        ('pago', 'Pago'),
-    )
 
 ID_Type = (
     ('cedula','Cédula'),
@@ -275,89 +267,6 @@ class Rent(models.Model):
         return f"{self.rent_number} - {self.tenant or self.unregistered_tenant_name} - {self.property}"
 
 
-class Transaction(models.Model):
-
-    confirmation_file = models.FileField(upload_to='payment_confirmations/', null=True, blank=True)
-    status = models.CharField(max_length=20, choices=[('pending', 'Pendiente'), ('confirmed', 'Confirmado'), ('rejected', 'Rechazado')], default='pending')
-    type = models.CharField(choices=TRANSACTION_TYPES, max_length=50)
-    owner = models.ForeignKey(User, on_delete=models.CASCADE,limit_choices_to={'role': 'O'},related_name='owner_transactions')  # The user who owns the transaction
-    tenant = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True,limit_choices_to={'role': 'T'},related_name='tenant_transactions')  # Optional tenant
-    property = models.ForeignKey(Properties, on_delete=models.CASCADE, null=True, blank=True)  # Optional property
-    rent = models.ForeignKey(Rent, on_delete=models.CASCADE, null=True, blank=True, related_name='transactions')  # Optional rent
-    amount = models.DecimalField(max_digits=10, decimal_places=2)
-    description = models.TextField(max_length=250, blank=True, null=True)
-    payment_method = models.CharField(choices=payment_method, max_length=100)
-    due_date = models.DateField(null=True, blank=True)
-    is_paid = models.BooleanField(default=False)
-    sequence_number = models.PositiveIntegerField(editable=False)
-    transaction_number = models.CharField(max_length=100, unique=True, editable=False)
-    transaction_date = models.DateField(null=True, blank=False)  # Date when the transaction was created
-    created_at = models.DateTimeField(null=True, blank=False, default=datetime.now)
-    updated_at = models.DateTimeField(auto_now=True)
-    
-    # New fields for invoice/payment integration
-    is_legacy_only = models.BooleanField(
-        default=True,
-        help_text="True = old workflow only, False = integrated with new Invoice/Payment system"
-    )
-    invoice = models.ForeignKey(
-        'Invoice',
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='legacy_transactions',
-        help_text="Invoice this transaction is linked to (new workflow)"
-    )
-    payment = models.OneToOneField(
-        'Payment',
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='transaction_ref',
-        help_text="Links to new Payment model if created via new workflow"
-    )
-    confirmed_at = models.DateTimeField(
-        null=True,
-        blank=True,
-        help_text="Timestamp when payment was confirmed to prevent duplicate confirmations"
-    )
-
-    def save(self, *args, **kwargs):
-        if not self.pk:
-            # Only generate sequence number for new transactions
-            # Use a more robust approach to prevent duplicate transaction numbers
-            import uuid
-            from django.db import transaction
-            
-            with transaction.atomic():
-                # Get the last sequence number for this owner, type, and property
-                last_number = Transaction.objects.filter(
-                    owner=self.owner, 
-                    type=self.type, 
-                    property=self.property
-                ).aggregate(
-                    Max('sequence_number')
-                )['sequence_number__max'] or 0 # Default to 0 if no transactions exist
-                self.sequence_number = last_number + 1 # Increment the sequence number
-
-                # Build the transaction number with property_id included
-                padded_seq = str(self.sequence_number).zfill(4)
-                property_id = self.property.id if self.property else 0
-                base_transaction_number = f"{self.type.upper()}-{self.owner.id}-{property_id}-{padded_seq}"
-                
-                # Check if this transaction number already exists
-                counter = 0
-                self.transaction_number = base_transaction_number
-                while Transaction.objects.filter(transaction_number=self.transaction_number).exists():
-                    counter += 1
-                    self.transaction_number = f"{base_transaction_number}-{counter}"
-
-        super().save(*args, **kwargs)
-
-    def __str__(self):
-        return f"{self.transaction_number} - {self.amount} ({self.created_at.strftime('%Y-%m-%d')})"
-
-
 class AuditLog(models.Model):
     """Track data access for Ley 81 compliance"""
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
@@ -472,6 +381,13 @@ class Invoice(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
+    # Public portal token (for tenant-facing payment link)
+    payment_token = models.UUIDField(
+        default=uuid.uuid4,
+        editable=False,
+        unique=True
+    )
+    
     class Meta:
         ordering = ['-due_date']
         indexes = [
@@ -538,88 +454,194 @@ class Invoice(models.Model):
 
 class Payment(models.Model):
     """
-    Represents a single payment that applies to one or more invoices.
+    Represents a single payment applied to an invoice.
     Links payments to specific invoices for accurate tracking.
     """
     invoice = models.ForeignKey(
-        Invoice, 
-        on_delete=models.CASCADE, 
+        Invoice,
+        on_delete=models.CASCADE,
         related_name='payments'
     )
-    
+
+    # Payment identification
+    payment_number = models.CharField(
+        max_length=100,
+        unique=True,
+        editable=False,
+        help_text="Auto-generated unique payment identifier"
+    )
+
     # Payment details
     amount = models.DecimalField(
-        max_digits=10, 
+        max_digits=10,
         decimal_places=2,
         help_text="Amount paid"
     )
-    
+
     # Dates
     payment_date = models.DateField(
         help_text="Date when payment was made"
     )
     created_at = models.DateTimeField(auto_now_add=True)
-    
+
+    # Confirmation
+    confirmed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Timestamp when owner confirmed the payment"
+    )
+
     # Payment method
     payment_method = models.CharField(
         max_length=100,
         choices=payment_method,
         help_text="How the payment was made"
     )
-    
-    # Status and confirmation
+
+    # Status
     status = models.CharField(
         max_length=20,
         choices=PAYMENT_STATUS_CHOICES,
         default='pending'
     )
-    
-    # Link to original Transaction (for backward compatibility)
-    transaction = models.OneToOneField(
-        'Transaction',
-        on_delete=models.SET_NULL,
+
+    # Confirmation file (tenant upload)
+    confirmation_file = models.FileField(
+        upload_to='payment_confirmations/',
         null=True,
-        blank=True,
-        related_name='payment_ref',
-        help_text="Original Transaction record for audit trail"
+        blank=True
     )
-    
+
     # Metadata
     description = models.TextField(
         max_length=250,
         blank=True,
         null=True
     )
-    
+
     class Meta:
         ordering = ['-payment_date']
         indexes = [
             models.Index(fields=['invoice', 'payment_date']),
             models.Index(fields=['status']),
         ]
-    
+
     def __str__(self):
-        return f"Payment ${self.amount} for {self.invoice.invoice_number} on {self.payment_date}"
-    
+        return f"{self.payment_number} - ${self.amount} ({self.payment_date})"
+
     def save(self, *args, **kwargs):
-        """Update invoice paid_amount when payment is confirmed"""
+        if not self.pk and not self.payment_number:
+            from django.db import transaction as db_transaction
+            with db_transaction.atomic():
+                last_number = Payment.objects.filter(
+                    invoice__rent=self.invoice.rent
+                ).aggregate(
+                    Max('id')
+                )['id__max'] or 0
+                seq = last_number + 1
+                rent_id = self.invoice.rent.id
+                padded_seq = str(seq).zfill(4)
+                base = f"PAY-{rent_id}-{padded_seq}"
+                self.payment_number = base
+                counter = 0
+                while Payment.objects.filter(payment_number=self.payment_number).exists():
+                    counter += 1
+                    self.payment_number = f"{base}-{counter}"
         super().save(*args, **kwargs)
-        
-        # Recalculate invoice paid_amount
-        if self.status == 'confirmed':
-            total_paid = self.invoice.payments.filter(
-                status='confirmed'
-            ).aggregate(total=models.Sum('amount'))['total'] or 0
-            
-            self.invoice.paid_amount = total_paid
-            
-            # Update invoice status
-            if total_paid >= self.invoice.amount:
-                self.invoice.status = 'paid'
-            elif total_paid > 0:
-                self.invoice.status = 'partial'
-            elif self.invoice.is_past_due() and not self.invoice.late_fee_amount:
-                self.invoice.status = 'overdue'
-            
-            self.invoice.save()
+
+
+class Credit(models.Model):
+    """
+    A manual credit applied to a rent account.
+    Subtracts from the tenant's balance (e.g. discount, overpayment refund).
+    """
+    rent = models.ForeignKey(
+        Rent,
+        on_delete=models.CASCADE,
+        related_name='credits'
+    )
+    credit_number = models.CharField(
+        max_length=100,
+        unique=True,
+        editable=False
+    )
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    credit_date = models.DateField()
+    description = models.TextField(max_length=250)
+    created_at = models.DateTimeField(auto_now_add=True)
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='issued_credits'
+    )
+
+    class Meta:
+        ordering = ['-credit_date']
+
+    def __str__(self):
+        return f"{self.credit_number} - ${self.amount} ({self.credit_date})"
+
+    def save(self, *args, **kwargs):
+        if not self.pk and not self.credit_number:
+            from django.db import transaction as db_transaction
+            with db_transaction.atomic():
+                last = Credit.objects.filter(rent=self.rent).aggregate(Max('id'))['id__max'] or 0
+                seq = last + 1
+                base = f"CRED-{self.rent.id}-{str(seq).zfill(4)}"
+                self.credit_number = base
+                counter = 0
+                while Credit.objects.filter(credit_number=self.credit_number).exists():
+                    counter += 1
+                    self.credit_number = f"{base}-{counter}"
+        super().save(*args, **kwargs)
+
+
+class Debit(models.Model):
+    """
+    A manual debit applied to a rent account.
+    Adds to the tenant's balance (e.g. damage repair, extra charge).
+    """
+    rent = models.ForeignKey(
+        Rent,
+        on_delete=models.CASCADE,
+        related_name='debits'
+    )
+    debit_number = models.CharField(
+        max_length=100,
+        unique=True,
+        editable=False
+    )
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    debit_date = models.DateField()
+    description = models.TextField(max_length=250)
+    created_at = models.DateTimeField(auto_now_add=True)
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='issued_debits'
+    )
+
+    class Meta:
+        ordering = ['-debit_date']
+
+    def __str__(self):
+        return f"{self.debit_number} - ${self.amount} ({self.debit_date})"
+
+    def save(self, *args, **kwargs):
+        if not self.pk and not self.debit_number:
+            from django.db import transaction as db_transaction
+            with db_transaction.atomic():
+                last = Debit.objects.filter(rent=self.rent).aggregate(Max('id'))['id__max'] or 0
+                seq = last + 1
+                base = f"DEB-{self.rent.id}-{str(seq).zfill(4)}"
+                self.debit_number = base
+                counter = 0
+                while Debit.objects.filter(debit_number=self.debit_number).exists():
+                    counter += 1
+                    self.debit_number = f"{base}-{counter}"
+        super().save(*args, **kwargs)
 

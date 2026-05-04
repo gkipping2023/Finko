@@ -295,7 +295,7 @@
   {% endif %}
 
   <!-- ── Payments section ────────────────────── -->
-  {% if transactions %}
+  {% if payments %}
   <div class="section-title">Pagos Recibidos &mdash; Recibos Confirmados</div>
   {% if property %}
     <!-- Single property: flat list -->
@@ -310,11 +310,11 @@
         </tr>
       </thead>
       <tbody>
-        {% for t in transactions %}
+        {% for t in payments %}
         <tr>
-          <td class="mono">{{ t.transaction_number }}</td>
+          <td class="mono">{{ t.payment_number }}</td>
           <td class="mono">{% if t.invoice %}{{ t.invoice.invoice_number }}{% else %}&mdash;{% endif %}</td>
-          <td>{{ t.transaction_date|date:"d M Y" }}</td>
+          <td>{{ t.payment_date|date:"d M Y" }}</td>
           <td>{{ t.get_payment_method_display }}</td>
           <td class="r amount-bold">${{ t.amount }}</td>
         </tr>
@@ -329,7 +329,7 @@
     </table>
   {% else %}
     <!-- All properties: grouped -->
-    {% regroup transactions by property.alias as prop_groups %}
+    {% regroup payments by invoice.rent.property.alias as prop_groups %}
     {% for prop_group in prop_groups %}
     <div class="prop-label">{{ prop_group.grouper }}</div>
     <table>
@@ -345,9 +345,9 @@
       <tbody>
         {% for t in prop_group.list %}
         <tr>
-          <td class="mono">{{ t.transaction_number }}</td>
+          <td class="mono">{{ t.payment_number }}</td>
           <td class="mono">{% if t.invoice %}{{ t.invoice.invoice_number }}{% else %}&mdash;{% endif %}</td>
-          <td>{{ t.transaction_date|date:"d M Y" }}</td>
+          <td>{{ t.payment_date|date:"d M Y" }}</td>
           <td>{{ t.get_payment_method_display }}</td>
           <td class="r amount-bold">${{ t.amount }}</td>
         </tr>

@@ -2,7 +2,133 @@
 from decimal import Decimal
 from datetime import date
 from django.db.models import Sum, Q, F
-from .models import Invoice, Payment, Rent
+from .models import Invoice, Payment, Rent, Credit, Debit
+
+
+class RentAccountStatus:
+    """
+    Comprehensive rental account status calculation using the 4-model system:
+    Invoice + Debit = adds to balance
+    Payment (confirmed) + Credit = subtracts from balance
+    balance_owed = (Σ Invoice.amount + Σ Invoice.late_fee_amount + Σ Debit.amount)
+                 - (Σ confirmed Payment.amount + Σ Credit.amount)
+    """
+
+    def __init__(self, rent):
+        self.rent = rent
+        self.today = date.today()
+
+    def get_status(self):
+        """
+        Returns comprehensive status dict:
+        {
+            'is_past_due': bool,
+            'days_past_due': int,
+            'balance_owed': Decimal,
+            'total_invoiced': Decimal,
+            'total_paid': Decimal,
+            'total_late_fees': Decimal,
+            'total_credits': Decimal,
+            'total_debits': Decimal,
+            'status': str ('good', 'partial', 'late', 'overdue_with_fee'),
+            'next_due_date': date or None,
+            'next_due_amount': Decimal,
+            'late_fee_info': dict or None,
+        }
+        """
+        invoices = self.rent.invoices.all()
+
+        # Charges
+        total_invoiced = invoices.aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
+        total_late_fees = invoices.aggregate(total=Sum('late_fee_amount'))['total'] or Decimal('0.00')
+        total_debits = self.rent.debits.aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
+
+        # Credits
+        total_paid = Payment.objects.filter(
+            invoice__rent=self.rent, status='confirmed'
+        ).aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
+        total_credits = self.rent.credits.aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
+
+        balance_owed = (total_invoiced + total_late_fees + total_debits) - (total_paid + total_credits)
+        balance_owed = max(balance_owed, Decimal('0.00'))
+
+        # Overdue invoices
+        overdue_invoices = invoices.filter(
+            due_date__lt=self.today,
+            paid_amount__lt=F('amount')
+        ).order_by('due_date')
+
+        days_past_due = 0
+        if overdue_invoices.exists():
+            oldest_overdue = overdue_invoices.first()
+            days_past_due = (self.today - oldest_overdue.due_date).days
+
+        status = self._determine_status(invoices, balance_owed)
+
+        next_invoice = invoices.filter(
+            due_date__gte=self.today,
+            status__in=['pending', 'partial']
+        ).order_by('due_date').first()
+
+        next_due_date = next_invoice.due_date if next_invoice else None
+        next_due_amount = (next_invoice.amount - next_invoice.paid_amount) if next_invoice else Decimal('0.00')
+
+        return {
+            'is_past_due': days_past_due > 0,
+            'days_past_due': days_past_due,
+            'balance_owed': balance_owed,
+            'total_invoiced': total_invoiced,
+            'total_paid': total_paid,
+            'total_late_fees': total_late_fees,
+            'total_credits': total_credits,
+            'total_debits': total_debits,
+            'status': status,
+            'next_due_date': next_due_date,
+            'next_due_amount': next_due_amount,
+            'late_fee_info': self._get_late_fee_info(invoices),
+        }
+
+    def _determine_status(self, invoices, balance_owed):
+        if balance_owed <= 0:
+            return 'good'
+
+        has_late_fee = invoices.filter(late_fee_amount__gt=0).exists()
+        if has_late_fee:
+            return 'overdue_with_fee'
+
+        has_overdue = invoices.filter(
+            due_date__lt=self.today,
+            paid_amount__lt=F('amount')
+        ).exists()
+        if has_overdue:
+            return 'late'
+
+        has_partial = invoices.filter(
+            paid_amount__gt=0,
+            paid_amount__lt=F('amount')
+        ).exists()
+        if has_partial:
+            return 'partial'
+
+        return 'good'
+
+    def _get_late_fee_info(self, invoices):
+        invoices_with_fees = invoices.filter(
+            late_fee_amount__gt=0,
+            late_fee_applied_date__isnull=False
+        )
+        if not invoices_with_fees.exists():
+            return None
+        return {
+            'count': invoices_with_fees.count(),
+            'total_fees': invoices_with_fees.aggregate(
+                total=Sum('late_fee_amount')
+            )['total'] or Decimal('0.00'),
+            'earliest_applied': invoices_with_fees.order_by(
+                'late_fee_applied_date'
+            ).first().late_fee_applied_date,
+        }
+
 
 
 class RentAccountStatus:
@@ -31,9 +157,10 @@ class RentAccountStatus:
         }
         """
         invoices = self.rent.invoices.all()
-        transactions = self.rent.transactions.all()
+        credits = Credit.objects.filter(rent=self.rent)
+        debits = Debit.objects.filter(rent=self.rent)
         
-        if not invoices.exists() and not transactions.exists():
+        if not invoices.exists() and not credits.exists() and not debits.exists():
             return self._get_no_invoice_status()
         
         # Get all invoices and their status
@@ -49,44 +176,18 @@ class RentAccountStatus:
             total=Sum('late_fee_amount')
         )['total'] or Decimal('0.00')
         
-        # Sum LEGACY transaction amounts (manual entries by owners)
-        # Only count is_legacy_only=True to avoid double-counting invoice-linked transactions
-        # Transactions with is_legacy_only=False are already reflected in invoice paid_amount
+        # Credits reduce balance; Debits increase balance
+        total_credits = credits.aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
+        total_debits = debits.aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
         
-        # Charge transactions: invoice, fee, debit (increase balance)
-        # These add to what the tenant owes
-        legacy_charge_transactions = transactions.filter(
-            type__in=['invoice', 'fee', 'debit'],
-            status='confirmed',
-            is_legacy_only=True  # Only count manual transactions not linked to invoices
-        ).aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
-        
-        # Payment transactions: receipt, credit, pago (decrease balance)
-        # These reduce what the tenant owes
-        # Must be confirmed by owner before reducing balance
-        legacy_payment_transactions = transactions.filter(
-            type__in=['receipt', 'credit', 'pago'],
-            status='confirmed',
-            is_legacy_only=True  # Only count manual transactions not linked to invoices
-        ).aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
-        
-        # Calculate total balance:
-        # - Start with invoice amounts (charges to tenant)
-        # - Subtract payments made via invoice system
-        # - Add late fees
-        # ONLY add legacy transactions if there are NO invoices in the new system
-        # This prevents legacy credits from hiding new invoice balances
-        if total_invoiced == Decimal('0.00'):
-            # No invoices in new system, use legacy transactions
-            balance_owed = legacy_charge_transactions - legacy_payment_transactions
-        else:
-            # New invoice system active, show invoice balances
-            # (Legacy transactions should have been migrated or settled)
-            balance_owed = (
-                total_invoiced 
-                - total_paid 
-                + (total_late_fees or Decimal('0.00'))
-            )
+        # balance = invoiced + late_fees + debits - paid - credits
+        balance_owed = (
+            total_invoiced
+            + (total_late_fees or Decimal('0.00'))
+            + total_debits
+            - total_paid
+            - total_credits
+        )
         
         # Get most recent overdue invoice
         overdue_invoices = invoices.filter(
@@ -118,8 +219,8 @@ class RentAccountStatus:
             'total_invoiced': total_invoiced,
             'total_paid': total_paid,
             'total_late_fees': total_late_fees or Decimal('0.00'),
-            'legacy_charges': legacy_charge_transactions,
-            'legacy_payments': legacy_payment_transactions,
+            'total_credits': total_credits,
+            'total_debits': total_debits,
             'status': status,
             'next_due_date': next_due_date,
             'next_due_amount': next_due_amount,

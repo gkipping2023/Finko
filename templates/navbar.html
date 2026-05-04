@@ -31,7 +31,7 @@
           </a>
         </li>
         <li class="nav-item">
-          <a class="nav-link  " href="{% url 'payments' %}">
+          <a class="nav-link  " href="{% url 'invoices' %}">
             <div class="icon icon-shape icon-sm shadow border-radius-md bg-white text-center me-2 d-flex align-items-center justify-content-center">
               <svg width="12px" height="12px" viewBox="0 0 42 42" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
                 <title>office</title>
@@ -230,8 +230,16 @@
           <a class="nav-link fs-6" href="{% url 'properties' %}">Properties</a>
         </li>
         {% if request.user.role == "O" %}
-        <li class="nav-item">
-          <a class="nav-link fs-6" href="{% url 'payments' %}">Transactions</a>
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle fs-6" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+            Transacciones
+          </a>
+          <ul class="dropdown-menu">
+            <li><a class="dropdown-item" href="{% url 'all_transactions' %}">Todas</a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" href="{% url 'invoices' %}">Facturas</a></li>
+            <li><a class="dropdown-item" href="{% url 'adjustments' %}">Ajustes</a></li>
+          </ul>
         </li>
         <li class="nav-item">
           <a class="nav-link fs-6" href="{% url 'generate_documents' %}">Reportes</a>
@@ -251,7 +259,7 @@
           <a class="nav-link fs-6" href="{% url 'documents' %}">Documents</a>
         </li>
         <li class="nav-item">
-          <a class="nav-link fs-6" href="{% url 'expenses' %}">Expenses</a>
+          <a class="nav-link fs-6" href="{% url 'adjustments' %}">Expenses</a>
         </li>
         <li class="nav-item">
           <a class="nav-link fs-6" href="{% url 'maintenance' %}">Maintenance</a>
@@ -375,7 +383,7 @@
         <div style="font-size:11px; line-height:1.2;">Propiedades</div>
       </a>
       {% if request.user.role == "O" %}
-      <a href="{% url 'payments' %}" class="text-center text-dark small flex-shrink-0" style="width:20%; min-width:60px; text-decoration:none;">
+      <a href="{% url 'all_transactions' %}" class="text-center text-dark small flex-shrink-0" style="width:20%; min-width:60px; text-decoration:none;">
         <div><i class="fa fa-money-bill-wave fa-lg" aria-hidden="true"></i></div>
         <div style="font-size:11px; line-height:1.2;">Transacciones</div>
       </a>

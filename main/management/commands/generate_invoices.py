@@ -1,6 +1,7 @@
 from django.core.management.base import BaseCommand
 from django.utils.timezone import now
-from main.models import Rent, Transaction, Invoice
+from django.conf import settings
+from main.models import Rent, Invoice
 from main.mailgun_utils import send_mailgun_simple
 from datetime import timedelta, date
 from calendar import monthrange
@@ -30,22 +31,6 @@ class Command(BaseCommand):
                     status='pending'
                 )
                 
-                # Also create legacy Transaction record for backward compatibility
-                transaction = Transaction.objects.create(
-                    type='invoice',
-                    owner=rent.owner,
-                    tenant=rent.tenant,
-                    property=rent.property,
-                    rent=rent,
-                    amount=rent.rent_amount,
-                    description=f"Factura mensual para {rent.property.alias}",
-                    due_date=due_date,
-                    transaction_date=today,
-                    payment_method='other',  # Default payment method
-                    is_legacy_only=False,
-                    invoice=invoice
-                )
-
                 # Track invoice for owner summary
                 if rent.owner.id not in owner_invoices:
                     owner_invoices[rent.owner.id] = {
@@ -156,7 +141,8 @@ class Command(BaseCommand):
                 send_mailgun_simple(
                     to_emails=tenant_email,
                     subject=f"Nueva Factura - {rent.property.alias}",
-                    html=email_html
+                    html=email_html,
+                    from_email=settings.DEFAULT_FROM_EMAIL
                 )
 
                 # Update the next invoice date to 30 days from today

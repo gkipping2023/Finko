@@ -1,0 +1,262 @@
+{% extends "index.html" %}
+{% load static %}
+{% load widget_tweaks %}
+{% block content %}
+
+<style>
+  .django-filters .filter-date-range {
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+  }
+  
+  .django-filters .filter-date-range input[type="date"] {
+    flex: 1;
+    min-width: 150px;
+  }
+  
+  .django-filters .form-group {
+    margin-bottom: 1rem;
+  }
+  
+  .django-filters .form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+  }
+</style>
+
+<div class="container-fluid py-4">
+  <div class="row">
+    <!-- Credits Section -->
+    <div class="col-12 mb-4">
+      <div class="card shadow border-0">
+        <div class="card-header bg-gradient-success pb-3 border-radius-lg d-flex justify-content-between align-items-center">
+          <div>
+            <h4 class="text-white mb-0">Créditos</h4>
+            <p class="text-white-50 mb-0">Ajustes a favor del inquilino</p>
+          </div>
+          <button class="btn btn-light text-success fw-bold" data-bs-toggle="modal" data-bs-target="#creditModal">
+            <i class="fas fa-plus me-1"></i> Nuevo Crédito
+          </button>
+        </div>
+        <div class="card-body">
+          <!-- Credits Filter Accordion -->
+          {% if credit_filter %}
+          <div class="accordion mb-4" id="creditFilterAccordion">
+            <div class="accordion-item border-0 shadow-sm" style="border-radius: 12px;">
+              <h2 class="accordion-header" id="creditFilterHeading">
+                <button class="accordion-button collapsed fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#creditFilterCollapse" aria-expanded="false" aria-controls="creditFilterCollapse" style="background: linear-gradient(135deg, #e3e3e7 0%, #f4f4f5 100%); color: #344767; border-radius: 12px;">
+                  <i class="fas fa-sliders-h me-2" style="color: #27ae60;"></i> Filtros Avanzados
+                </button>
+              </h2>
+              <div id="creditFilterCollapse" class="accordion-collapse collapse" aria-labelledby="creditFilterHeading" data-bs-parent="#creditFilterAccordion">
+                <div class="accordion-body" style="background: #ffffff; border-radius: 0 0 12px 12px;">
+                  <form method="get" class="row align-items-end">
+                    <div class="col-md-4 mb-3">
+                      <label for="id_credit_rent" class="form-label fw-semibold text-dark">Contrato</label>
+                      {% render_field credit_filter.form.rent class="form-control" %}
+                    </div>
+                    <div class="col-md-2 mb-3">
+                      <label for="credit_date_0" class="form-label fw-semibold text-dark">Desde</label>
+                      <input type="date" id="credit_date_0" name="credit_date_0" class="form-control" value="{{ request.GET.credit_date_0 }}">
+                    </div>
+                    <div class="col-md-2 mb-3">
+                      <label for="credit_date_1" class="form-label fw-semibold text-dark">Hasta</label>
+                      <input type="date" id="credit_date_1" name="credit_date_1" class="form-control" value="{{ request.GET.credit_date_1 }}">
+                    </div>
+                    <div class="col-md-4 mb-3">
+                      <button type="submit" class="btn btn-success w-100 fw-bold">
+                        <i class="fas fa-filter me-2"></i> Filtrar
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            </div>
+          </div>
+          {% endif %}
+          <div class="table-responsive">
+            <table class="table align-middle mb-0">
+              <thead>
+                <tr>
+                  <th>Crédito #</th>
+                  <th>Fecha</th>
+                  <th>Contrato</th>
+                  <th>Propiedad</th>
+                  <th>Descripción</th>
+                  <th>Monto</th>
+                  <th>PDF</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for credit in credits %}
+                <tr>
+                  <td><strong>{{ credit.credit_number }}</strong></td>
+                  <td>{{ credit.credit_date }}</td>
+                  <td>{{ credit.rent.rent_number }}</td>
+                  <td>{{ credit.rent.property.alias }}</td>
+                  <td>{{ credit.description }}</td>
+                  <td class="text-success fw-bold">${{ credit.amount }}</td>
+                  <td>
+                    <a href="{% url 'credit_pdf' credit.id %}" class="btn btn-sm btn-outline-success" target="_blank">
+                      <i class="fas fa-file-pdf"></i>
+                    </a>
+                  </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="7" class="text-center text-secondary py-3">No hay créditos registrados.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Debits Section -->
+    <div class="col-12">
+      <div class="card shadow border-0">
+        <div class="card-header bg-gradient-danger pb-3 border-radius-lg d-flex justify-content-between align-items-center">
+          <div>
+            <h4 class="text-white mb-0">Cargos (Débitos)</h4>
+            <p class="text-white-50 mb-0">Ajustes adicionales al balance del inquilino</p>
+          </div>
+          <button class="btn btn-light text-danger fw-bold" data-bs-toggle="modal" data-bs-target="#debitModal">
+            <i class="fas fa-plus me-1"></i> Nuevo Cargo
+          </button>
+        </div>
+        <div class="card-body">
+          <!-- Debits Filter Accordion -->
+          {% if debit_filter %}
+          <div class="accordion mb-4" id="debitFilterAccordion">
+            <div class="accordion-item border-0 shadow-sm" style="border-radius: 12px;">
+              <h2 class="accordion-header" id="debitFilterHeading">
+                <button class="accordion-button collapsed fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#debitFilterCollapse" aria-expanded="false" aria-controls="debitFilterCollapse" style="background: linear-gradient(135deg, #e3e3e7 0%, #f4f4f5 100%); color: #344767; border-radius: 12px;">
+                  <i class="fas fa-sliders-h me-2" style="color: #dc3545;"></i> Filtros Avanzados
+                </button>
+              </h2>
+              <div id="debitFilterCollapse" class="accordion-collapse collapse" aria-labelledby="debitFilterHeading" data-bs-parent="#debitFilterAccordion">
+                <div class="accordion-body" style="background: #ffffff; border-radius: 0 0 12px 12px;">
+                  <form method="get" class="row align-items-end">
+                    <div class="col-md-4 mb-3">
+                      <label for="id_debit_rent" class="form-label fw-semibold text-dark">Contrato</label>
+                      {% render_field debit_filter.form.rent class="form-control" %}
+                    </div>
+                    <div class="col-md-2 mb-3">
+                      <label for="debit_date_0" class="form-label fw-semibold text-dark">Desde</label>
+                      <input type="date" id="debit_date_0" name="debit_date_0" class="form-control" value="{{ request.GET.debit_date_0 }}">
+                    </div>
+                    <div class="col-md-2 mb-3">
+                      <label for="debit_date_1" class="form-label fw-semibold text-dark">Hasta</label>
+                      <input type="date" id="debit_date_1" name="debit_date_1" class="form-control" value="{{ request.GET.debit_date_1 }}">
+                    </div>
+                    <div class="col-md-4 mb-3">
+                      <button type="submit" class="btn btn-danger w-100 fw-bold">
+                        <i class="fas fa-filter me-2"></i> Filtrar
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            </div>
+          </div>
+          {% endif %}
+          <div class="table-responsive">
+            <table class="table align-middle mb-0">
+              <thead>
+                <tr>
+                  <th>Débito #</th>
+                  <th>Fecha</th>
+                  <th>Contrato</th>
+                  <th>Propiedad</th>
+                  <th>Descripción</th>
+                  <th>Monto</th>
+                  <th>PDF</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for debit in debits %}
+                <tr>
+                  <td><strong>{{ debit.debit_number }}</strong></td>
+                  <td>{{ debit.debit_date }}</td>
+                  <td>{{ debit.rent.rent_number }}</td>
+                  <td>{{ debit.rent.property.alias }}</td>
+                  <td>{{ debit.description }}</td>
+                  <td class="text-danger fw-bold">${{ debit.amount }}</td>
+                  <td>
+                    <a href="{% url 'debit_pdf' debit.id %}" class="btn btn-sm btn-outline-danger" target="_blank">
+                      <i class="fas fa-file-pdf"></i>
+                    </a>
+                  </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="7" class="text-center text-secondary py-3">No hay cargos registrados.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Credit Modal -->
+<div class="modal fade" id="creditModal" tabindex="-1" aria-labelledby="creditModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="creditModalLabel">Aplicar Crédito</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="add_credit">
+        <div class="modal-body">
+          {% for field in credit_form %}
+            <div class="mb-3">
+              <label class="form-label fw-semibold">{{ field.label }}</label>
+              {% render_field field class="form-control" %}
+              {% if field.errors %}<div class="text-danger small">{{ field.errors|striptags }}</div>{% endif %}
+            </div>
+          {% endfor %}
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-success fw-bold">Aplicar Crédito</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Debit Modal -->
+<div class="modal fade" id="debitModal" tabindex="-1" aria-labelledby="debitModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="debitModalLabel">Aplicar Cargo</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="add_debit">
+        <div class="modal-body">
+          {% for field in debit_form %}
+            <div class="mb-3">
+              <label class="form-label fw-semibold">{{ field.label }}</label>
+              {% render_field field class="form-control" %}
+              {% if field.errors %}<div class="text-danger small">{{ field.errors|striptags }}</div>{% endif %}
+            </div>
+          {% endfor %}
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-danger fw-bold">Aplicar Cargo</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

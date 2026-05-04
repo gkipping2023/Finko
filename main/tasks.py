@@ -1,6 +1,6 @@
 from celery import shared_task
 from django.utils.timezone import now
-from .models import Rent, Transaction, Invoice
+from .models import Rent, Invoice
 from .mailgun_utils import send_mailgun_simple
 from datetime import timedelta, date
 from decimal import Decimal
@@ -20,31 +20,15 @@ def generate_invoices():
 
     for rent in rents:
         # Due date is the day after invoice generation
-        # This gives tenant 5 days to pay before late fee on 6th day past due
         due_date = today + timedelta(days=1)
-        
-        # Create Invoice (NEW WORKFLOW)
+
+        # Create Invoice
         invoice = Invoice.objects.create(
             rent=rent,
             invoice_date=today,
             due_date=due_date,
             amount=rent.rent_amount,
             status='pending'
-        )
-        
-        # Create Transaction for backward compatibility
-        Transaction.objects.create(
-            type='invoice',
-            owner=rent.owner,
-            tenant=rent.tenant,
-            property=rent.property,
-            rent=rent,
-            amount=rent.rent_amount,
-            description=f"Monthly rent for {rent.property.alias}",
-            due_date=due_date,
-            transaction_date=today,
-            invoice=invoice,
-            is_legacy_only=False
         )
 
         # Track invoice for owner summary
@@ -53,7 +37,7 @@ def generate_invoices():
                 'owner': rent.owner,
                 'invoices': []
             }
-        
+
         # Determine tenant name for tracking
         if rent.unregistered_tenant_email:
             tenant_display_name = rent.unregistered_tenant_name or "Inquilino"
@@ -61,7 +45,7 @@ def generate_invoices():
             tenant_display_name = rent.tenant.get_full_name() or rent.tenant.first_name
         else:
             tenant_display_name = "Sin nombre"
-        
+
         owner_invoices[rent.owner.id]['invoices'].append({
             'invoice': invoice,
             'property': rent.property.alias,
@@ -72,15 +56,12 @@ def generate_invoices():
 
         # Determine tenant email and name - PRIORITIZE unregistered tenant
         if rent.unregistered_tenant_email:
-            # PRIMARY: Use unregistered tenant (actual tenant of record)
             tenant_name = rent.unregistered_tenant_name or "Inquilino"
             tenant_email = rent.unregistered_tenant_email
         elif rent.tenant and rent.tenant.email:
-            # SECONDARY: Use registered tenant as fallback
             tenant_name = rent.tenant.get_full_name() or rent.tenant.first_name
             tenant_email = rent.tenant.email
         else:
-            # SKIP: No valid email found
             continue
         
         # Send email to the tenant via Mailgun
