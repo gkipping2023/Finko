@@ -84,6 +84,82 @@ def payment_pdf(request, payment_id):
 
 
 @login_required(login_url='log_in')
+def resend_document(request, doc_type, doc_id):
+    """Resend a PDF document (invoice, credit, debit, or payment) to the tenant's email."""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Método no permitido.'}, status=405)
+
+    if request.user.role != 'O':
+        return JsonResponse({'success': False, 'error': 'No tienes permiso.'}, status=403)
+
+    try:
+        if doc_type == 'invoice':
+            obj = get_object_or_404(Invoice, id=doc_id, rent__owner=request.user)
+            rent = obj.rent
+            template = 'main/invoice_pdf.html'
+            context = {'invoice': obj, 'logo_base64': get_logo_for_pdf()}
+            filename = f"Factura_{obj.invoice_number}.pdf"
+            subject = f"Factura {obj.invoice_number}"
+            body = f"<p>Adjuntamos tu factura <strong>{obj.invoice_number}</strong>.</p>"
+        elif doc_type == 'credit':
+            obj = get_object_or_404(Credit, id=doc_id, rent__owner=request.user)
+            rent = obj.rent
+            template = 'main/credit_pdf.html'
+            context = {'credit': obj, 'logo_base64': get_logo_for_pdf()}
+            filename = f"Credito_{obj.credit_number}.pdf"
+            subject = f"Crédito {obj.credit_number}"
+            body = f"<p>Adjuntamos tu nota de crédito <strong>{obj.credit_number}</strong>.</p>"
+        elif doc_type == 'debit':
+            obj = get_object_or_404(Debit, id=doc_id, rent__owner=request.user)
+            rent = obj.rent
+            template = 'main/debit_pdf.html'
+            context = {'debit': obj, 'logo_base64': get_logo_for_pdf()}
+            filename = f"Cargo_{obj.debit_number}.pdf"
+            subject = f"Cargo {obj.debit_number}"
+            body = f"<p>Adjuntamos tu nota de cargo <strong>{obj.debit_number}</strong>.</p>"
+        elif doc_type == 'payment':
+            obj = get_object_or_404(Payment, id=doc_id, invoice__rent__owner=request.user)
+            rent = obj.invoice.rent
+            send_payment_receipt(obj)
+            return JsonResponse({'success': True})
+        else:
+            return JsonResponse({'success': False, 'error': 'Tipo de documento inválido.'}, status=400)
+
+        # Resolve tenant email
+        if rent.tenant and rent.tenant.email:
+            tenant_email = rent.tenant.email
+        elif hasattr(rent, 'unregistered_tenant_email') and rent.unregistered_tenant_email:
+            tenant_email = rent.unregistered_tenant_email
+        else:
+            return JsonResponse({'success': False, 'error': 'El inquilino no tiene un correo registrado.'}, status=400)
+
+        html_string = render_to_string(template, context)
+        pdf = HTML(string=html_string).write_pdf()
+
+        email_html = f"""
+        <html><body style="font-family:Arial,sans-serif;background:#f8f9fa;color:#344767;">
+        <div style="max-width:600px;margin:40px auto;background:#fff;border-radius:12px;padding:32px 24px;text-align:center;">
+          <h2 style="color:#17c1e8;">Documento adjunto</h2>
+          {body}
+          <p style="color:#8392ab;font-size:13px;">Gracias por usar Finko - Property Management System.</p>
+        </div></body></html>"""
+
+        send_mailgun_simple(
+            subject=subject,
+            html=email_html,
+            to_emails=tenant_email,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            attachments=[(filename, pdf)]
+        )
+        return JsonResponse({'success': True})
+
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"resend_document error: {e}")
+        return JsonResponse({'success': False, 'error': 'Error al enviar el documento.'}, status=500)
+
+
+@login_required(login_url='log_in')
 @xframe_options_sameorigin
 def invoice_pdf(request, invoice_id):
     invoice = get_object_or_404(Invoice, id=invoice_id)
@@ -1144,7 +1220,7 @@ def invoices(request):
 
 @login_required(login_url='log_in')
 def all_transactions(request):
-    """Unified view combining invoices, credits, and debits with filtering."""
+    """Unified view combining invoices, credits, debits, and payments with filtering."""
     if request.user.role != 'O':
         messages.error(request, "Solo los propietarios pueden ver todas las transacciones.")
         return redirect('dashboard')
@@ -1234,6 +1310,30 @@ def all_transactions(request):
                 'pdf_url': reverse('debit_pdf', args=[debit.id]),
             })
     
+    if transaction_type in ['all', 'payment']:
+        payments_qs = Payment.objects.filter(invoice__rent__owner=request.user).select_related('invoice__rent__property')
+        if rent_id:
+            payments_qs = payments_qs.filter(invoice__rent_id=rent_id)
+        if date_from:
+            payments_qs = payments_qs.filter(payment_date__gte=date_from)
+        if date_to:
+            payments_qs = payments_qs.filter(payment_date__lte=date_to)
+        payments_qs = payments_qs.order_by('-payment_date')
+        for payment in payments_qs:
+            transactions.append({
+                'type': 'payment',
+                'id': payment.id,
+                'number': payment.payment_number,
+                'date': payment.payment_date,
+                'due_date': None,
+                'property': payment.invoice.rent.property.alias,
+                'rent_number': payment.invoice.rent.rent_number,
+                'description': f"Pago recibido - {payment.payment_method}",
+                'amount': payment.amount,
+                'status': payment.status,
+                'pdf_url': reverse('invoice_pdf', args=[payment.invoice.id]),
+            })
+    
     # Sort all transactions by date (most recent first)
     transactions.sort(key=lambda x: x['date'], reverse=True)
     
@@ -1249,6 +1349,24 @@ def all_transactions(request):
         'rents': rents,
     }
     return render(request, 'main/all_transactions.html', context)
+
+
+def payments(request):
+    """View for payments received."""
+    if request.user.role != 'O':
+        messages.error(request, "Solo los propietarios pueden ver los pagos recibidos.")
+        return redirect('dashboard')
+
+    qs = Payment.objects.filter(invoice__rent__owner=request.user).select_related('invoice__rent__property', 'invoice__rent__tenant').order_by('-payment_date')
+    
+    payment_filter = PaymentFilter(request.GET, queryset=qs, user=request.user)
+
+    context = {
+        'payments': payment_filter.qs,
+        'filter': payment_filter,
+    }
+    return render(request, 'main/payments.html', context)
+
 
 @login_required(login_url='log_in')
 def report_payment(request):

@@ -3,48 +3,71 @@
 {% load widget_tweaks %}
 {% block content %}
 
+<style>
+  .django-filters .filter-date-range {
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+  }
+  
+  .django-filters .filter-date-range input[type="date"] {
+    flex: 1;
+    min-width: 150px;
+  }
+  
+  .django-filters .form-group {
+    margin-bottom: 1rem;
+  }
+  
+  .django-filters .form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+  }
+</style>
+
 <div class="container-fluid py-4">
   <div class="card shadow border-0">
-    <div class="card-header bg-gradient-info pb-3 border-radius-lg d-flex justify-content-between align-items-center">
+    <div class="card-header bg-gradient-warning pb-3 border-radius-lg d-flex justify-content-between align-items-center" style="background: linear-gradient(135deg, #fbc658 0%, #f8b500 100%);">
       <div>
-        <h4 class="text-white mb-0">Transacciones</h4>
-        <p class="text-white-50 mb-0">Tus transacciones recientes</p>
+        <h4 class="text-white mb-0">Pagos Recibidos</h4>
+        <p class="text-white-50 mb-0">Historial de pagos recibidos de los inquilinos</p>
       </div>
-      <a href="{% url 'add_transaction' %}" class="btn btn-light text-info fw-bold">Agregar Transacción</a>
     </div>
     <div class="card-body">
-      <!-- Date Range Picker CSS (CDN) -->
-      <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css" />
-      
       <!-- Filter Accordion -->
+      {% if filter %}
       <div class="accordion mb-4" id="filterAccordion">
         <div class="accordion-item border-0 shadow-sm" style="border-radius: 12px;">
           <h2 class="accordion-header" id="filterHeading">
             <button class="accordion-button collapsed fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#filterCollapse" aria-expanded="false" aria-controls="filterCollapse" style="background: linear-gradient(135deg, #e3e3e7 0%, #f4f4f5 100%); color: #344767; border-radius: 12px;">
-              <i class="fas fa-sliders-h me-2" style="color: #17c1e8;"></i> Filtros Avanzados
+              <i class="fas fa-sliders-h me-2" style="color: #fbc658;"></i> Filtros Avanzados
             </button>
           </h2>
           <div id="filterCollapse" class="accordion-collapse collapse" aria-labelledby="filterHeading" data-bs-parent="#filterAccordion">
             <div class="accordion-body" style="background: #ffffff; border-radius: 0 0 12px 12px;">
               <form method="get" class="row align-items-end">
-                {% csrf_token %}
-                {% for field in filter.form.visible_fields %}
-                  <div class="col-md-3 mb-3">
-                    <label for="{{ field.id_for_label }}" class="form-label fw-semibold text-dark">{{ field.label }}</label>
-                    {% if field.name == 'date_range' %}
-                      {% render_field field class="form-control" autocomplete="off" %}
-                    {% elif field.field.widget.input_type == 'select' or field.field.widget.input_type == 'select-multiple' %}
-                      {% render_field field class="form-select" %}
-                    {% else %}
-                      {% render_field field class="form-control" %}
-                    {% endif %}
-                    {% if field.errors %}
-                      <div class="text-danger small">{{ field.errors|striptags }}</div>
-                    {% endif %}
-                  </div>
-                {% endfor %}
-                <div class="col-md-3 mb-3">
-                  <button type="submit" class="btn btn-info w-100 fw-bold">
+                <div class="col-md-2 mb-3">
+                  <label for="id_rent" class="form-label fw-semibold text-dark">Contrato</label>
+                  {% render_field filter.form.rent class="form-control" %}
+                </div>
+                <div class="col-md-2 mb-3">
+                  <label for="id_status" class="form-label fw-semibold text-dark">Estado</label>
+                  {% render_field filter.form.status class="form-control" %}
+                </div>
+                <div class="col-md-2 mb-3">
+                  <label for="id_payment_method" class="form-label fw-semibold text-dark">Método de Pago</label>
+                  {% render_field filter.form.payment_method class="form-control" %}
+                </div>
+                <div class="col-md-2 mb-3">
+                  <label for="payment_date_0" class="form-label fw-semibold text-dark">Desde</label>
+                  <input type="date" id="payment_date_0" name="payment_date_0" class="form-control" value="{{ request.GET.payment_date_0 }}">
+                </div>
+                <div class="col-md-2 mb-3">
+                  <label for="payment_date_1" class="form-label fw-semibold text-dark">Hasta</label>
+                  <input type="date" id="payment_date_1" name="payment_date_1" class="form-control" value="{{ request.GET.payment_date_1 }}">
+                </div>
+                <div class="col-md-2 mb-3">
+                  <button type="submit" class="btn btn-warning w-100 fw-bold" style="color: #fff;">
                     <i class="fas fa-filter me-2"></i> Filtrar
                   </button>
                 </div>
@@ -53,82 +76,52 @@
           </div>
         </div>
       </div>
-      
-      <!-- Transactions Table -->
+      {% endif %}
+
       <div class="table-responsive">
-        <table class="table align-middle mb-0" id="transactionsTable">
+        <table class="table align-middle mb-0">
           <thead class="text-center">
             <tr>
-              <th>
-                <p class="text-center font-weight-bold mb-0">Fecha</p>
-                <p class="text-center text-secondary mb-0">Tipo</p>
-              </th>
-              <th>
-                <p class="text-center font-weight-bold mb-0">Transacción #</p>
-                <p class="text-center text-secondary mb-0">Monto</p>
-              </th>
-              <th>
-                <p class="text-center font-weight-bold mb-0">Propiedad</p>
-                <p class="text-center text-secondary mb-0">Inquilino</p>
-              </th>
-              <th>Descripción</th>
-              <th>Ver/Descargar</th>
+              <th>Pago #</th>
+              <th>Fecha</th>
+              <th>Propiedad / Contrato</th>
+              <th>Factura</th>
+              <th>Método</th>
+              <th>Monto</th>
+              <th>Estado</th>
             </tr>
           </thead>
           <tbody>
-            {% for transaction in transactions %}
+            {% for payment in payments %}
             <tr>
-              <td>
-                <div class="d-flex px-2 py-1">
-                  <div>
-                    {% if transaction.type == 'invoice' %}
-                      <i class="fa fa-file-invoice fa-2x text-primary me-3"></i>
-                    {% elif transaction.type == 'receipt' %}
-                      <i class="fa fa-receipt fa-2x text-success me-3"></i>
-                    {% elif transaction.type == 'credit' %}
-                      <i class="fa fa-plus-circle fa-2x text-info me-3"></i>
-                    {% elif transaction.type == 'debit' %}
-                      <i class="fa fa-minus-circle fa-2x text-warning me-3"></i>
-                    {% elif transaction.type == 'fee' %}
-                      <i class="fa fa-percent fa-2x text-danger me-3"></i>
-                    {% elif transaction.type == 'pago' %}
-                      <i class="fa fa-money-bill-wave fa-2x text-success me-3"></i>
-                    {% else %}
-                      <i class="fa fa-file-invoice fa-2x text-secondary me-3"></i>
-                    {% endif %}
-                  </div>
-                  <div class="d-flex flex-column justify-content-center">
-                    <h6 class="mb-0 text-sm">{{ transaction.created_at|date:"d-M-Y" }}</h6>
-                    <p class="text-xs text-secondary mb-0">{{ transaction.type }}</p>
-                  </div>
-                </div>
-              </td>
-              <td>
-                <p class="text-xs text-center font-weight-bold mb-0">{{ transaction.transaction_number }}</p>
-                <p class="text-xs text-center text-secondary mb-0">${{ transaction.amount }}</p>
-              </td>
-              <td>
-                <p class="text-xs text-center font-weight-bold mb-0">{{ transaction.property }}</p>
-                <p class="text-xs text-center text-secondary mb-0">
-                  {% if transaction.tenant %}
-                    {{ transaction.tenant.get_full_name }}
-                  {% elif transaction.rent and transaction.rent.unregistered_tenant_name %}
-                    {{ transaction.rent.unregistered_tenant_name }}
-                  {% else %}
-                    N/A
-                  {% endif %}
-                </p>
-              </td>
-              <td class="text-sm text-center">{{ transaction.description }}</td>
               <td class="text-center">
-                <a href="#" class="pdf-preview-link" data-bs-toggle="modal" data-bs-target="#pdfPreviewModal" data-pdf-url="{% url 'transaction_pdf' transaction.id %}" data-transaction-id="{{ transaction.id }}">
-                  <i class="bi bi-file-earmark-pdf-fill text-danger fs-4" title="Preview PDF"></i>
-                </a>
+                <p class="font-weight-bold mb-0">{{ payment.payment_number }}</p>
+              </td>
+              <td class="text-center">{{ payment.payment_date|date:"d/m/Y" }}</td>
+              <td class="text-center">
+                <p class="font-weight-bold mb-0">{{ payment.invoice.rent.property.alias }}</p>
+                <p class="text-secondary mb-0 text-sm">{{ payment.invoice.rent.rent_number }}</p>
+              </td>
+              <td class="text-center">
+                <p class="font-weight-bold mb-0">{{ payment.invoice.invoice_number }}</p>
+              </td>
+              <td class="text-center">{{ payment.payment_method }}</td>
+              <td class="text-center fw-bold text-success">${{ payment.amount }}</td>
+              <td class="text-center">
+                {% if payment.status == 'confirmed' %}
+                  <span class="badge bg-success">Confirmado</span>
+                {% elif payment.status == 'pending' %}
+                  <span class="badge bg-warning text-dark">Pendiente</span>
+                {% elif payment.status == 'rejected' %}
+                  <span class="badge bg-danger">Rechazado</span>
+                {% else %}
+                  <span class="badge bg-secondary">{{ payment.status }}</span>
+                {% endif %}
               </td>
             </tr>
             {% empty %}
             <tr>
-              <td colspan="8" class="text-center">No se encontraron transacciones.</td>
+              <td colspan="7" class="text-center text-secondary py-4">No hay pagos para mostrar.</td>
             </tr>
             {% endfor %}
           </tbody>
@@ -138,138 +131,4 @@
   </div>
 </div>
 
-      <!-- PDF Preview Modal -->
-      <div class="modal fade" id="pdfPreviewModal" tabindex="-1" aria-labelledby="pdfPreviewModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-xl modal-dialog-centered" style="max-width:90%;">
-          <div class="modal-content">
-            <div class="modal-header">
-              <h5 class="modal-title" id="pdfPreviewModalLabel">Vista previa del PDF</h5>
-              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body p-0" style="height:80vh; position:relative;">
-              <div id="pdfLoadingSpinner" style="position:absolute; inset:0; background:rgba(255,255,255,0.85); z-index:1050; display:none; align-items:center; justify-content:center;">
-                <div class="text-center">
-                  <div class="spinner-border text-primary" role="status" style="width:3rem; height:3rem;"></div>
-                  <div class="mt-2">Cargando PDF...</div>
-                </div>
-              </div>
-              <iframe id="pdfPreviewIframe" src="" style="width:100%; height:100%; border:0;" allowfullscreen></iframe>
-            </div>
-            <div class="modal-footer">
-              <button type="button" class="btn btn-warning" id="resendConfirmationBtn" title="Reenviar confirmación al inquilino">
-                <i class="fas fa-envelope me-1"></i> Reenviar Confirmación
-              </button>
-              <a id="pdfDownloadBtn" class="btn btn-primary" href="#" target="_blank" rel="noopener">Descargar PDF</a>
-              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <script>
-      document.addEventListener('DOMContentLoaded', function() {
-        var modalEl = document.getElementById('pdfPreviewModal');
-        var iframe = document.getElementById('pdfPreviewIframe');
-        var downloadBtn = document.getElementById('pdfDownloadBtn');
-        var resendBtn = document.getElementById('resendConfirmationBtn');
-        var currentTransactionId = null;
-        var modalInstance = bootstrap.Modal.getOrCreateInstance(modalEl);
-
-        // Use click handler to set iframe src before showing modal to avoid timing issues.
-        var spinner = document.getElementById('pdfLoadingSpinner');
-        function showSpinner() { spinner.style.display = 'flex'; }
-        function hideSpinner() { spinner.style.display = 'none'; }
-
-        document.querySelectorAll('.pdf-preview-link').forEach(function(link) {
-          link.addEventListener('click', function(e) {
-            e.preventDefault();
-            var pdfUrl = this.getAttribute('data-pdf-url');
-            currentTransactionId = this.getAttribute('data-transaction-id');
-            if (!pdfUrl) return;
-            var previewUrl = pdfUrl + (pdfUrl.indexOf('?') === -1 ? '?preview=1' : '&preview=1');
-            // show spinner immediately
-            showSpinner();
-            iframe.src = previewUrl;
-            downloadBtn.href = pdfUrl;
-            modalInstance.show();
-          });
-        });
-
-        // Handle resend confirmation button
-        resendBtn.addEventListener('click', function(e) {
-          e.preventDefault();
-          if (!currentTransactionId) {
-            alert('Error: No se pudo identificar la transacción.');
-            return;
-          }
-          
-          var originalText = resendBtn.innerHTML;
-          resendBtn.disabled = true;
-          resendBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Enviando...';
-          
-          fetch('{% url "confirm_payment" 0 %}'.replace('0', currentTransactionId), {
-            method: 'POST',
-            headers: {
-              'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || '',
-              'Content-Type': 'application/json',
-              'X-Requested-With': 'XMLHttpRequest'
-            },
-            body: JSON.stringify({ resend: true })
-          })
-          .then(response => {
-            if (response.ok) {
-              alert('¡Confirmación reenviada exitosamente!');
-              resendBtn.disabled = false;
-              resendBtn.innerHTML = originalText;
-            } else {
-              throw new Error('Error al reenviar');
-            }
-          })
-          .catch(error => {
-            alert('Error al reenviar la confirmación. Por favor, intenta de nuevo.');
-            resendBtn.disabled = false;
-            resendBtn.innerHTML = originalText;
-          });
-        });
-
-        // Hide spinner when iframe finishes loading
-        iframe.addEventListener('load', function() {
-          // small delay to ensure PDF rendering begins
-          setTimeout(hideSpinner, 250);
-        });
-
-        // Clear iframe and hide spinner when modal hidden to stop PDF streaming
-        modalEl.addEventListener('hidden.bs.modal', function () {
-          iframe.src = '';
-          hideSpinner();
-        });
-      });
-      </script>
-
-<!-- jQuery and Date Range Picker JS (CDN) -->
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script type="text/javascript" src="https://cdn.jsdelivr.net/momentjs/latest/moment.min.js"></script>
-<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
-<script src="/static/assets/js/custom.js"></script>
-
-<script>
-  $(function() {
-    var $dateRange = $("#id_date_range");
-    if ($dateRange.length) {
-      $dateRange.daterangepicker({
-        autoUpdateInput: false,
-        locale: {
-          format: 'YYYY-MM-DD',
-          cancelLabel: 'Limpiar'
-        }
-      });
-      $dateRange.on('apply.daterangepicker', function(ev, picker) {
-        $(this).val(picker.startDate.format('YYYY-MM-DD') + ' - ' + picker.endDate.format('YYYY-MM-DD'));
-      });
-      $dateRange.on('cancel.daterangepicker', function(ev, picker) {
-        $(this).val('');
-      });
-    }
-  });
-</script>
 {% endblock %}

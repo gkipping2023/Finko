@@ -24,7 +24,7 @@
   <div class="page">
     <div class="header">
       {% if logo_base64 %}
-        <img src="data:image/png;base64,{{ logo_base64 }}" alt="Logo" style="height:50px; margin-bottom:8px;">
+        <img src="{{ logo_base64 }}" alt="Logo" style="height:50px; margin-bottom:8px;">
       {% endif %}
       <h1>Recibo de Pago</h1>
       <p>{{ payment.payment_number }}</p>

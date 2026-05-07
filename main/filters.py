@@ -45,13 +45,20 @@ class InvoiceFilter(FilterSet):
 
 
 class PaymentFilter(FilterSet):
+    rent = ModelChoiceFilter(queryset=Rent.objects.none(), label="Contrato")
     status = ChoiceFilter(choices=PAYMENT_STATUS_CHOICES, empty_label="Todos los estados")
     payment_method = ChoiceFilter(choices=payment_method, empty_label="Todos los métodos")
     payment_date = DateFromToRangeFilter(label="Rango de fechas", widget=DateRangeWidget())
 
     class Meta:
         model = Payment
-        fields = ['status', 'payment_method', 'payment_date']
+        fields = ['rent', 'status', 'payment_method', 'payment_date']
+
+    def __init__(self, *args, **kwargs):
+        user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+        if user is not None:
+            self.filters['rent'].queryset = Rent.objects.filter(owner=user)
 
 
 class DebitFilter(FilterSet):

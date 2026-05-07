@@ -29,7 +29,7 @@
     <div class="card-header bg-gradient-info pb-3 border-radius-lg d-flex justify-content-between align-items-center">
       <div>
         <h4 class="text-white mb-0">Todas las Transacciones</h4>
-        <p class="text-white-50 mb-0">Vista unificada de facturas, créditos y cargos</p>
+        <p class="text-white-50 mb-0">Vista unificada de facturas, créditos, cargos y pagos recibidos</p>
       </div>
     </div>
     <div class="card-body">
@@ -51,6 +51,7 @@
                     <option value="invoice" {% if transaction_type == 'invoice' %}selected{% endif %}>Facturas</option>
                     <option value="credit" {% if transaction_type == 'credit' %}selected{% endif %}>Créditos</option>
                     <option value="debit" {% if transaction_type == 'debit' %}selected{% endif %}>Cargos</option>
+                    <option value="payment" {% if transaction_type == 'payment' %}selected{% endif %}>Pagos Recibidos</option>
                   </select>
                 </div>
                 <div class="col-md-3 mb-3">
@@ -106,6 +107,8 @@
                   <span class="badge bg-success">Crédito</span>
                 {% elif transaction.type == 'debit' %}
                   <span class="badge bg-danger">Cargo</span>
+                {% elif transaction.type == 'payment' %}
+                  <span class="badge bg-warning" style="color: #000;">Pago Recibido</span>
                 {% endif %}
               </td>
               <td class="text-center">
@@ -134,26 +137,42 @@
                 {% endif %}
               </td>
               <td class="text-center">
-                {% if transaction.status == 'paid' %}
-                  <span class="badge bg-success">Pagada</span>
-                {% elif transaction.status == 'partial' %}
-                  <span class="badge bg-info">Parcial</span>
-                {% elif transaction.status == 'pending' %}
-                  <span class="badge bg-warning text-dark">Pendiente</span>
-                {% elif transaction.status == 'overdue' or transaction.status == 'overdue_with_fee' %}
-                  <span class="badge bg-danger">Vencida</span>
-                {% elif transaction.status == 'credit' %}
-                  <span class="badge bg-success">Crédito</span>
-                {% elif transaction.status == 'debit' %}
-                  <span class="badge bg-danger">Cargo</span>
+                {% if transaction.type == 'payment' %}
+                  {% if transaction.status == 'confirmed' %}
+                    <span class="badge bg-success">Confirmado</span>
+                  {% elif transaction.status == 'pending' %}
+                    <span class="badge bg-warning text-dark">Pendiente</span>
+                  {% elif transaction.status == 'rejected' %}
+                    <span class="badge bg-danger">Rechazado</span>
+                  {% else %}
+                    <span class="badge bg-secondary">{{ transaction.status }}</span>
+                  {% endif %}
                 {% else %}
-                  <span class="badge bg-secondary">{{ transaction.status }}</span>
+                  {% if transaction.status == 'paid' %}
+                    <span class="badge bg-success">Pagada</span>
+                  {% elif transaction.status == 'partial' %}
+                    <span class="badge bg-info">Parcial</span>
+                  {% elif transaction.status == 'pending' %}
+                    <span class="badge bg-warning text-dark">Pendiente</span>
+                  {% elif transaction.status == 'overdue' or transaction.status == 'overdue_with_fee' %}
+                    <span class="badge bg-danger">Vencida</span>
+                  {% elif transaction.status == 'credit' %}
+                    <span class="badge bg-success">Crédito</span>
+                  {% elif transaction.status == 'debit' %}
+                    <span class="badge bg-danger">Cargo</span>
+                  {% else %}
+                    <span class="badge bg-secondary">{{ transaction.status }}</span>
+                  {% endif %}
                 {% endif %}
               </td>
               <td class="text-center">
-                <a href="{{ transaction.pdf_url }}" class="btn btn-sm btn-outline-info" target="_blank">
-                  <i class="fas fa-file-pdf"></i>
-                </a>
+                {% if transaction.pdf_url %}
+                  <button class="btn btn-sm btn-outline-info pdf-preview-btn" data-pdf-url="{{ transaction.pdf_url }}" data-transaction-type="{{ transaction.type }}" data-transaction-id="{{ transaction.id }}" title="Ver PDF">
+                    <i class="fas fa-file-pdf"></i>
+                  </button>
+                {% else %}
+                  -
+                {% endif %}
               </td>
             </tr>
             {% empty %}
@@ -167,5 +186,241 @@
     </div>
   </div>
 </div>
+
+<!-- PDF Preview Modal -->
+<div class="modal fade" id="pdfPreviewModal" tabindex="-1" aria-labelledby="pdfPreviewModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-centered" style="max-width:90%;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="pdfPreviewModalLabel">Vista previa del PDF</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-0" style="height:80vh; position:relative;">
+        <div id="pdfLoadingSpinner" style="position:absolute; inset:0; background:rgba(255,255,255,0.85); z-index:1050; display:none; align-items:center; justify-content:center;">
+          <div class="text-center">
+            <div class="spinner-border text-primary" role="status" style="width:3rem; height:3rem;"></div>
+            <div class="mt-2">Cargando PDF...</div>
+          </div>
+        </div>
+        <div id="pdfRenderer" style="width:100%; height:100%; overflow:auto; background:#f5f5f5;"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-warning" id="resendConfirmationBtn" title="Reenviar confirmación">
+          <i class="fas fa-envelope me-1"></i> Reenviar
+        </button>
+        <button type="button" class="btn btn-secondary" id="printPdfBtn" title="Imprimir">
+          <i class="fas fa-print me-1"></i> Imprimir
+        </button>
+        <button type="button" class="btn btn-primary" id="pdfDownloadBtn" title="Descargar PDF">
+          <i class="fas fa-download me-1"></i> Descargar
+        </button>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+function initPdfPreview() {
+  if (typeof pdfjsLib === 'undefined') {
+    setTimeout(initPdfPreview, 100);
+    return;
+  }
+  
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+  var modalEl = document.getElementById('pdfPreviewModal');
+  var pdfRenderer = document.getElementById('pdfRenderer');
+  var downloadBtn = document.getElementById('pdfDownloadBtn');
+  var resendBtn = document.getElementById('resendConfirmationBtn');
+  var printBtn = document.getElementById('printPdfBtn');
+  var spinner = document.getElementById('pdfLoadingSpinner');
+  var currentTransactionType = null;
+  var currentTransactionId = null;
+  var currentPdfUrl = null;
+  var currentPdfDoc = null;
+  var currentFilename = 'document.pdf';
+  var modalInstance = bootstrap.Modal.getOrCreateInstance(modalEl);
+
+  function showSpinner() { 
+    spinner.style.display = 'flex'; 
+  }
+  function hideSpinner() { 
+    spinner.style.display = 'none'; 
+  }
+
+  function renderPdf(pdfUrl) {
+    showSpinner();
+    pdfRenderer.innerHTML = '';
+    
+    fetch(pdfUrl)
+      .then(response => response.arrayBuffer())
+      .then(arrayBuffer => {
+        return pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      })
+      .then(pdf => {
+        currentPdfDoc = pdf;
+        var renderPromises = [];
+        for (var pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+          renderPromises.push(renderPage(pdf, pageNum));
+        }
+        return Promise.all(renderPromises);
+      })
+      .then(() => {
+        hideSpinner();
+      })
+      .catch(error => {
+        console.error('Error loading PDF:', error);
+        hideSpinner();
+        pdfRenderer.innerHTML = '<div class="alert alert-danger m-3">Error al cargar el PDF. Por favor, intenta de nuevo.</div>';
+      });
+  }
+
+  function renderPage(pdf, pageNum) {
+    return pdf.getPage(pageNum).then(function(page) {
+      var viewport = page.getViewport({ scale: 1.5 });
+      var canvas = document.createElement('canvas');
+      var context = canvas.getContext('2d');
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      canvas.style.display = 'block';
+      canvas.style.marginBottom = '10px';
+      canvas.style.maxWidth = '100%';
+      canvas.style.height = 'auto';
+      
+      pdfRenderer.appendChild(canvas);
+
+      return page.render({
+        canvasContext: context,
+        viewport: viewport
+      }).promise;
+    });
+  }
+
+  document.querySelectorAll('.pdf-preview-btn').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+      e.preventDefault();
+      var pdfUrl = this.getAttribute('data-pdf-url');
+      currentTransactionType = this.getAttribute('data-transaction-type');
+      currentTransactionId = this.getAttribute('data-transaction-id');
+      currentPdfUrl = pdfUrl;
+      currentFilename = 'document-' + new Date().getTime() + '.pdf';
+      
+      if (!pdfUrl) return;
+      
+      // Show resend for all document types
+      resendBtn.style.display = 'inline-block';
+
+      modalInstance.show();
+      // Render after modal is shown so the canvas has dimensions
+      modalEl.addEventListener('shown.bs.modal', function onShown() {
+        modalEl.removeEventListener('shown.bs.modal', onShown);
+        renderPdf(pdfUrl);
+      });
+    });
+  });
+
+  downloadBtn.addEventListener('click', function(e) {
+    e.preventDefault();
+    if (!currentPdfUrl) return;
+    
+    fetch(currentPdfUrl)
+      .then(response => response.blob())
+      .then(blob => {
+        var url = window.URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = currentFilename;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      })
+      .catch(error => {
+        console.error('Error downloading PDF:', error);
+        alert('Error al descargar el PDF. Por favor, intenta de nuevo.');
+      });
+  });
+
+  printBtn.addEventListener('click', function(e) {
+    e.preventDefault();
+    if (!currentPdfUrl) return;
+
+    fetch(currentPdfUrl)
+      .then(response => response.blob())
+      .then(blob => {
+        var blobUrl = URL.createObjectURL(blob);
+        var printFrame = document.createElement('iframe');
+        printFrame.style.display = 'none';
+        printFrame.src = blobUrl;
+        document.body.appendChild(printFrame);
+        printFrame.addEventListener('load', function() {
+          printFrame.contentWindow.print();
+          setTimeout(function() {
+            URL.revokeObjectURL(blobUrl);
+            document.body.removeChild(printFrame);
+          }, 1000);
+        });
+      })
+      .catch(function(error) {
+        console.error('Error printing PDF:', error);
+        alert('Error al imprimir el PDF. Por favor, intenta de nuevo.');
+      });
+  });
+
+  resendBtn.addEventListener('click', function(e) {
+    e.preventDefault();
+    if (!currentTransactionId || !currentTransactionType) {
+      alert('Error: No se pudo identificar la transacción.');
+      return;
+    }
+
+    if (!confirm('¿Estás seguro de que deseas reenviar este documento al correo del inquilino?')) {
+      return;
+    }
+    
+    var originalText = resendBtn.innerHTML;
+    resendBtn.disabled = true;
+    resendBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Enviando...';
+
+    var csrfToken = document.cookie.split(';')
+      .map(c => c.trim())
+      .find(c => c.startsWith('csrftoken='));
+    csrfToken = csrfToken ? csrfToken.split('=')[1] : '';
+    
+    fetch('/resend-document/' + currentTransactionType + '/' + currentTransactionId + '/', {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken': csrfToken,
+        'X-Requested-With': 'XMLHttpRequest'
+      }
+    })
+    .then(response => response.json())
+    .then(data => {
+      resendBtn.disabled = false;
+      resendBtn.innerHTML = originalText;
+      if (data.success) {
+        alert('¡Documento reenviado exitosamente al inquilino!');
+      } else {
+        alert('Error: ' + (data.error || 'No se pudo reenviar el documento.'));
+      }
+    })
+    .catch(error => {
+      resendBtn.disabled = false;
+      resendBtn.innerHTML = originalText;
+      alert('Error al reenviar el documento. Por favor, intenta de nuevo.');
+    });
+  });
+
+  modalEl.addEventListener('hidden.bs.modal', function () {
+    pdfRenderer.innerHTML = '';
+    currentPdfDoc = null;
+    hideSpinner();
+  });
+}
+
+document.addEventListener('DOMContentLoaded', initPdfPreview);
+</script>
 
 {% endblock %}
