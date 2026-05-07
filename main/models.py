@@ -156,6 +156,7 @@ class User(AbstractUser):
     last_privacy_update = models.DateTimeField(auto_now=True, verbose_name="Última Actualización de Privacidad")
     data_deletion_requested = models.BooleanField(default=False, verbose_name="Eliminación de Datos Solicitada")
     data_deletion_request_date = models.DateTimeField(null=True, blank=True, verbose_name="Fecha de Solicitud de Eliminación")
+    role_confirmed = models.BooleanField(default=False, verbose_name="Rol Confirmado")
 
     # Convert country code to full country name before saving.
     def save(self, *args, **kwargs):

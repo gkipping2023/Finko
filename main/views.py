@@ -293,6 +293,7 @@ def set_user_role(request):
   if role in dict(Roles):
     user = request.user
     user.role = role
+    user.role_confirmed = True
     user.save()
     messages.success(request, 'Tu rol ha sido actualizado.')
   else:
@@ -640,6 +641,10 @@ def register_user(request):
                 import logging
                 logger = logging.getLogger(__name__)
                 logger.error(f"Failed to send welcome email to {user.email}: {e}")
+
+            # Mark role as confirmed (user explicitly chose it in the form)
+            user.role_confirmed = True
+            user.save(update_fields=['role_confirmed'])
 
             # Log the user in and redirect
             # Set the backend attribute on the user object for Django's login system

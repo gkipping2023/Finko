@@ -44,3 +44,13 @@ class CustomSocialAccountAdapter(DefaultSocialAccountAdapter):
             sociallogin.connect(request, user)
         except User.DoesNotExist:
             pass
+
+    def save_user(self, request, sociallogin, form=None):
+        """
+        Mark role_confirmed=False for all social login registrations
+        so the role selection modal is shown on first dashboard visit.
+        """
+        user = super().save_user(request, sociallogin, form)
+        user.role_confirmed = False
+        user.save(update_fields=['role_confirmed'])
+        return user

@@ -219,8 +219,8 @@
 
 <script>
   document.addEventListener('DOMContentLoaded', function() {
-    var userRole = '{{ request.user.role|default:"" }}';
-    if (userRole !== 'O' && userRole !== 'T') {
+    var roleConfirmed = {{ request.user.role_confirmed|lower }};
+    if (!roleConfirmed) {
       var roleModal = new bootstrap.Modal(document.getElementById('roleModal'));
       roleModal.show();
     }
