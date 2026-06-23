@@ -19,8 +19,8 @@ def generate_invoices():
     owner_invoices = {}
 
     for rent in rents:
-        # Due date is the day after invoice generation
-        due_date = today + timedelta(days=1)
+        # Due date is 30 days after invoice generation
+        due_date = today + timedelta(days=30)
 
         # Create Invoice
         invoice = Invoice.objects.create(
@@ -62,6 +62,10 @@ def generate_invoices():
             tenant_name = rent.tenant.get_full_name() or rent.tenant.first_name
             tenant_email = rent.tenant.email
         else:
+            continue
+        
+        # Check if tenant has enabled invoice notifications
+        if rent.tenant and not rent.tenant.notify_invoice_generated:
             continue
         
         # Send email to the tenant via Mailgun
@@ -144,7 +148,10 @@ def generate_invoices():
     # Send summary email to each owner
     for owner_data in owner_invoices.values():
         try:
-            send_owner_invoice_summary(owner_data['owner'], owner_data['invoices'], today)
+            owner = owner_data['owner']
+            # Check if owner has enabled invoice summary notifications
+            if owner.notify_invoice_summary:
+                send_owner_invoice_summary(owner, owner_data['invoices'], today)
         except Exception as e:
             logger.error(f"Failed to send invoice summary to owner {owner_data['owner'].email}: {e}")
     
@@ -158,61 +165,61 @@ def generate_invoices():
 @shared_task
 def apply_late_fees():
     """
-    Check for overdue invoices and apply late fees if configured.
-    Late fees are applied when invoice is 6+ days past due.
-    Should run daily (e.g., 12:01 AM).
+    Daily task that manages overdue invoice status and late fee application.
+
+    Timeline (example: invoice generated June 1, due June 30):
+      - July 1–5  (days 1–5 past due): 'overdue', no late fee (grace period)
+      - July 6+   (day 6+ past due):   'overdue_with_fee', late fee applied
+
+    Grace period is set per-rent via late_fee_grace_days (default: 5 days).
     """
     today = now().date()
-    
-    # Get all overdue invoices without late fees
-    overdue_invoices = Invoice.objects.filter(
+
+    # All past-due invoices that have not yet had a late fee applied
+    past_due_invoices = Invoice.objects.filter(
         due_date__lt=today,
         late_fee_amount=Decimal('0.00'),
         status__in=['pending', 'overdue', 'partial']
-    )
-    
+    ).select_related('rent')
+
     fees_applied = 0
-    
-    for invoice in overdue_invoices:
+
+    for invoice in past_due_invoices:
         rent = invoice.rent
-        
-        # Skip if no late fee configured
-        if rent.late_fee_type == 'none':
-            continue
-        
-        # Get the grace period from the rent (default 5 if not set)
-        grace_days = rent.late_fee_grace_days if hasattr(rent, 'late_fee_grace_days') and rent.late_fee_grace_days is not None else 5
-        
-        # Check if invoice is past the grace period
-        # Grace period of 5 means late fee applies on 6th day past due
+        grace_days = rent.late_fee_grace_days if rent.late_fee_grace_days is not None else 5
         days_overdue = invoice.get_days_overdue()
+
         if days_overdue <= grace_days:
+            # Within grace period: mark as overdue but do not apply a fee yet
+            if invoice.status != 'overdue':
+                invoice.status = 'overdue'
+                invoice.save()
             continue
-        
-        # Calculate late fee (reuse existing method)
+
+        # Past the grace period
+        if rent.late_fee_type == 'none':
+            # No late fee configured — keep/set overdue, never charge
+            if invoice.status != 'overdue':
+                invoice.status = 'overdue'
+                invoice.save()
+            continue
+
+        # Apply late fee
         late_fee = rent.get_late_fee()
-        
         if late_fee > Decimal('0.00'):
             invoice.late_fee_amount = late_fee
             invoice.late_fee_applied_date = today
-            
-            # Update status to reflect late fee
-            if invoice.paid_amount >= invoice.amount:
-                invoice.status = 'overdue_with_fee'
-            else:
-                invoice.status = 'overdue_with_fee'
-            
+            invoice.status = 'overdue_with_fee'
             invoice.save()
             fees_applied += 1
-            
-            # Send notification to owner
+
             try:
-                send_late_fee_notification(invoice)
+                owner = rent.owner
+                if owner.notify_late_fee_applied:
+                    send_late_fee_notification(invoice)
             except Exception as e:
-                import logging
-                logger = logging.getLogger(__name__)
                 logger.error(f"Failed to send late fee notification: {e}")
-    
+
     return {
         'status': 'success',
         'fees_applied': fees_applied,

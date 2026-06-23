@@ -16,7 +16,7 @@ from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout, get_backends
 from django.contrib.auth.decorators import login_required
 from .models import Properties, Rent, User, PromoCode, Roles, Invoice, Payment, Credit, Debit
-from .forms import AddPropertyForm, NewUserForm, NewTenantForm, NewRentForm, UpdateUserForm, RenewLeaseForm, PublicPaymentForm, OwnerPaymentForm, TenantPaymentForm, CreditForm, DebitForm
+from .forms import AddPropertyForm, NewUserForm, NewTenantForm, NewRentForm, UpdateUserForm, RenewLeaseForm, PublicPaymentForm, OwnerPaymentForm, TenantPaymentForm, CreditForm, DebitForm, NotificationPreferencesForm
 from django_countries.fields import Country  # Add this import if using django-countries
 from django.db import models  # Import models for aggregate functions
 from django.template.loader import render_to_string
@@ -128,10 +128,19 @@ def resend_document(request, doc_type, doc_id):
         # Resolve tenant email
         if rent.tenant and rent.tenant.email:
             tenant_email = rent.tenant.email
+            tenant_user = rent.tenant
         elif hasattr(rent, 'unregistered_tenant_email') and rent.unregistered_tenant_email:
             tenant_email = rent.unregistered_tenant_email
+            tenant_user = None
         else:
             return JsonResponse({'success': False, 'error': 'El inquilino no tiene un correo registrado.'}, status=400)
+
+        # Check if tenant has enabled notifications for this document type
+        if tenant_user:
+            if doc_type == 'invoice' and not tenant_user.notify_invoice_generated:
+                return JsonResponse({'success': False, 'error': 'El inquilino ha deshabilitado las notificaciones de facturas.'}, status=400)
+            elif doc_type in ['credit', 'debit'] and not tenant_user.notify_payment_confirmed:
+                return JsonResponse({'success': False, 'error': 'El inquilino ha deshabilitado las notificaciones de transacciones.'}, status=400)
 
         html_string = render_to_string(template, context)
         pdf = HTML(string=html_string).write_pdf()
@@ -384,12 +393,14 @@ def finish_rent(request, rent_id):
                 </html>
                 """
             try:
-                send_mailgun_simple(
-                    subject="Finalización de Contrato de Alquiler",
-                    html=tenant_html,
-                    to_emails=rent.tenant.email,
-                    from_email=settings.DEFAULT_FROM_EMAIL
-                )
+                # Check if tenant has enabled lease renewal notifications
+                if rent.tenant and rent.tenant.notify_lease_renewal:
+                    send_mailgun_simple(
+                        subject="Finalización de Contrato de Alquiler",
+                        html=tenant_html,
+                        to_emails=rent.tenant.email,
+                        from_email=settings.DEFAULT_FROM_EMAIL
+                    )
             except Exception as e:
                 import logging
                 logger = logging.getLogger(__name__)
@@ -439,12 +450,14 @@ def finish_rent(request, rent_id):
                 </html>
                 """
             try:
-                send_mailgun_simple(
-                    subject="Finalización de Contrato de Alquiler",
-                    html=owner_html,
-                    to_emails=rent.owner.email,
-                    from_email=settings.DEFAULT_FROM_EMAIL
-                )
+                # Check if owner has enabled lease renewal notifications
+                if rent.owner and rent.owner.notify_lease_renewal:
+                    send_mailgun_simple(
+                        subject="Finalización de Contrato de Alquiler",
+                        html=owner_html,
+                        to_emails=rent.owner.email,
+                        from_email=settings.DEFAULT_FROM_EMAIL
+                    )
             except Exception as e:
                 import logging
                 logger = logging.getLogger(__name__)
@@ -781,31 +794,54 @@ def user_profile(request):
 
     user = request.user
     form = UpdateUserForm(instance=user)
+    notification_form = NotificationPreferencesForm(instance=user)
+    active_tab = request.POST.get('active_tab', 'personal')
 
     if request.method == 'POST':
-        form = UpdateUserForm(request.POST, instance=user)
-        if form.is_valid():
-            # Get the promo code entered by the user
-            input_promo_code = form.cleaned_data.get('promo_code')
-
-            # Validate the promo code
-            if input_promo_code and input_promo_code not in valid_promo_codes:
-                messages.error(request, 'Código Promocional Inválido')
-                return render(request, 'main/user_profile.html', {'form': form})
-
-            # Save the promo code and other fields
-            user.promo_code = input_promo_code
-            nac_code = form.cleaned_data.get('nac')
-            if nac_code:
-                user.nac = Country(nac_code)
-            form.save()
-            messages.success(request, 'Perfil Actualizado Exitosamente')
-            return redirect('dashboard')
+        form_type = request.POST.get('form_type', 'personal')
+        
+        if form_type == 'notifications':
+            # Handle notification preferences form
+            notification_form = NotificationPreferencesForm(request.POST, instance=user)
+            if notification_form.is_valid():
+                notification_form.save()
+                messages.success(request, 'Preferencias de Notificaciones Actualizadas Exitosamente')
+                active_tab = 'notifications'
+            else:
+                messages.error(request, 'Error al actualizar las preferencias de notificaciones')
+                active_tab = 'notifications'
         else:
-            messages.error(request, 'Error al actualizar, por favor verifica tu perfil')
+            # Handle personal information form
+            form = UpdateUserForm(request.POST, instance=user)
+            if form.is_valid():
+                # Get the promo code entered by the user
+                input_promo_code = form.cleaned_data.get('promo_code')
+
+                # Validate the promo code
+                if input_promo_code and input_promo_code not in valid_promo_codes:
+                    messages.error(request, 'Código Promocional Inválido')
+                    return render(request, 'main/user_profile.html', {
+                        'form': form,
+                        'notification_form': notification_form,
+                        'active_tab': 'personal'
+                    })
+
+                # Save the promo code and other fields
+                user.promo_code = input_promo_code
+                nac_code = form.cleaned_data.get('nac')
+                if nac_code:
+                    user.nac = Country(nac_code)
+                form.save()
+                messages.success(request, 'Perfil Actualizado Exitosamente')
+                active_tab = 'personal'
+            else:
+                messages.error(request, 'Error al actualizar, por favor verifica tu perfil')
+                active_tab = 'personal'
 
     context = {
-        'form': form
+        'form': form,
+        'notification_form': notification_form,
+        'active_tab': active_tab
     }
     return render(request, 'main/user_profile.html', context)
 
@@ -1146,6 +1182,7 @@ def dashboard(request):
     context = {
       'last_payment': last_payment,
       'total_properties': total_properties,
+      'rented_properties': rented_properties,
       'occupancy_rate': occupancy_rate,
       'collected_income': collected_income,
       'pending_income': pending_income,
@@ -1161,6 +1198,49 @@ def dashboard(request):
       'pending_maintenance_requests': pending_maintenance_requests,
       'total_outstanding_balance': total_outstanding_balance,
     }
+
+    # --- Chart data for Owner ---
+    if user.role == 'O':
+        import json as _json
+        # Last 6 months of collected income (bar/line chart)
+        monthly_labels = []
+        monthly_collected = []
+        monthly_expenses = []
+        MONTHS_ES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
+        for i in range(5, -1, -1):
+            m_start = (today.replace(day=1) - timedelta(days=i * 30)).replace(day=1)
+            m_end_candidate = (m_start + timedelta(days=32)).replace(day=1)
+            m_end = m_end_candidate - timedelta(days=1)
+            m_label = f"{MONTHS_ES[m_start.month - 1]} {m_start.year}"
+            m_collected = Payment.objects.filter(
+                invoice__rent__owner=user, status='confirmed',
+                payment_date__gte=m_start, payment_date__lte=m_end
+            ).aggregate(t=models.Sum('amount'))['t'] or 0
+            m_expenses = Debit.objects.filter(
+                rent__owner=user,
+                debit_date__gte=m_start, debit_date__lte=m_end
+            ).aggregate(t=models.Sum('amount'))['t'] or 0
+            monthly_labels.append(m_label)
+            monthly_collected.append(float(m_collected))
+            monthly_expenses.append(float(m_expenses))
+
+        # Invoice status breakdown for donut chart
+        inv_paid = Invoice.objects.filter(rent__owner=user, status='paid').count()
+        inv_pending = Invoice.objects.filter(rent__owner=user, status='pending').count()
+        inv_overdue = Invoice.objects.filter(rent__owner=user, status='overdue').count()
+        inv_overdue_fee = Invoice.objects.filter(rent__owner=user, status='overdue_with_fee').count()
+        inv_partial = Invoice.objects.filter(rent__owner=user, status='partial').count()
+
+        context.update({
+            'chart_monthly_labels': _json.dumps(monthly_labels),
+            'chart_monthly_collected': _json.dumps(monthly_collected),
+            'chart_monthly_expenses': _json.dumps(monthly_expenses),
+            'inv_paid': inv_paid,
+            'inv_pending': inv_pending,
+            'inv_overdue': inv_overdue,
+            'inv_overdue_fee': inv_overdue_fee,
+            'inv_partial': inv_partial,
+        })
 
     # Tenant-specific context
     if user.role == 'T':
@@ -1578,11 +1658,17 @@ def send_payment_receipt(payment):
     # Determine tenant email
     if rent.tenant and rent.tenant.email:
         tenant_email = rent.tenant.email
+        tenant_user = rent.tenant
     elif rent.unregistered_tenant_email:
         tenant_email = rent.unregistered_tenant_email
+        tenant_user = None
     else:
         import logging
         logging.getLogger(__name__).info(f"Skipping receipt email for payment {payment.id}: no tenant email")
+        return
+    
+    # Check if tenant has enabled payment confirmation notifications
+    if tenant_user and not tenant_user.notify_payment_confirmed:
         return
 
     context = {'payment': payment, 'logo_base64': get_logo_for_pdf()}

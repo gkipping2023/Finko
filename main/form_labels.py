@@ -31,7 +31,7 @@ FORM_LABELS = {
     # AddPropertyForm labels
     'AddPropertyForm': {
         'alias': 'Nombre de la Propiedad',
-        'address': 'Dirección',
+        'location': 'Dirección',
         'city': 'Ciudad',
         'state': 'Estado/Provincia',
         'zip_code': 'Código Postal',

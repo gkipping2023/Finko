@@ -43,9 +43,9 @@
           <!-- Property Selection -->
           <form method="get" class="mb-4">
             <div class="mb-3">
-              <label for="property" class="form-label font-weight-bold text-dark">Select Property:</label>
+              <label for="property" class="form-label font-weight-bold text-dark">Seleccionar Propiedad:</label>
               <select class="form-control" name="property_id" id="property" onchange="this.form.submit()">
-                <option value="">--Select a Property--</option>
+                <option value="">--Seleccionar Propiedad--</option>
                 {% for property in properties %}
                   <option value="{{ property.id }}" {% if selected_property and property.id == selected_property.id %}selected{% endif %}>
                     {{ property.alias }} - {{ property.location }}
@@ -60,10 +60,10 @@
             <form method="get" class="mb-4">
               <input type="hidden" name="property_id" value="{{ selected_property.id }}">
               <div class="mb-3">
-                <label for="tenant" class="form-label font-weight-bold text-dark">Search Tenant by Personal ID:</label>
+                <label for="tenant" class="form-label font-weight-bold text-dark">Buscar Inquilino por ID Personal:</label>
                 <div class="input-group">
                   <input type="text" name="personal_id" id="tenant" class="form-control" placeholder="Enter Personal ID" value="{{ personal_id }}">
-                  <button type="submit" class="btn btn-primary">Search</button>
+                  <button type="submit" class="btn btn-primary">Buscar</button>
                 </div>
               </div>
             </form>
@@ -77,8 +77,8 @@
               </div>
             {% elif personal_id %}
               <div class="alert alert-warning mb-3">
-                No tenant found with Personal ID: {{ personal_id }} </br>
-                Enter tenant info manually
+                No se encontro un inquilino con el ID personal: {{ personal_id }} </br>
+                Ingrese la información del inquilino manualmente.
               </div>
             {% endif %}
 
@@ -95,7 +95,7 @@
               {% endif %}
               
               <div class="mb-3">
-                <p class="fw-bold mb-2"><strong>Property:</strong> {{ selected_property.alias }}</p>
+                <p class="fw-bold mb-2"><strong>Propiedad:</strong> {{ selected_property.alias }}</p>
               </div>
 
             <!-- Unregistered tenant fields (toggle visibility with JS) -->
@@ -108,35 +108,35 @@
                 <strong>Información del Inquilino No Registrado</strong>
               </div>
               <div class="mb-3">
-                <label class="form-label font-weight-bold text-dark" for="id_unregistered_tenant_name">Tenant Name</label>
+                <label class="form-label font-weight-bold text-dark" for="id_unregistered_tenant_name">Nombre</label>
                 {{ form.unregistered_tenant_name }}
               </div>
               <div class="mb-3">
-                <label class="form-label font-weight-bold text-dark" for="id_unregistered_tenant_email">Tenant Email</label>
+                <label class="form-label font-weight-bold text-dark" for="id_unregistered_tenant_email">Correo Electronico</label>
                 {{ form.unregistered_tenant_email }}
               </div>
               <div class="mb-3">
-                <label class="form-label font-weight-bold text-dark" for="id_unregistered_tenant_phone">Tenant Phone</label>
+                <label class="form-label font-weight-bold text-dark" for="id_unregistered_tenant_phone">Telefono</label>
                 {{ form.unregistered_tenant_phone }}
               </div>
               <div class="mb-3">
-                <label class="form-label font-weight-bold text-dark" for="id_unregistered_tenant_id_type">ID Type</label>
+                <label class="form-label font-weight-bold text-dark" for="id_unregistered_tenant_id_type">Tipo de Identificacion</label>
                 {{ form.unregistered_tenant_id_type }}
               </div>
               <div class="mb-3">
-                <label class="form-label font-weight-bold text-dark" for="id_unregistered_tenant_personal_id">Personal ID</label>
+                <label class="form-label font-weight-bold text-dark" for="id_unregistered_tenant_personal_id">Numero de Identificacion</label>
                 {{ form.unregistered_tenant_personal_id }}
               </div>
               <div class="mb-3">
-                <label class="form-label font-weight-bold text-dark" for="id_unregistered_tenant_dob">Date of Birth</label>
+                <label class="form-label font-weight-bold text-dark" for="id_unregistered_tenant_dob">Fecha de Nacimiento</label>
                 {{ form.unregistered_tenant_dob }}
               </div>
               <div class="mb-3">
-                <label class="form-label font-weight-bold text-dark" for="id_unregistered_tenant_nac">Nationality</label>
+                <label class="form-label font-weight-bold text-dark" for="id_unregistered_tenant_nac">Nacionalidad</label>
                 {{ form.unregistered_tenant_nac }}
               </div>
               <div class="mb-3">
-                <label class="form-label font-weight-bold text-dark" for="id_unregistered_tenant_sex">Sex</label>
+                <label class="form-label font-weight-bold text-dark" for="id_unregistered_tenant_sex">Genero</label>
                 {{ form.unregistered_tenant_sex }}
               </div>
             </div>
@@ -198,7 +198,7 @@
 
             <!-- Late Fee Type Field (Radio Buttons) -->
             <div class="mb-3">
-              <label class="form-label font-weight-bold text-dark mb-3">Late Fee Type</label>
+              <label class="form-label font-weight-bold text-dark mb-3">Recargos</label>
               <div class="row">
                 <div class="col-md-8">
                   {% for value, label in form.late_fee_type.field.choices %}
@@ -224,9 +224,9 @@
 
             <!-- Late Fee Amount Field (Conditional) -->
             <div class="mb-3" id="late_fee_amount_container" style="display: none;">
-              <label class="form-label font-weight-bold text-dark" for="id_late_fee_amount">Fixed Late Fee Amount</label>
+              <label class="form-label font-weight-bold text-dark" for="id_late_fee_amount">Monto Fijo de Recargo</label>
               {{ form.late_fee_amount }}
-              <small class="form-text text-muted d-block mt-1">Enter the fixed amount (e.g., 50.00)</small>
+              <small class="form-text text-muted d-block mt-1">Ingrese el monto fijo (por ejemplo, $50.00)</small>
               {% for error in form.late_fee_amount.errors %}
                 <div class="text-danger small">{{ error }}</div>
               {% endfor %}
@@ -278,7 +278,7 @@
             </form>
           {% endif %}
           <div class="text-center mt-3">
-            <a href="{% url 'properties' %}" class="btn btn-secondary">Back to Properties</a>
+            <a href="{% url 'properties' %}" class="btn btn-secondary">Atras</a>
           </div>
         </div>
       </div>
@@ -354,34 +354,24 @@
     const outputEl = document.getElementById('live-example-text');
     if (!outputEl) return;
 
-    if (!dueDay || dueDay < 1 || dueDay > 31) {
-      outputEl.innerHTML = '<span class="text-muted">Selecciona el día de vencimiento para ver el ejemplo.</span>';
+    const nextInvoiceVal = document.getElementById('id_next_invoice_date')?.value || '';
+    if (!nextInvoiceVal) {
+      outputEl.innerHTML = '<span class="text-muted">Selecciona la fecha de primera factura para ver el ejemplo.</span>';
       return;
     }
 
-    const today = new Date();
-    const exampleYear = today.getMonth() === 11 ? today.getFullYear() + 1 : today.getFullYear();
-    const exampleMonth = (today.getMonth() + 1) % 12;
-    const maxDay = new Date(exampleYear, exampleMonth + 1, 0).getDate();
-    const clampedDay = Math.min(dueDay, maxDay);
-    const lateFeeDate = new Date(exampleYear, exampleMonth, clampedDay + graceDays);
-    const monthName = MESES_ES[exampleMonth];
-
-    const nextInvoiceVal = document.getElementById('id_next_invoice_date')?.value || '';
-    let invoiceHtml = '';
-    if (nextInvoiceVal) {
-      invoiceHtml = `<li>📤 <strong>Factura generada el:</strong> ${fmtDate(nextInvoiceVal)}</li>`;
-    } else {
-      invoiceHtml = `<li>📤 <strong>Próxima factura:</strong> <span class="text-muted">introduce la fecha de próxima factura</span></li>`;
-    }
+    const genDate = new Date(nextInvoiceVal + 'T00:00:00');
+    const dueDate = new Date(genDate); dueDate.setDate(genDate.getDate() + 30);
+    const overdueFrom = new Date(dueDate); overdueFrom.setDate(dueDate.getDate() + 1);
+    const lateFeeFrom = new Date(dueDate); lateFeeFrom.setDate(dueDate.getDate() + graceDays + 1);
 
     outputEl.innerHTML = `
-      <p class="mb-2 text-xs text-secondary">Ejemplo del mes de <strong>${monthName} ${exampleYear}</strong>:</p>
+      <p class="mb-2 text-xs text-secondary">Ejemplo basado en la primera factura:</p>
       <ul class="mb-0 ps-3" style="line-height:2">
-        ${invoiceHtml}
-        <li>📅 <strong>Vencimiento:</strong> ${clampedDay} de ${monthName} de ${exampleYear}</li>
-        <li>⚠️ <strong>Mora aplicada desde:</strong> ${lateFeeDate.getDate()} de ${MESES_ES[lateFeeDate.getMonth()]} de ${lateFeeDate.getFullYear()}
-          <span class="text-secondary">(${graceDays === 0 ? 'sin días de gracia' : `${graceDays} día${graceDays !== 1 ? 's' : ''} de gracia`})</span></li>
+        <li>📤 <strong>Factura generada el:</strong> ${fmtDate(nextInvoiceVal)}</li>
+        <li>📅 <strong>Vencimiento (30 días después):</strong> ${fmtDate(dueDate.toISOString().slice(0,10))}</li>
+        <li>🔴 <strong>Vencida desde:</strong> ${fmtDate(overdueFrom.toISOString().slice(0,10))}${graceDays > 0 ? ` — período de gracia: ${graceDays} día${graceDays !== 1 ? 's' : ''}` : ' — sin período de gracia'}</li>
+        <li>⚠️ <strong>Recargo aplicado desde:</strong> ${fmtDate(lateFeeFrom.toISOString().slice(0,10))}</li>
       </ul>`;
   }
 

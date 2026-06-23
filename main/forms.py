@@ -86,6 +86,60 @@ class UpdateUserForm(BaseCustomModelForm):
             self.fields['promo_code'].widget = forms.HiddenInput()  # Hide the field
 
 
+class NotificationPreferencesForm(BaseCustomModelForm):
+    """Form for managing user email notification preferences"""
+    
+    class Meta:
+        model = User
+        fields = [
+            'notify_invoice_generated',
+            'notify_invoice_summary',
+            'notify_late_fee_applied',
+            'notify_payment_confirmed',
+            'notify_payment_received',
+            'notify_lease_renewal',
+            'notify_maintenance',
+            'notify_property_alerts',
+        ]
+        widgets = {
+            'notify_invoice_generated': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'notify_invoice_summary': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'notify_late_fee_applied': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'notify_payment_confirmed': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'notify_payment_received': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'notify_lease_renewal': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'notify_maintenance': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'notify_property_alerts': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Add help text for each field
+        self.fields['notify_invoice_generated'].label = 'Notificaciones de Facturas'
+        self.fields['notify_invoice_generated'].help_text = 'Recibe notificaciones cuando se generen nuevas facturas de renta'
+        
+        self.fields['notify_invoice_summary'].label = 'Resumen de Facturas'
+        self.fields['notify_invoice_summary'].help_text = 'Recibe un resumen diario de facturas generadas'
+        
+        self.fields['notify_late_fee_applied'].label = 'Alertas de Recargos'
+        self.fields['notify_late_fee_applied'].help_text = 'Recibe alertas cuando se apliquen recargos por mora'
+        
+        self.fields['notify_payment_confirmed'].label = 'Confirmación de Pagos'
+        self.fields['notify_payment_confirmed'].help_text = 'Recibe confirmación cuando se registren pagos'
+        
+        self.fields['notify_payment_received'].label = 'Pagos Recibidos'
+        self.fields['notify_payment_received'].help_text = 'Recibe notificación cuando se reciban pagos de inquilinos'
+        
+        self.fields['notify_lease_renewal'].label = 'Renovación de Contrato'
+        self.fields['notify_lease_renewal'].help_text = 'Recibe recordatorios de renovación de contratos'
+        
+        self.fields['notify_maintenance'].label = 'Alertas de Mantenimiento'
+        self.fields['notify_maintenance'].help_text = 'Recibe notificaciones de solicitudes de mantenimiento'
+        
+        self.fields['notify_property_alerts'].label = 'Alertas de Propiedad'
+        self.fields['notify_property_alerts'].help_text = 'Recibe alertas generales sobre las propiedades'
+
+
 class AddPropertyForm(BaseCustomModelForm):
     class Meta:
         model = Properties
@@ -115,7 +169,11 @@ class AddPropertyForm(BaseCustomModelForm):
 class NewRentForm(BaseCustomModelForm):
     start_date = forms.DateField(widget=forms.DateInput(attrs={'type':'date', 'class':'form-control','id': 'id_start_date'}))
     end_date = forms.DateField(widget=forms.DateInput(attrs={'type':'date', 'class':'form-control','id': 'id_end_date'}))
-    next_invoice_date = forms.DateField(widget=forms.DateInput(attrs={'type':'date', 'class':'form-control'}), required=False)
+    next_invoice_date = forms.DateField(
+        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+        required=False,
+        help_text='Fecha en que se generará la primera factura. El vencimiento será 30 días después. Las siguientes facturas se generarán automáticamente cada 30 días.'
+    )
     late_fee_type = forms.ChoiceField(
         choices=LATE_FEE_CHOICES,
         widget=forms.HiddenInput(),
@@ -200,6 +258,14 @@ class NewRentForm(BaseCustomModelForm):
                 "Por favor ingresa una cantidad fija para la tarifa de mora."
             )
 
+        # Validate next_invoice_date is not before start_date
+        next_invoice_date = cleaned_data.get('next_invoice_date')
+        if next_invoice_date and start_date and next_invoice_date < start_date:
+            self.add_error(
+                'next_invoice_date',
+                "La fecha de primera factura no puede ser anterior a la fecha de inicio del contrato."
+            )
+
         return cleaned_data
 
     def save(self, commit=True, user=None, property_instance=None):
@@ -209,11 +275,9 @@ class NewRentForm(BaseCustomModelForm):
         if property_instance:
             rent.property = property_instance
         
-        # CRITICAL: Preserve user's manual entries without auto-calculation
-        # User must manually enter next_invoice_date
-        # Do NOT auto-populate from start_date
+        # Default next_invoice_date to start_date if not explicitly provided
         if not self.cleaned_data.get('next_invoice_date'):
-            rent.next_invoice_date = None
+            rent.next_invoice_date = self.cleaned_data.get('start_date')
         
         if commit:
             rent.save()

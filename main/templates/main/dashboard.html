@@ -1,229 +1,747 @@
 {% extends "index.html" %}
-
 {% block content %}
 {% include "main/role_modal.html" %}
-<div class="container-fluid py-4">
+
+<style>
+  /* ── Design tokens ─────────────────────────────────────────── */
+  :root {
+    --radius: 14px;
+    --shadow: 0 2px 12px rgba(52,71,103,.07);
+    --shadow-hover: 0 6px 24px rgba(52,71,103,.14);
+    --gap: 24px;
+    --c-cyan: #17c1e8;
+    --c-blue: #5e72e4;
+    --c-green: #2dce89;
+    --c-orange: #fb6340;
+    --c-yellow: #ffd600;
+    --c-purple: #8965e0;
+    --c-text: #344767;
+    --c-muted: #8392ab;
+    --c-bg: #f8f9fa;
+    --c-border: #e9ecef;
+  }
+
+  /* ── Base ───────────────────────────────────────────────────── */
+  .dash-wrapper { padding: 32px 24px; background: var(--c-bg); min-height: 100vh; }
+  @media (max-width: 576px) { .dash-wrapper { padding: 16px 12px; } }
+
+  /* ── Header ─────────────────────────────────────────────────── */
+  .dash-header {
+    background: linear-gradient(135deg, #344767 0%, #1a2540 100%);
+    border-radius: var(--radius);
+    padding: 28px 32px;
+    margin-bottom: var(--gap);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+  .dash-header h1 { color: #fff; font-size: 1.6rem; font-weight: 700; margin: 0; }
+  .dash-header p { color: rgba(255,255,255,.6); margin: 4px 0 0; font-size: .875rem; }
+  .dash-header .header-badge {
+    background: rgba(255,255,255,.12);
+    color: #fff;
+    border-radius: 50px;
+    padding: 6px 16px;
+    font-size: .78rem;
+    font-weight: 600;
+    letter-spacing: .03em;
+  }
+
+  /* ── Grid ───────────────────────────────────────────────────── */
+  .dash-grid { display: grid; gap: var(--gap); }
+  .grid-4 { grid-template-columns: repeat(4, 1fr); }
+  .grid-3 { grid-template-columns: repeat(3, 1fr); }
+  .grid-2 { grid-template-columns: repeat(2, 1fr); }
+  .grid-2-1 { grid-template-columns: 2fr 1fr; }
+  .grid-1-2 { grid-template-columns: 1fr 2fr; }
+  @media (max-width: 1200px) {
+    .grid-4 { grid-template-columns: repeat(2, 1fr); }
+    .grid-3 { grid-template-columns: repeat(2, 1fr); }
+    .grid-2-1, .grid-1-2 { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 640px) {
+    .grid-4, .grid-3, .grid-2, .grid-2-1, .grid-1-2 { grid-template-columns: 1fr; }
+  }
+
+  /* ── Card ───────────────────────────────────────────────────── */
+  .dash-card {
+    background: #fff;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    border: 1px solid var(--c-border);
+    padding: 24px;
+    transition: box-shadow .22s ease, transform .22s ease;
+  }
+  .dash-card:hover { box-shadow: var(--shadow-hover); transform: translateY(-2px); }
+  .dash-card .card-label {
+    font-size: .72rem; font-weight: 700; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--c-muted); margin-bottom: 8px;
+  }
+  .dash-card .card-value {
+    font-size: 2rem; font-weight: 800; color: var(--c-text); line-height: 1.1;
+  }
+  .dash-card .card-sub { font-size: .82rem; color: var(--c-muted); margin-top: 6px; }
+  .card-icon {
+    width: 48px; height: 48px; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.2rem; flex-shrink: 0;
+  }
+  .card-icon.cyan { background: rgba(23,193,232,.12); color: var(--c-cyan); }
+  .card-icon.blue { background: rgba(94,114,228,.12); color: var(--c-blue); }
+  .card-icon.green { background: rgba(45,206,137,.12); color: var(--c-green); }
+  .card-icon.orange { background: rgba(251,99,64,.12); color: var(--c-orange); }
+  .card-icon.yellow { background: rgba(255,214,0,.18); color: #e6ac00; }
+  .card-icon.purple { background: rgba(137,101,224,.12); color: var(--c-purple); }
+  .kpi-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+
+  /* ── Section title ──────────────────────────────────────────── */
+  .section-title {
+    font-size: .7rem; font-weight: 700; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--c-muted);
+    margin: 0 0 4px;
+  }
+  .section-heading {
+    font-size: 1rem; font-weight: 700; color: var(--c-text); margin: 0 0 20px;
+  }
+
+  /* ── Progress bar ───────────────────────────────────────────── */
+  .prog-label { display: flex; justify-content: space-between; margin-bottom: 6px; }
+  .prog-label span { font-size: .78rem; color: var(--c-text); font-weight: 600; }
+  .prog-label small { font-size: .78rem; color: var(--c-muted); }
+  .prog-bar-track {
+    height: 8px; border-radius: 99px;
+    background: #eef0f5; overflow: hidden; margin-bottom: 14px;
+  }
+  .prog-bar-fill {
+    height: 100%; border-radius: 99px;
+    transition: width .6s cubic-bezier(.4,0,.2,1);
+  }
+  .bar-cyan  { background: var(--c-cyan); }
+  .bar-blue  { background: var(--c-blue); }
+  .bar-green { background: var(--c-green); }
+  .bar-orange{ background: var(--c-orange); }
+
+  /* ── Alert pills ────────────────────────────────────────────── */
+  .alert-pill {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 16px; border-radius: 10px; margin-bottom: 10px;
+    border: 1px solid transparent;
+  }
+  .alert-pill.red    { background: #fff5f5; border-color: #fde8e8; }
+  .alert-pill.yellow { background: #fffbeb; border-color: #fef3c7; }
+  .alert-pill.blue   { background: #eff6ff; border-color: #dbeafe; }
+  .alert-pill .pill-icon { font-size: 1.1rem; flex-shrink: 0; }
+  .alert-pill .pill-text { font-size: .83rem; color: var(--c-text); flex: 1; }
+  .alert-pill .pill-count {
+    font-size: 1.1rem; font-weight: 800;
+    min-width: 28px; text-align: right;
+  }
+  .alert-pill.red .pill-count    { color: var(--c-orange); }
+  .alert-pill.yellow .pill-count { color: #b45309; }
+  .alert-pill.blue .pill-count   { color: var(--c-blue); }
+
+  /* ── Payment table ──────────────────────────────────────────── */
+  .pay-table { width: 100%; border-collapse: collapse; }
+  .pay-table th {
+    font-size: .68rem; font-weight: 700; letter-spacing: .07em;
+    text-transform: uppercase; color: var(--c-muted);
+    padding: 0 8px 10px; border-bottom: 1px solid var(--c-border);
+    text-align: left;
+  }
+  .pay-table td {
+    padding: 10px 8px; font-size: .83rem; color: var(--c-text);
+    border-bottom: 1px solid var(--c-border);
+    vertical-align: middle;
+  }
+  .pay-table tr:last-child td { border-bottom: none; }
+  .pay-amount { font-weight: 700; color: var(--c-green); }
+  .pay-prop { font-size: .75rem; color: var(--c-muted); }
+
+  /* ── Tenant card ────────────────────────────────────────────── */
+  .tenant-hero {
+    background: linear-gradient(135deg, var(--c-cyan) 0%, var(--c-blue) 100%);
+    border-radius: var(--radius); padding: 24px; color: #fff; margin-bottom: var(--gap);
+  }
+  .tenant-hero h2 { font-size: 1.4rem; font-weight: 700; margin: 0 0 4px; }
+  .tenant-hero p { margin: 0; opacity: .8; font-size: .85rem; }
+  .tenant-hero .amount { font-size: 2.2rem; font-weight: 800; margin: 16px 0 4px; }
+  .status-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 12px; border-radius: 99px;
+    font-size: .75rem; font-weight: 700;
+  }
+  .badge-ok      { background: rgba(45,206,137,.18); color: #1a9c67; }
+  .badge-overdue { background: rgba(251,99,64,.18);  color: #c94a2a; }
+  .badge-pending { background: rgba(255,214,0,.22);  color: #8a6d00; }
+  .btn-dash {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 10px 22px; border-radius: 10px; font-size: .83rem;
+    font-weight: 600; text-decoration: none; transition: all .2s;
+    border: none; cursor: pointer;
+  }
+  .btn-dash.primary { background: var(--c-cyan); color: #fff; }
+  .btn-dash.primary:hover { background: #11a8c8; color: #fff; }
+  .btn-dash.ghost { background: #f0f2f5; color: var(--c-text); }
+  .btn-dash.ghost:hover { background: #e4e7ec; color: var(--c-text); }
+
+  /* ── Chart containers ───────────────────────────────────────── */
+  .chart-wrap { position: relative; }
+  .chart-wrap canvas { max-width: 100%; }
+  .donut-legend { display: flex; flex-wrap: wrap; gap: 10px 20px; margin-top: 16px; }
+  .legend-item { display: flex; align-items: center; gap: 8px; font-size: .78rem; color: var(--c-text); }
+  .legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+</style>
+
+<div class="dash-wrapper">
+
+  <!-- ── ROLE MODAL ── -->
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      if (!{{ request.user.role_confirmed|lower }}) {
+        new bootstrap.Modal(document.getElementById('roleModal')).show();
+      }
+    });
+  </script>
+
   {% if request.user.role == 'O' %}
-  <!-- Owner: Portfolio Overview + Financial Snapshot -->
-  <div class="row">
-    <div class="col-lg-6 col-md-6 col-12">
-      <div class="card">
-        <div class="card-body">
-          <h5 class="font-weight-bolder">Resumen del Portafolio</h5>
-          <div class="d-flex align-items-center mb-3">
-            <i class="ni ni-building text-info text-lg me-3"></i>
-            <span>Propiedades Totales: <strong>{{ total_properties }}</strong></span>
-          </div>
-          <div class="d-flex align-items-center mb-3">
-            <i class="ni ni-chart-bar-32 text-success text-lg me-3"></i>
-            <span>Tasa de Ocupación: <strong>{{ occupancy_rate }}%</strong></span>
-          </div>
-          <div class="d-flex align-items-center mb-3">
-            <i class="ni ni-money-coins text-warning text-lg me-3"></i>
-            <span>Ingreso Mensual de Alquiler: <strong>${{ expected_monthly_income }}</strong></span>
-          </div>
-          <div class="d-flex align-items-center mb-3">
-            <i class="ni ni-chart-pie-35 text-danger text-lg me-3"></i>
-            <span>Saldo Adeudado Total: <strong>${{ total_outstanding_balance }}</strong></span>
-          </div>
-          <div class="d-flex align-items-center">
-            <i class="ni ni-calendar-grid-58 text-danger text-lg me-3"></i>
-            <span>
-              Próximas Renovaciones de Contrato: 
-              <strong>{{ upcoming_renewals }}</strong>
-              {% if upcoming_renewals > 0 %}
-                <a href="{% url 'properties' %}" class="btn btn-link btn-sm text-info ms-2">Ver Detalles</a>
-              {% endif %}
-            </span>
-          </div>
-        </div>
-      </div>
-    </div>
+  <!-- ══════════════════════════════════════════════════════
+       OWNER DASHBOARD
+  ══════════════════════════════════════════════════════ -->
 
-    <!-- Financial Snapshot -->
-      <div class="col-lg-6 col-md-6 col-12 mt-4 mt-md-0">
-      <div class="card">
-        <div class="card-body">
-          <h5 class="font-weight-bolder">Resumen Financiero</h5>
-          <div class="d-flex align-items-center mb-3">
-            <i class="ni ni-money-coins text-success text-lg me-3"></i>
-            <span>Alquiler Cobrado: <strong>${{ rent_collected }}</strong> / <strong>${{ rent_outstanding }}</strong> pendiente</span>
-          </div>
-          <div class="d-flex align-items-center mb-3">
-            <i class="ni ni-credit-card text-info text-lg me-3"></i>
-            <span>Último Pago: <strong>${{ last_payment.amount }}</strong></span>
-          </div>
-          <div class="d-flex align-items-center mb-3">
-            <i class="ni ni-basket text-warning text-lg me-3"></i>
-            <span>Resumen de Gastos: <strong>${{ expense_summary }}</strong></span>
-          </div>
-          <div class="d-flex align-items-center">
-            <i class="ni ni-chart-pie-35 text-danger text-lg me-3"></i>
-            <span>Flujo de Efectivo Neto: <strong>${{ net_cash_flow }}</strong></span>
-          </div>
-        </div>
-      </div>
+  <!-- Header -->
+  <div class="dash-header">
+    <div>
+      <h1>Panel de Control</h1>
+      <p>Bienvenido de vuelta, {{ request.user.first_name }} &mdash; aquí está tu resumen del día.</p>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+      {% if pending_confirmations %}
+      <a href="{% url 'payments' %}" class="header-badge" style="background:rgba(251,99,64,.25);color:#fb6340;">
+        ⚡ {{ pending_confirmations }} pago{{ pending_confirmations|pluralize:"s" }} pendiente{{ pending_confirmations|pluralize:"s" }}
+      </a>
+      {% endif %}
+      <a href="{% url 'properties' %}" class="btn-dash primary" style="padding:8px 18px;font-size:.8rem;">
+        + Nueva Propiedad
+      </a>
     </div>
   </div>
 
-  <div class="row mt-4">
-    <!-- Recent Payments -->
-    <div class="col-lg-6 col-md-6 col-12">
-      <div class="card">
-        <div class="card-body">
-          <h5 class="font-weight-bolder">Pagos Recientes</h5>
-          <table class="table align-middle mb-0">
-            <th>Monto</th>
-            <th>Fecha</th>
-            {% for payment in recent_payments %}
-            <tr>
-              <td class="text font-weight-bold">${{ payment.amount }}</td>
-              <td>{{ payment.payment_date|date:"M d, Y" }}</td>
-            </tr>
-            {% endfor %}
-          </table>
+  <!-- KPI Row -->
+  <div class="dash-grid grid-4" style="margin-bottom:var(--gap);">
+
+    <div class="dash-card">
+      <div class="kpi-row">
+        <div>
+          <div class="card-label">Propiedades</div>
+          <div class="card-value">{{ total_properties }}</div>
+          <div class="card-sub">{{ rented_properties }} ocupadas</div>
+        </div>
+        <div class="card-icon cyan"><i class="fas fa-building"></i></div>
+      </div>
+    </div>
+
+    <div class="dash-card">
+      <div class="kpi-row">
+        <div>
+          <div class="card-label">Ingreso Esperado</div>
+          <div class="card-value">${{ expected_monthly_income|floatformat:0 }}</div>
+          <div class="card-sub">este mes</div>
+        </div>
+        <div class="card-icon green"><i class="fas fa-dollar-sign"></i></div>
+      </div>
+    </div>
+
+    <div class="dash-card">
+      <div class="kpi-row">
+        <div>
+          <div class="card-label">Cobrado este mes</div>
+          <div class="card-value">${{ rent_collected|floatformat:0 }}</div>
+          <div class="card-sub">${{ rent_outstanding|floatformat:0 }} pendiente</div>
+        </div>
+        <div class="card-icon blue"><i class="fas fa-wallet"></i></div>
+      </div>
+    </div>
+
+    <div class="dash-card">
+      <div class="kpi-row">
+        <div>
+          <div class="card-label">Flujo Neto</div>
+          <div class="card-value" style="color:{% if net_cash_flow >= 0 %}var(--c-green){% else %}var(--c-orange){% endif %}">
+            ${{ net_cash_flow|floatformat:0 }}
+          </div>
+          <div class="card-sub">cobros &minus; gastos</div>
+        </div>
+        <div class="card-icon {% if net_cash_flow >= 0 %}green{% else %}orange{% endif %}">
+          <i class="fas fa-chart-line"></i>
         </div>
       </div>
     </div>
 
-    <!-- Alerts / Notifications -->
-    <div class="col-lg-6 col-md-6 col-12 mt-4 mt-md-0">
-      <div class="card">
-        <div class="card-body">
-          <h5 class="font-weight-bolder">Alertas / Notificaciones</h5>
-          <ul class="list-group">
-            <li class="list-group-item d-flex align-items-center">
-              <i class="ni ni-bell-55 text-danger text-lg me-3"></i>
-              <span>Alertas de Alquiler Vencido: <strong>{{ overdue_rent_alerts }}</strong></span>
-            </li>
-            <li class="list-group-item d-flex align-items-center">
-              <i class="ni ni-calendar-grid-58 text-warning text-lg me-3"></i>
-              <span>Contratos por Vencer Pronto: <strong>{{ leases_expiring_soon }}</strong></span>
-            </li>
-            <li class="list-group-item d-flex align-items-center">
-              <i class="ni ni-settings text-info text-lg me-3"></i>
-              <span>Solicitudes de Mantenimiento Pendientes: <strong>{{ pending_maintenance_requests }}</strong></span>
-            </li>
-          </ul>
-        </div>
-      </div>
-    </div>
   </div>
-  {% elif request.user.role == 'T' %}
-  <!-- Tenant: show only tenant-relevant items -->
-  <div class="row">
-    <div class="col-lg-8 col-12">
-      <div class="card">
-        <div class="card-body">
-          <h5 class="font-weight-bolder">Mi Contrato</h5>
-          {% if tenant_next_rent %}
-            <div class="d-flex justify-content-between">
-              <div>
-                <strong>{{ tenant_next_rent.property.alias }}</strong><br/>
-                <small class="text-muted">Renta: ${{ tenant_next_rent.rent_amount }}</small>
-              </div>
-              <div class="text-end">
-                <div>Vence: <strong>{{ tenant_next_rent.rent_due_date }}</strong></div>
-                <div>Días vencido: <strong>{{ tenant_next_rent.days_past_due|default:0 }}</strong></div>
-              </div>
-            </div>
-            <div class="mt-3">
-              <a href="{% url 'public_payment_portal' %}" class="btn btn-info">Reportar Pago</a>
-              <a href="{% url 'generate_documents' %}" class="btn btn-link">Descargar Historial</a>
-            </div>
+
+  <!-- Occupancy + Invoice Status + Alerts -->
+  <div class="dash-grid grid-3" style="margin-bottom:var(--gap);">
+
+    <!-- Occupancy progress card -->
+    <div class="dash-card">
+      <p class="section-title">Ocupación del Portafolio</p>
+      <p class="section-heading">{{ occupancy_rate }}% Ocupado</p>
+      <div class="prog-label">
+        <span>Ocupadas</span><small>{{ rented_properties }} / {{ total_properties }}</small>
+      </div>
+      <div class="prog-bar-track">
+        <div class="prog-bar-fill bar-cyan" style="width:{{ occupancy_rate }}%;"></div>
+      </div>
+      <div class="prog-label">
+        <span>Cobrado</span>
+        <small>
+          {% if expected_monthly_income %}
+            {{ rent_collected|floatformat:0 }} / {{ expected_monthly_income|floatformat:0 }}
           {% else %}
-            <p class="text-muted">No hay contratos activos.</p>
+            —
+          {% endif %}
+        </small>
+      </div>
+      <div class="prog-bar-track">
+        {% if expected_monthly_income %}
+          {% with pct=rent_collected|floatformat:0 %}
+          <div class="prog-bar-fill bar-green"
+               style="width:{% widthratio rent_collected expected_monthly_income 100 %}%;"></div>
+          {% endwith %}
+        {% else %}
+          <div class="prog-bar-fill bar-green" style="width:0%;"></div>
+        {% endif %}
+      </div>
+      <div class="prog-label">
+        <span>Saldo Adeudado</span>
+        <small>${{ total_outstanding_balance|floatformat:0 }}</small>
+      </div>
+      <div class="prog-bar-track">
+        {% if expected_monthly_income %}
+          <div class="prog-bar-fill bar-orange"
+               style="width:{% widthratio total_outstanding_balance expected_monthly_income 100 %}%;max-width:100%;"></div>
+        {% else %}
+          <div class="prog-bar-fill bar-orange" style="width:0%;"></div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Invoice status donut -->
+    <div class="dash-card">
+      <p class="section-title">Estado de Facturas</p>
+      <p class="section-heading">Distribución Actual</p>
+      <div class="chart-wrap" style="height:160px;display:flex;justify-content:center;">
+        <canvas id="donutChart" style="max-height:160px;"></canvas>
+      </div>
+      <div class="donut-legend">
+        <div class="legend-item"><div class="legend-dot" style="background:var(--c-green);"></div>Pagadas ({{ inv_paid }})</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--c-cyan);"></div>Pendientes ({{ inv_pending }})</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#e6ac00;"></div>Parcial ({{ inv_partial }})</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--c-orange);"></div>Vencidas ({{ inv_overdue }})</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--c-purple);"></div>Con recargo ({{ inv_overdue_fee }})</div>
+      </div>
+    </div>
+
+    <!-- Alerts -->
+    <div class="dash-card">
+      <p class="section-title">Alertas</p>
+      <p class="section-heading">Atención Requerida</p>
+      <div class="alert-pill red">
+        <span class="pill-icon">🔴</span>
+        <span class="pill-text">Facturas vencidas</span>
+        <span class="pill-count">{{ overdue_rent_alerts }}</span>
+      </div>
+      <div class="alert-pill yellow">
+        <span class="pill-icon">🟡</span>
+        <span class="pill-text">Contratos por vencer (30 días)</span>
+        <span class="pill-count">{{ leases_expiring_soon }}</span>
+      </div>
+      <div class="alert-pill blue">
+        <span class="pill-icon">🔵</span>
+        <span class="pill-text">Solicitudes de mantenimiento</span>
+        <span class="pill-count">{{ pending_maintenance_requests }}</span>
+      </div>
+      <div class="alert-pill yellow">
+        <span class="pill-icon">📋</span>
+        <span class="pill-text">Renovaciones próximas</span>
+        <span class="pill-count">{{ upcoming_renewals }}</span>
+      </div>
+      {% if pending_confirmations %}
+      <div class="alert-pill red">
+        <span class="pill-icon">⚡</span>
+        <span class="pill-text">Pagos por confirmar</span>
+        <span class="pill-count">{{ pending_confirmations }}</span>
+      </div>
+      {% endif %}
+    </div>
+
+  </div>
+
+  <!-- Charts row: line + bar -->
+  <div class="dash-grid grid-2" style="margin-bottom:var(--gap);">
+
+    <!-- Line chart: monthly income vs expenses -->
+    <div class="dash-card">
+      <p class="section-title">Últimos 6 meses</p>
+      <p class="section-heading">Ingresos vs. Gastos</p>
+      <div class="chart-wrap" style="height:220px;">
+        <canvas id="lineChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Bar chart: same data as comparison -->
+    <div class="dash-card">
+      <p class="section-title">Comparativa mensual</p>
+      <p class="section-heading">Cobrado este mes</p>
+      <div class="chart-wrap" style="height:220px;">
+        <canvas id="barChart"></canvas>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Payments table + Properties -->
+  <div class="dash-grid grid-2-1">
+
+    <!-- Recent payments table -->
+    <div class="dash-card">
+      <p class="section-title">Actividad</p>
+      <p class="section-heading">Pagos Recientes</p>
+      <table class="pay-table">
+        <thead>
+          <tr>
+            <th>Inquilino / Propiedad</th>
+            <th>Fecha</th>
+            <th style="text-align:right;">Monto</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in recent_payments %}
+          <tr>
+            <td>
+              <div style="font-weight:600;">{{ p.invoice.rent.tenant.full_name|default:p.invoice.rent.unregistered_tenant_name|default:"—" }}</div>
+              <div class="pay-prop">{{ p.invoice.rent.property.alias }}</div>
+            </td>
+            <td>{{ p.payment_date|date:"d M Y" }}</td>
+            <td style="text-align:right;" class="pay-amount">${{ p.amount|floatformat:2 }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="3" style="color:var(--c-muted);text-align:center;padding:20px 0;">Sin pagos recientes</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <div style="margin-top:16px;">
+        <a href="{% url 'payments' %}" class="btn-dash ghost" style="font-size:.78rem;padding:7px 16px;">Ver todos los pagos →</a>
+      </div>
+    </div>
+
+    <!-- Property quick list -->
+    <div class="dash-card">
+      <p class="section-title">Portafolio</p>
+      <p class="section-heading">Tus Propiedades</p>
+      {% for p in owner_properties %}
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--c-border);">
+        <div>
+          <div style="font-size:.85rem;font-weight:700;color:var(--c-text);">{{ p.alias }}</div>
+          <div style="font-size:.75rem;color:var(--c-muted);">{{ p.location }}</div>
+        </div>
+        <div style="text-align:right;">
+          {% if p.last_payment_amount %}
+          <div style="font-size:.82rem;font-weight:700;color:var(--c-green);">${{ p.last_payment_amount|floatformat:0 }}</div>
+          <div style="font-size:.72rem;color:var(--c-muted);">{{ p.last_payment_date|date:"d M" }}</div>
+          {% else %}
+          <div style="font-size:.75rem;color:var(--c-muted);">Sin pagos</div>
           {% endif %}
         </div>
       </div>
-      <div class="card mt-3">
-        <div class="card-body">
-          <h6 class="font-weight-bolder">Pagos Recientes</h6>
-          <table class="table mb-0">
-            {% for p in tenant_recent_payments %}
-            <tr>
-              <td>${{ p.amount }}</td>
-              <td>{{ p.payment_date|date:"M d, Y" }}</td>
-            </tr>
-            {% empty %}
-            <tr><td colspan="2" class="text-muted">No hay pagos recientes.</td></tr>
-            {% endfor %}
-          </table>
-        </div>
+      {% empty %}
+      <p style="color:var(--c-muted);font-size:.83rem;">No hay propiedades registradas.</p>
+      {% endfor %}
+      <div style="margin-top:16px;">
+        <a href="{% url 'properties' %}" class="btn-dash ghost" style="font-size:.78rem;padding:7px 16px;">Gestionar propiedades →</a>
       </div>
     </div>
 
-    <div class="col-lg-4 col-12 mt-3 mt-lg-0">
-      <div class="card">
-        <div class="card-body">
-          <h5 class="font-weight-bolder">Alertas / Notificaciones</h5>
-          <ul class="list-group">
-            <li class="list-group-item d-flex align-items-center">
-              <i class="ni ni-bell-55 text-danger text-lg me-3"></i>
-              <span>Alertas de Alquiler Vencido: <strong>{{ overdue_rent_alerts }}</strong></span>
-            </li>
-            <li class="list-group-item d-flex align-items-center">
-              <i class="ni ni-calendar-grid-58 text-warning text-lg me-3"></i>
-              <span>Contratos por Vencer Pronto: <strong>{{ leases_expiring_soon }}</strong></span>
-            </li>
-            <li class="list-group-item d-flex align-items-center">
-              <i class="ni ni-settings text-info text-lg me-3"></i>
-              <span>Solicitudes de Mantenimiento Pendientes: <strong>{{ pending_maintenance_requests }}</strong></span>
-            </li>
-          </ul>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════
+       TENANT DASHBOARD
+  ══════════════════════════════════════════════════════ -->
+  {% elif request.user.role == 'T' %}
+
+  <!-- Header -->
+  <div class="dash-header">
+    <div>
+      <h1>Mi Portal</h1>
+      <p>Hola {{ request.user.first_name }}, aquí está el estado de tu contrato.</p>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+      <a href="{% url 'public_payment_portal' %}" class="btn-dash primary">💳 Reportar Pago</a>
+    </div>
+  </div>
+
+  {% if tenant_next_rent %}
+  <!-- Tenant hero card -->
+  <div class="tenant-hero" style="margin-bottom:var(--gap);">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;">
+      <div>
+        <p style="margin:0 0 4px;opacity:.7;font-size:.8rem;letter-spacing:.05em;text-transform:uppercase;">Propiedad Actual</p>
+        <h2>{{ tenant_next_rent.property.alias }}</h2>
+        <p>{{ tenant_next_rent.property.location }}</p>
+      </div>
+      {% if tenant_next_rent.days_past_due > 0 %}
+      <span class="status-badge badge-overdue">⚠ {{ tenant_next_rent.days_past_due }} días vencido</span>
+      {% else %}
+      <span class="status-badge badge-ok">✓ Al día</span>
+      {% endif %}
+    </div>
+    <div class="amount">${{ tenant_next_rent.rent_amount|floatformat:2 }}<span style="font-size:1rem;opacity:.7;font-weight:400;"> / mes</span></div>
+    <div style="display:flex;gap:24px;flex-wrap:wrap;margin-top:8px;font-size:.82rem;opacity:.8;">
+      <span>📅 Vence día {{ tenant_next_rent.rent_due_date }} de cada mes</span>
+      {% if tenant_next_rent.end_date %}
+      <span>📋 Contrato hasta {{ tenant_next_rent.end_date|date:"d M Y" }}</span>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Tenant KPIs -->
+  <div class="dash-grid grid-3" style="margin-bottom:var(--gap);">
+    <div class="dash-card">
+      <div class="kpi-row">
+        <div>
+          <div class="card-label">Total Pagado</div>
+          <div class="card-value" style="color:var(--c-green);">${{ tenant_total_paid|floatformat:0 }}</div>
+          <div class="card-sub">historial completo</div>
+        </div>
+        <div class="card-icon green"><i class="fas fa-check-circle"></i></div>
+      </div>
+    </div>
+    <div class="dash-card">
+      <div class="kpi-row">
+        <div>
+          <div class="card-label">Próximo pago</div>
+          <div class="card-value">${{ tenant_next_rent.rent_amount|floatformat:0 }}</div>
+          <div class="card-sub">día {{ tenant_next_rent.rent_due_date }} del mes</div>
+        </div>
+        <div class="card-icon cyan"><i class="fas fa-calendar-check"></i></div>
+      </div>
+    </div>
+    <div class="dash-card">
+      <div class="kpi-row">
+        <div>
+          <div class="card-label">Estado actual</div>
+          <div class="card-value" style="font-size:1.2rem;margin-top:4px;">
+            {% if tenant_next_rent.days_past_due > 0 %}
+              <span style="color:var(--c-orange);">Vencido</span>
+            {% else %}
+              <span style="color:var(--c-green);">Al día</span>
+            {% endif %}
+          </div>
+          <div class="card-sub">
+            {% if tenant_next_rent.days_past_due > 0 %}{{ tenant_next_rent.days_past_due }} días de retraso{% else %}Sin atrasos{% endif %}
+          </div>
+        </div>
+        <div class="card-icon {% if tenant_next_rent.days_past_due > 0 %}orange{% else %}green{% endif %}">
+          <i class="fas fa-{% if tenant_next_rent.days_past_due > 0 %}exclamation-triangle{% else %}shield-alt{% endif %}"></i>
         </div>
       </div>
     </div>
+  </div>
+
+  <!-- Tenant alerts + payments -->
+  <div class="dash-grid grid-2">
+
+    <div class="dash-card">
+      <p class="section-title">Actividad</p>
+      <p class="section-heading">Mis Pagos Recientes</p>
+      <table class="pay-table">
+        <thead>
+          <tr>
+            <th>Propiedad</th>
+            <th>Fecha</th>
+            <th style="text-align:right;">Monto</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in tenant_recent_payments %}
+          <tr>
+            <td>{{ p.invoice.rent.property.alias }}</td>
+            <td>{{ p.payment_date|date:"d M Y" }}</td>
+            <td style="text-align:right;" class="pay-amount">${{ p.amount|floatformat:2 }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="3" style="color:var(--c-muted);text-align:center;padding:20px 0;">Sin pagos registrados</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap;">
+        <a href="{% url 'public_payment_portal' %}" class="btn-dash primary" style="font-size:.78rem;padding:7px 16px;">+ Reportar pago</a>
+        <a href="{% url 'generate_documents' %}" class="btn-dash ghost" style="font-size:.78rem;padding:7px 16px;">Historial PDF</a>
+      </div>
+    </div>
+
+    <div class="dash-card">
+      <p class="section-title">Notificaciones</p>
+      <p class="section-heading">Alertas de tu Contrato</p>
+      <div class="alert-pill {% if tenant_next_rent.days_past_due > 0 %}red{% else %}blue{% endif %}">
+        <span class="pill-icon">{% if tenant_next_rent.days_past_due > 0 %}⚠️{% else %}✅{% endif %}</span>
+        <span class="pill-text">Estado de renta</span>
+        <span class="pill-count" style="font-size:.85rem;{% if tenant_next_rent.days_past_due > 0 %}color:var(--c-orange);{% else %}color:var(--c-green);{% endif %}">
+          {% if tenant_next_rent.days_past_due > 0 %}{{ tenant_next_rent.days_past_due }}d{% else %}OK{% endif %}
+        </span>
+      </div>
+      <div class="alert-pill yellow">
+        <span class="pill-icon">📋</span>
+        <span class="pill-text">Contratos activos</span>
+        <span class="pill-count">{{ tenant_rents.count }}</span>
+      </div>
+      <div style="margin-top:20px;">
+        <div style="font-size:.75rem;color:var(--c-muted);margin-bottom:8px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;">Detalles del contrato</div>
+        <div style="font-size:.83rem;line-height:1.9;color:var(--c-text);">
+          🏠 <strong>{{ tenant_next_rent.property.alias }}</strong><br>
+          💰 ${{ tenant_next_rent.rent_amount|floatformat:2 }} / mes<br>
+          📅 Día {{ tenant_next_rent.rent_due_date }} de cada mes<br>
+          {% if tenant_next_rent.end_date %}📋 Fin: {{ tenant_next_rent.end_date|date:"d M Y" }}{% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {% else %}
+  <!-- No active lease -->
+  <div class="dash-card" style="text-align:center;padding:48px 24px;">
+    <div style="font-size:3rem;margin-bottom:16px;">🏠</div>
+    <h3 style="color:var(--c-text);margin-bottom:8px;">Sin contrato activo</h3>
+    <p style="color:var(--c-muted);">Aún no tienes un contrato de alquiler activo. Contacta a tu propietario.</p>
   </div>
   {% endif %}
- 
-<!-- Role-specific section (Owner-only) -->
-<div class="row mt-4">
-  <div class="col-12">
-    {% if request.user.role == 'O' %}
-      <div class="card">
-        <div class="card-body">
-          <h5 class="font-weight-bolder">Propiedades</h5>
-          <div class="table-responsive">
-            <table class="table align-middle mb-0">
-              <thead>
-                <tr>
-                  <th>Alias</th>
-                  <th>Últ. Pago</th>
-                  <th>Fecha</th>
-                </tr>
-              </thead>
-              <tbody>
-                {% for p in owner_properties %}
-                <tr>
-                  <td><strong>{{ p.alias }}</strong><br/><small class="text-muted">{{ p.location }}</small></td>
-                  <td>{% if p.last_payment_amount %}${{ p.last_payment_amount }}{% else %}-{% endif %}</td>
-                  <td>{% if p.last_payment_date %}{{ p.last_payment_date|date:"M d, Y" }}{% else %}-{% endif %}</td>
-                </tr>
-                {% empty %}
-                <tr><td colspan="3" class="text-muted">No hay propiedades registradas.</td></tr>
-                {% endfor %}
-              </tbody>
-            </table>
-          </div>
-          <div class="mt-3">
-            <a href="{% url 'properties' %}" class="btn btn-sm btn-info">Ver Propiedades</a>
-            <a href="{% url 'generate_documents' %}" class="btn btn-sm btn-link">Generar Reportes</a>
-          </div>
-        </div>
-      </div>
-    {% endif %}
-  </div>
-</div>
-   
 
+  {% endif %}
+</div>
+
+{% if request.user.role == 'O' %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
-  document.addEventListener('DOMContentLoaded', function() {
-    var roleConfirmed = {{ request.user.role_confirmed|lower }};
-    if (!roleConfirmed) {
-      var roleModal = new bootstrap.Modal(document.getElementById('roleModal'));
-      roleModal.show();
+  Chart.defaults.font.family = "'Inter','Montserrat',sans-serif";
+  Chart.defaults.color = '#8392ab';
+
+  const labels  = {{ chart_monthly_labels|safe }};
+  const income  = {{ chart_monthly_collected|safe }};
+  const expense = {{ chart_monthly_expenses|safe }};
+
+  /* Line chart */
+  new Chart(document.getElementById('lineChart'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Cobrado',
+          data: income,
+          borderColor: '#17c1e8',
+          backgroundColor: 'rgba(23,193,232,.08)',
+          borderWidth: 2.5,
+          pointBackgroundColor: '#17c1e8',
+          pointRadius: 4,
+          tension: .4,
+          fill: true,
+        },
+        {
+          label: 'Gastos',
+          data: expense,
+          borderColor: '#fb6340',
+          backgroundColor: 'rgba(251,99,64,.06)',
+          borderWidth: 2,
+          pointBackgroundColor: '#fb6340',
+          pointRadius: 4,
+          tension: .4,
+          fill: true,
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, padding: 16, font: { size: 11 } } } },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+        y: {
+          grid: { color: 'rgba(0,0,0,.04)' },
+          ticks: {
+            font: { size: 11 },
+            callback: v => '$' + v.toLocaleString('es-PA')
+          }
+        }
+      }
+    }
+  });
+
+  /* Bar chart */
+  new Chart(document.getElementById('barChart'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Cobrado',
+          data: income,
+          backgroundColor: 'rgba(94,114,228,.75)',
+          borderRadius: 6,
+          borderSkipped: false,
+        },
+        {
+          label: 'Gastos',
+          data: expense,
+          backgroundColor: 'rgba(251,99,64,.65)',
+          borderRadius: 6,
+          borderSkipped: false,
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, padding: 16, font: { size: 11 } } } },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+        y: {
+          grid: { color: 'rgba(0,0,0,.04)' },
+          ticks: {
+            font: { size: 11 },
+            callback: v => '$' + v.toLocaleString('es-PA')
+          }
+        }
+      }
+    }
+  });
+
+  /* Donut chart */
+  new Chart(document.getElementById('donutChart'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Pagadas', 'Pendientes', 'Parcial', 'Vencidas', 'Con recargo'],
+      datasets: [{
+        data: [{{ inv_paid }}, {{ inv_pending }}, {{ inv_partial }}, {{ inv_overdue }}, {{ inv_overdue_fee }}],
+        backgroundColor: ['#2dce89','#17c1e8','#ffd600','#fb6340','#8965e0'],
+        borderWidth: 2,
+        borderColor: '#fff',
+        hoverOffset: 6,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      cutout: '68%',
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => ` ${ctx.label}: ${ctx.parsed} factura${ctx.parsed !== 1 ? 's' : ''}`
+          }
+        }
+      }
     }
   });
 </script>
+{% endif %}
+
 {% endblock %}

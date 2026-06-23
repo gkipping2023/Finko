@@ -4,41 +4,201 @@
 <div class="container-fluid py-4">
   <div class="row justify-content-center">
     <div class="col-lg-8 col-md-10 col-12">
-      <div class="card shadow border-0 mb-4">
-        <div class="card-header bg-gradient-info pb-3 border-radius-lg">
-          <h4 class="text-white mb-0">User Profile</h4>
-          <p class="text-white-50 mb-0">Update your personal information</p>
-        </div>
-        <div class="card-body">
-          <form method="POST" enctype="multipart/form-data" autocomplete="off">
-            {% csrf_token %}
-            {% for field in form %}
-              {% if field.name != 'role' %}
-                {% if field.name != 'promo_code' or not user.promo_code %}
-                  <div class="mb-3">
-                    <label class="form-label font-weight-bold text-dark">{{ field.label }}</label>
-                    {{ field }}
-                    {% if field.help_text %}
-                      <small class="form-text text-muted">{{ field.help_text }}</small>
-                    {% endif %}
-                    {% for error in field.errors %}
-                      <div class="text-danger small">{{ error }}</div>
-                    {% endfor %}
-                  </div>
-                {% endif %}
-              {% endif %}
-            {% endfor %}
-            <div class="text-center">
-              <button type="submit" class="btn btn-info bg-gradient w-50 mt-3">Save Changes</button>
+      <!-- Tab Navigation -->
+      <ul class="nav nav-tabs mb-3 nav-fill" id="profileTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+          <button class="nav-link {% if active_tab == 'personal' or not active_tab %}active{% endif %} text-dark font-weight-bold" 
+                  id="personal-tab" data-bs-toggle="tab" data-bs-target="#personal-content" type="button" role="tab">
+            <i class="fas fa-user"></i> Información Personal
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link {% if active_tab == 'notifications' %}active{% endif %} text-dark font-weight-bold" 
+                  id="notifications-tab" data-bs-toggle="tab" data-bs-target="#notifications-content" type="button" role="tab">
+            <i class="fas fa-bell"></i> Preferencias de Notificaciones
+          </button>
+        </li>
+      </ul>
+
+      <!-- Tab Content -->
+      <div class="tab-content" id="profileTabContent">
+        
+        <!-- Personal Information Tab -->
+        <div class="tab-pane fade {% if active_tab == 'personal' or not active_tab %}show active{% endif %}" id="personal-content" role="tabpanel">
+          <div class="card shadow border-0 mb-4">
+            <div class="card-header bg-gradient-info pb-3 border-radius-lg">
+              <h4 class="text-white mb-0">Información Personal</h4>
+              <p class="text-white-50 mb-0">Actualiza tus datos personales</p>
             </div>
-          </form>
-          <div class="text-center mt-3">
-            <a href="{% url 'dashboard' %}" class="btn btn-secondary">Back to Dashboard</a>
+            <div class="card-body">
+              <form method="POST" enctype="multipart/form-data" autocomplete="off">
+                {% csrf_token %}
+                <input type="hidden" name="form_type" value="personal">
+                <input type="hidden" name="active_tab" value="personal">
+                {% for field in form %}
+                  {% if field.name != 'role' %}
+                    {% if field.name != 'promo_code' or not user.promo_code %}
+                      <div class="mb-3">
+                        <label class="form-label font-weight-bold text-dark">{{ field.label }}</label>
+                        {{ field }}
+                        {% if field.help_text %}
+                          <small class="form-text text-muted">{{ field.help_text }}</small>
+                        {% endif %}
+                        {% for error in field.errors %}
+                          <div class="text-danger small">{{ error }}</div>
+                        {% endfor %}
+                      </div>
+                    {% endif %}
+                  {% endif %}
+                {% endfor %}
+                <div class="text-center">
+                  <button type="submit" class="btn btn-info bg-gradient w-50 mt-3">Guardar Cambios</button>
+                </div>
+              </form>
+            </div>
           </div>
         </div>
+
+        <!-- Notification Preferences Tab -->
+        <div class="tab-pane fade {% if active_tab == 'notifications' %}show active{% endif %}" id="notifications-content" role="tabpanel">
+          <div class="card shadow border-0 mb-4">
+            <div class="card-header bg-gradient-info pb-3 border-radius-lg">
+              <h4 class="text-white mb-0">Preferencias de Notificaciones</h4>
+              <p class="text-white-50 mb-0">Controla qué notificaciones deseas recibir por correo electrónico</p>
+            </div>
+            <div class="card-body">
+              <form method="POST" enctype="multipart/form-data">
+                {% csrf_token %}
+                <input type="hidden" name="form_type" value="notifications">
+                <input type="hidden" name="active_tab" value="notifications">
+                
+                <!-- Notification Preferences Checkboxes -->
+                <div class="row">
+                  <div class="col-md-6">
+                    <!-- Invoice & Payment Notifications -->
+                    <div class="card bg-light mb-4" style="border: 1px solid #e3e6f0;">
+                      <div class="card-header bg-white border-bottom-1">
+                        <h6 class="mb-0 text-dark font-weight-bold">
+                          <i class="fas fa-file-invoice text-info"></i> Facturas y Pagos
+                        </h6>
+                      </div>
+                      <div class="card-body">
+                        {% for field in notification_form %}
+                          {% if field.name in 'notify_invoice_generated,notify_invoice_summary,notify_payment_confirmed,notify_payment_received' %}
+                            <div class="mb-3">
+                              <div class="form-check">
+                                {{ field }}
+                                <label class="form-check-label text-dark" for="{{ field.id_for_label }}">
+                                  <strong>{{ field.label }}</strong>
+                                </label>
+                              </div>
+                              {% if field.help_text %}
+                                <small class="form-text text-muted d-block ms-4">
+                                  {{ field.help_text }}
+                                </small>
+                              {% endif %}
+                            </div>
+                          {% endif %}
+                        {% endfor %}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="col-md-6">
+                    <!-- Other Notifications -->
+                    <div class="card bg-light mb-4" style="border: 1px solid #e3e6f0;">
+                      <div class="card-header bg-white border-bottom-1">
+                        <h6 class="mb-0 text-dark font-weight-bold">
+                          <i class="fas fa-home text-info"></i> Propiedades y Otros
+                        </h6>
+                      </div>
+                      <div class="card-body">
+                        {% for field in notification_form %}
+                          {% if field.name in 'notify_late_fee_applied,notify_lease_renewal,notify_maintenance,notify_property_alerts' %}
+                            <div class="mb-3">
+                              <div class="form-check">
+                                {{ field }}
+                                <label class="form-check-label text-dark" for="{{ field.id_for_label }}">
+                                  <strong>{{ field.label }}</strong>
+                                </label>
+                              </div>
+                              {% if field.help_text %}
+                                <small class="form-text text-muted d-block ms-4">
+                                  {{ field.help_text }}
+                                </small>
+                              {% endif %}
+                            </div>
+                          {% endif %}
+                        {% endfor %}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Info Alert -->
+                <div class="alert alert-info alert-with-icon" data-notify="container">
+                  <span class="alert-icon" data-notify="icon">
+                    <i class="fas fa-lightbulb"></i>
+                  </span>
+                  <span data-notify="message">
+                    <strong>Nota:</strong> Siempre recibirás notificaciones importantes de transacciones críticas. Estas preferencias controlan notificaciones adicionales.
+                  </span>
+                </div>
+
+                <div class="text-center">
+                  <button type="submit" class="btn btn-info bg-gradient w-50 mt-3">Guardar Preferencias</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+
       </div>
+
+      <!-- Back Button -->
+      <div class="text-center mt-3">
+        <a href="{% url 'dashboard' %}" class="btn btn-secondary">Volver al Panel</a>
+      </div>
+
     </div>
   </div>
 </div>
+
+<style>
+  .nav-tabs .nav-link {
+    border: none;
+    color: #344767;
+    background-color: transparent;
+    transition: all 0.3s ease;
+  }
+  
+  .nav-tabs .nav-link:hover {
+    background-color: #f8f9fa;
+    border-bottom: 3px solid #17c1e8;
+  }
+  
+  .nav-tabs .nav-link.active {
+    background: linear-gradient(195deg, #17c1e8 0%, #1a73e8 100%);
+    color: white;
+    border-bottom: none;
+  }
+
+  .form-check-input {
+    cursor: pointer;
+  }
+
+  .form-check-input:checked {
+    background-color: #17c1e8;
+    border-color: #17c1e8;
+  }
+
+  .card {
+    border-radius: 12px;
+  }
+
+  .card-header {
+    border-radius: 12px 12px 0 0;
+  }
+</style>
 
 {% endblock %}

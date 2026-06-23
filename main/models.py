@@ -157,6 +157,16 @@ class User(AbstractUser):
     data_deletion_requested = models.BooleanField(default=False, verbose_name="Eliminación de Datos Solicitada")
     data_deletion_request_date = models.DateTimeField(null=True, blank=True, verbose_name="Fecha de Solicitud de Eliminación")
     role_confirmed = models.BooleanField(default=False, verbose_name="Rol Confirmado")
+    
+    # Notification Preferences
+    notify_invoice_generated = models.BooleanField(default=True, verbose_name="Notificaciones de Facturas")
+    notify_invoice_summary = models.BooleanField(default=True, verbose_name="Resumen de Facturas")
+    notify_late_fee_applied = models.BooleanField(default=True, verbose_name="Alertas de Recargos")
+    notify_payment_confirmed = models.BooleanField(default=True, verbose_name="Confirmación de Pagos")
+    notify_payment_received = models.BooleanField(default=True, verbose_name="Pagos Recibidos")
+    notify_lease_renewal = models.BooleanField(default=True, verbose_name="Renovación de Contrato")
+    notify_maintenance = models.BooleanField(default=True, verbose_name="Alertas de Mantenimiento")
+    notify_property_alerts = models.BooleanField(default=True, verbose_name="Alertas de Propiedad")
 
     # Convert country code to full country name before saving.
     def save(self, *args, **kwargs):

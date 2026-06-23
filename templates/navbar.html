@@ -371,36 +371,206 @@
 {% endif %}
 
 {# Mobile bottom quick-access for phones/tablets (authenticated users only) #}
+
+<style>
+  /* Mobile Navbar Animations and Styles */
+  .mobile-navbar-container {
+    z-index: 1050;
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+    animation: slideUp 0.3s ease-out;
+  }
+
+  @keyframes slideUp {
+    from {
+      transform: translateY(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
+  .mobile-nav-item {
+    position: relative;
+    text-decoration: none !important;
+    transition: all 0.3s ease;
+    padding: 8px 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: #6c757d;
+    text-align: center;
+    width: 20%;
+    min-width: 60px;
+    flex-shrink: 0;
+    font-size: 0.875rem;
+  }
+
+  .mobile-nav-item:hover {
+    color: #0d6efd;
+    transform: translateY(-2px);
+  }
+
+  .mobile-nav-item i {
+    font-size: 1.5rem;
+    transition: all 0.3s ease;
+    display: block;
+    margin-bottom: 4px;
+  }
+
+  .mobile-nav-item .nav-label {
+    font-size: 11px;
+    line-height: 1.2;
+    transition: all 0.3s ease;
+    font-weight: 500;
+  }
+
+  /* Active State Styles */
+  .mobile-nav-item.active {
+    color: #0d6efd;
+    font-weight: 600;
+  }
+
+  .mobile-nav-item.active::before {
+    content: '';
+    position: absolute;
+    bottom: -8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 24px;
+    height: 3px;
+    background: linear-gradient(90deg, #0d6efd 0%, #0dcaf0 100%);
+    border-radius: 2px;
+    animation: expandWidth 0.3s ease-out;
+  }
+
+  @keyframes expandWidth {
+    from {
+      width: 0;
+    }
+    to {
+      width: 24px;
+    }
+  }
+
+  .mobile-nav-item.active i {
+    transform: scale(1.15) rotate(0deg);
+    color: #0d6efd;
+  }
+
+  /* Ripple effect on click */
+  .mobile-nav-item::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(13, 110, 253, 0.1);
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+  }
+
+  .mobile-nav-item:active::after {
+    animation: ripple 0.6s ease-out;
+  }
+
+  @keyframes ripple {
+    from {
+      width: 0;
+      height: 0;
+      opacity: 1;
+    }
+    to {
+      width: 60px;
+      height: 60px;
+      opacity: 0;
+    }
+  }
+
+  /* Mobile navbar container scrollbar hiding */
+  .mobile-navbar-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .mobile-navbar-scroll::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Improve mobile layout */
+  @media (max-width: 576px) {
+    .mobile-nav-item {
+      font-size: 0.75rem;
+    }
+
+    .mobile-nav-item i {
+      font-size: 1.25rem;
+    }
+
+    .mobile-nav-item .nav-label {
+      font-size: 10px;
+    }
+  }
+</style>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const mobileNavItems = document.querySelectorAll('.mobile-nav-item');
+    const currentUrl = window.location.pathname;
+
+    mobileNavItems.forEach(function(item) {
+      const href = item.getAttribute('href');
+      // Handle URL comparison
+      if (href && (currentUrl.includes(href.split('?')[0]) || href.split('?')[0].includes(currentUrl))) {
+        item.classList.add('active');
+      }
+    });
+
+    // Add smooth scroll behavior
+    mobileNavItems.forEach(function(item) {
+      item.addEventListener('click', function(e) {
+        mobileNavItems.forEach(i => i.classList.remove('active'));
+        this.classList.add('active');
+      });
+    });
+  });
+</script>
+
 {% if request.user.is_authenticated %}
-<div class="d-lg-none fixed-bottom bg-white border-top" style="z-index: 1050;">
-  <div class="container">
-    <div class="d-flex justify-content-between py-2" style="overflow-x: auto; flex-wrap: nowrap;">
-      <a href="{% url 'dashboard' %}" class="text-center text-dark small flex-shrink-0" style="width:20%; min-width:60px; text-decoration:none;">
-        <div><i class="fa fa-tachometer-alt fa-lg" aria-hidden="true"></i></div>
-        <div style="font-size:11px; line-height:1.2;">Dashboard</div>
+<div class="d-lg-none fixed-bottom bg-white border-top mobile-navbar-container" style="width: 100%;">
+  <div class="container-fluid">
+    <div class="d-flex justify-content-between mobile-navbar-scroll">
+      <a href="{% url 'dashboard' %}" class="mobile-nav-item" data-page="dashboard">
+        <i class="fa fa-tachometer-alt" aria-hidden="true"></i>
+        <span class="nav-label">Dashboard</span>
       </a>
-      <a href="{% url 'properties' %}" class="text-center text-dark small flex-shrink-0" style="width:20%; min-width:60px; text-decoration:none;">
-        <div><i class="fa fa-building fa-lg" aria-hidden="true"></i></div>
-        <div style="font-size:11px; line-height:1.2;">Propiedades</div>
+      <a href="{% url 'properties' %}" class="mobile-nav-item" data-page="properties">
+        <i class="fa fa-building" aria-hidden="true"></i>
+        <span class="nav-label">Propiedades</span>
       </a>
       {% if request.user.role == "O" %}
-      <a href="{% url 'all_transactions' %}" class="text-center text-dark small flex-shrink-0" style="width:20%; min-width:60px; text-decoration:none;">
-        <div><i class="fa fa-money-bill-wave fa-lg" aria-hidden="true"></i></div>
-        <div style="font-size:11px; line-height:1.2;">Transacciones</div>
+      <a href="{% url 'all_transactions' %}" class="mobile-nav-item" data-page="transactions">
+        <i class="fa fa-money-bill-wave" aria-hidden="true"></i>
+        <span class="nav-label">Transacciones</span>
       </a>
-      <a href="{% url 'generate_documents' %}" class="text-center text-dark small flex-shrink-0" style="width:20%; min-width:60px; text-decoration:none;">
-        <div><i class="fa fa-file-lines fa-lg" aria-hidden="true"></i></div>
-        <div style="font-size:11px; line-height:1.2;">Reportes</div>
+      <a href="{% url 'generate_documents' %}" class="mobile-nav-item" data-page="reportes">
+        <i class="fa fa-file-lines" aria-hidden="true"></i>
+        <span class="nav-label">Reportes</span>
       </a>
       {% else %}
-      <a href="{% url 'generate_documents' %}?action=statement" class="text-center text-dark small flex-shrink-0" style="width:20%; min-width:60px; text-decoration:none;">
-        <div><i class="fa fa-file-lines fa-lg" aria-hidden="true"></i></div>
-        <div style="font-size:11px; line-height:1.2;">Reportes</div>
+      <a href="{% url 'generate_documents' %}?action=statement" class="mobile-nav-item" data-page="reportes">
+        <i class="fa fa-file-lines" aria-hidden="true"></i>
+        <span class="nav-label">Reportes</span>
       </a>
       {% endif %}
-      <a href="{% url 'feedback_form' %}" class="text-center text-dark small flex-shrink-0" style="width:20%; min-width:60px; text-decoration:none;">
-        <div><i class="fa fa-comment-dots fa-lg" aria-hidden="true"></i></div>
-        <div style="font-size:11px; line-height:1.2;">Feedback</div>
+      <a href="{% url 'feedback_form' %}" class="mobile-nav-item" data-page="feedback">
+        <i class="fa fa-comment-dots" aria-hidden="true"></i>
+        <span class="nav-label">Feedback</span>
       </a>
     </div>
   </div>
